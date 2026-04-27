@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prefetch:holidays": "node scripts/공휴일가져오기.js"
   },
   "dependencies": {
     "vue": "^3.5.32"
@@ -14,5 +15,8 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.6",
     "vite": "^8.0.10"
+  },
+  "volta": {
+    "node": "22.22.2"
   }
 }

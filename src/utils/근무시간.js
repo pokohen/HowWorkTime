@@ -44,24 +44,25 @@ export function 월소정근로일수조회(연도, 월) {
 }
 
 /**
- * 오늘부터 해당 월 말일까지 남은 근무일 수 계산 (오늘 포함)
+ * 내일부터 해당 월 말일까지 남은 근무일 수 계산 (오늘 제외)
  * @param {number} 연도
  * @param {number} 월 - 1~12
  * @returns {number}
  */
 export function 남은근무일수조회(연도, 월) {
   const 공휴일셋 = 연도별공휴일조회(연도)
-  const 오늘 = new Date()
-  오늘.setHours(0, 0, 0, 0)
+  const 내일 = new Date()
+  내일.setHours(0, 0, 0, 0)
+  내일.setDate(내일.getDate() + 1)
 
   const 첫날 = new Date(연도, 월 - 1, 1)
   const 마지막날 = new Date(연도, 월, 0)
 
-  // 선택한 월이 과거이면 0 반환
-  if (마지막날 < 오늘) return 0
+  // 선택한 월의 마지막 날이 오늘 이전이면 0
+  if (마지막날 < 내일) return 0
 
-  // 선택한 월이 미래이면 전체 근무일 반환
-  const 시작날 = 첫날 > 오늘 ? 첫날 : 오늘
+  // 선택한 월이 미래이면 전체 근무일, 이번 달이면 내일부터
+  const 시작날 = 첫날 > 내일 ? 첫날 : 내일
 
   let 남은일수 = 0
   const 현재날짜 = new Date(시작날)
