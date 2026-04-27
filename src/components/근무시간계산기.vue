@@ -1,129 +1,129 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { getWorkDaysInMonth, getRemainingWorkDays } from '../utils/workHours'
-import { getHolidaysForMonth, getHolidayName } from '../utils/holidays'
+import { 월소정근로일수조회, 남은근무일수조회 } from '../utils/근무시간'
+import { 월별공휴일조회, 공휴일이름조회 } from '../utils/공휴일'
 
-const today = new Date()
-const currentYear = today.getFullYear()
-const currentMonth = today.getMonth() + 1
+const 오늘 = new Date()
+const 현재연도 = 오늘.getFullYear()
+const 현재월 = 오늘.getMonth() + 1
 
-const selectedYear = ref(currentYear)
-const selectedMonth = ref(currentMonth)
-const fixedOvertime = ref(10)
-const workedHours = ref(null)
+const 선택연도 = ref(현재연도)
+const 선택월 = ref(현재월)
+const 고정연장시간 = ref(10)
+const 입력근무시간 = ref(null)
 
-const HOURS_PER_DAY = 8
+const 하루근무시간 = 8
 
-const yearOptions = computed(() => {
-  const years = []
-  for (let y = currentYear - 1; y <= currentYear + 2; y++) {
-    years.push(y)
+const 연도목록 = computed(() => {
+  const 목록 = []
+  for (let 연도 = 현재연도 - 1; 연도 <= 현재연도 + 2; 연도++) {
+    목록.push(연도)
   }
-  return years
+  return 목록
 })
 
-const monthOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+const 월목록 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 // 소정 근로일
-const workDays = computed(() =>
-  getWorkDaysInMonth(selectedYear.value, selectedMonth.value),
+const 소정근로일 = computed(() =>
+  월소정근로일수조회(선택연도.value, 선택월.value),
 )
 
 // 의무 근로시간
-const mandatoryHours = computed(() => workDays.value * HOURS_PER_DAY)
+const 의무근로시간 = computed(() => 소정근로일.value * 하루근무시간)
 
 // 최대 근로시간
-const maxHours = computed(
-  () => workDays.value * HOURS_PER_DAY + (fixedOvertime.value || 0),
+const 최대근로시간 = computed(
+  () => 소정근로일.value * 하루근무시간 + (고정연장시간.value || 0),
 )
 
 // 남은 근무일 (오늘 포함)
-const remainingWorkDays = computed(() =>
-  getRemainingWorkDays(selectedYear.value, selectedMonth.value),
+const 남은근무일 = computed(() =>
+  남은근무일수조회(선택연도.value, 선택월.value),
 )
 
 // 경과 근무일
-const passedWorkDays = computed(() => workDays.value - remainingWorkDays.value)
+const 경과근무일 = computed(() => 소정근로일.value - 남은근무일.value)
 
 // 현재까지 근무시간 (입력값, 없으면 0)
-const inputHours = computed(() => Number(workedHours.value) || 0)
+const 입력시간 = computed(() => Number(입력근무시간.value) || 0)
 
 // 남은 의무 근무시간
-const remainingMandatory = computed(() =>
-  Math.max(0, mandatoryHours.value - inputHours.value),
+const 남은의무시간 = computed(() =>
+  Math.max(0, 의무근로시간.value - 입력시간.value),
 )
 
 // 남은 최대 근무시간
-const remainingMax = computed(() =>
-  Math.max(0, maxHours.value - inputHours.value),
+const 남은최대시간 = computed(() =>
+  Math.max(0, 최대근로시간.value - 입력시간.value),
 )
 
 // 의무 달성을 위한 일평균 근무시간
-const avgForMandatory = computed(() => {
-  if (remainingWorkDays.value === 0) return 0
-  return (remainingMandatory.value / remainingWorkDays.value).toFixed(2)
+const 의무달성일평균 = computed(() => {
+  if (남은근무일.value === 0) return 0
+  return (남은의무시간.value / 남은근무일.value).toFixed(2)
 })
 
 // 최대 달성을 위한 일평균 근무시간
-const avgForMax = computed(() => {
-  if (remainingWorkDays.value === 0) return 0
-  return (remainingMax.value / remainingWorkDays.value).toFixed(2)
+const 최대달성일평균 = computed(() => {
+  if (남은근무일.value === 0) return 0
+  return (남은최대시간.value / 남은근무일.value).toFixed(2)
 })
 
 // 달성률 (의무 기준)
-const achievementRate = computed(() => {
-  if (mandatoryHours.value === 0) return 0
-  return Math.min(100, Math.round((inputHours.value / mandatoryHours.value) * 100))
+const 달성률 = computed(() => {
+  if (의무근로시간.value === 0) return 0
+  return Math.min(100, Math.round((입력시간.value / 의무근로시간.value) * 100))
 })
 
 // 초과 근무시간 (의무 기준)
-const overtimeHours = computed(() =>
-  Math.max(0, inputHours.value - mandatoryHours.value),
+const 초과시간 = computed(() =>
+  Math.max(0, 입력시간.value - 의무근로시간.value),
 )
 
 // 이미 의무 달성 여부
-const isMandatoryAchieved = computed(() => inputHours.value >= mandatoryHours.value)
+const 의무달성여부 = computed(() => 입력시간.value >= 의무근로시간.value)
 
 // 공휴일 목록 (선택 월)
-const holidaysInMonth = computed(() =>
-  getHolidaysForMonth(selectedYear.value, selectedMonth.value),
+const 이달공휴일 = computed(() =>
+  월별공휴일조회(선택연도.value, 선택월.value),
 )
 
 // 프로그레스 바 색상
-const progressColor = computed(() => {
-  if (achievementRate.value >= 100) return '#10b981'
-  if (achievementRate.value >= 70) return '#f59e0b'
+const 진행바색상 = computed(() => {
+  if (달성률.value >= 100) return '#10b981'
+  if (달성률.value >= 70) return '#f59e0b'
   return '#3b82f6'
 })
 
 // 선택 월 표시
-const selectedMonthLabel = computed(
-  () => `${selectedYear.value}년 ${selectedMonth.value}월`,
+const 선택월표시 = computed(
+  () => `${선택연도.value}년 ${선택월.value}월`,
 )
 
 // 날짜 포맷
-function formatDate(dateStr) {
-  const [, m, d] = dateStr.split('-')
-  return `${parseInt(m)}월 ${parseInt(d)}일`
+function 날짜포맷(날짜문자열) {
+  const [, 월, 일] = 날짜문자열.split('-')
+  return `${parseInt(월)}월 ${parseInt(일)}일`
 }
 
 // 요일 반환
-function getDayOfWeek(dateStr) {
-  const days = ['일', '월', '화', '수', '목', '금', '토']
-  const date = new Date(dateStr)
-  return days[date.getDay()]
+function 요일가져오기(날짜문자열) {
+  const 요일목록 = ['일', '월', '화', '수', '목', '금', '토']
+  const 날짜 = new Date(날짜문자열)
+  return 요일목록[날짜.getDay()]
 }
 
 // 과거 월 여부
-const isPastMonth = computed(() => {
-  const selected = new Date(selectedYear.value, selectedMonth.value - 1, 1)
-  const thisMonth = new Date(currentYear, currentMonth - 1, 1)
-  return selected < thisMonth
+const 지난달여부 = computed(() => {
+  const 선택 = new Date(선택연도.value, 선택월.value - 1, 1)
+  const 이번달 = new Date(현재연도, 현재월 - 1, 1)
+  return 선택 < 이번달
 })
 
 // 현재 월 여부
-const isCurrentMonth = computed(
-  () => selectedYear.value === currentYear && selectedMonth.value === currentMonth,
+const 이번달여부 = computed(
+  () => 선택연도.value === 현재연도 && 선택월.value === 현재월,
 )
 </script>
 
@@ -139,20 +139,20 @@ const isCurrentMonth = computed(
       <div class="selector-row">
         <div class="select-group">
           <label>연도</label>
-          <select v-model="selectedYear">
-            <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}년</option>
+          <select v-model="선택연도">
+            <option v-for="연도 in 연도목록" :key="연도" :value="연도">{{ 연도 }}년</option>
           </select>
         </div>
         <div class="select-group">
           <label>월</label>
-          <select v-model="selectedMonth">
-            <option v-for="m in monthOptions" :key="m" :value="m">{{ m }}월</option>
+          <select v-model="선택월">
+            <option v-for="월 in 월목록" :key="월" :value="월">{{ 월 }}월</option>
           </select>
         </div>
         <div class="month-badge">
-          <span>{{ selectedMonthLabel }}</span>
-          <span v-if="isCurrentMonth" class="badge current">이번 달</span>
-          <span v-else-if="isPastMonth" class="badge past">지난 달</span>
+          <span>{{ 선택월표시 }}</span>
+          <span v-if="이번달여부" class="badge current">이번 달</span>
+          <span v-else-if="지난달여부" class="badge past">지난 달</span>
           <span v-else class="badge future">다음 달</span>
         </div>
       </div>
@@ -163,20 +163,20 @@ const isCurrentMonth = computed(
       <div class="summary-card blue">
         <div class="summary-icon">📅</div>
         <div class="summary-label">소정 근로일</div>
-        <div class="summary-value">{{ workDays }}<span class="unit">일</span></div>
+        <div class="summary-value">{{ 소정근로일 }}<span class="unit">일</span></div>
         <div class="summary-sub">주말·공휴일 제외</div>
       </div>
       <div class="summary-card green">
         <div class="summary-icon">✅</div>
         <div class="summary-label">의무 근로시간</div>
-        <div class="summary-value">{{ mandatoryHours }}<span class="unit">H</span></div>
-        <div class="summary-sub">8H × {{ workDays }}일</div>
+        <div class="summary-value">{{ 의무근로시간 }}<span class="unit">H</span></div>
+        <div class="summary-sub">8H × {{ 소정근로일 }}일</div>
       </div>
       <div class="summary-card purple">
         <div class="summary-icon">🚀</div>
         <div class="summary-label">최대 근로시간</div>
-        <div class="summary-value">{{ maxHours }}<span class="unit">H</span></div>
-        <div class="summary-sub">8H × {{ workDays }}일 + {{ fixedOvertime }}H</div>
+        <div class="summary-value">{{ 최대근로시간 }}<span class="unit">H</span></div>
+        <div class="summary-sub">8H × {{ 소정근로일 }}일 + {{ 고정연장시간 }}H</div>
       </div>
     </section>
 
@@ -185,11 +185,11 @@ const isCurrentMonth = computed(
       <h2 class="section-title">⚙️ 근무 설정</h2>
       <div class="input-grid">
         <div class="input-group">
-          <label for="overtime">월 고정 연장근무 (H)</label>
+          <label for="고정연장">월 고정 연장근무 (H)</label>
           <div class="input-with-unit">
             <input
-              id="overtime"
-              v-model.number="fixedOvertime"
+              id="고정연장"
+              v-model.number="고정연장시간"
               type="number"
               min="0"
               max="100"
@@ -201,11 +201,11 @@ const isCurrentMonth = computed(
           <p class="input-hint">최대 근로시간 계산에 포함됩니다</p>
         </div>
         <div class="input-group">
-          <label for="worked">현재까지 근무시간 (H)</label>
+          <label for="근무입력">현재까지 근무시간 (H)</label>
           <div class="input-with-unit">
             <input
-              id="worked"
-              v-model.number="workedHours"
+              id="근무입력"
+              v-model.number="입력근무시간"
               type="number"
               min="0"
               step="0.5"
@@ -219,22 +219,22 @@ const isCurrentMonth = computed(
     </section>
 
     <!-- 진행 상황 -->
-    <section class="card progress-section" v-if="inputHours > 0">
+    <section class="card progress-section" v-if="입력시간 > 0">
       <h2 class="section-title">📊 달성 현황</h2>
       <div class="progress-info">
-        <span>{{ inputHours }}H / {{ mandatoryHours }}H</span>
-        <span class="achievement-rate" :style="{ color: progressColor }">{{ achievementRate }}%</span>
+        <span>{{ 입력시간 }}H / {{ 의무근로시간 }}H</span>
+        <span class="achievement-rate" :style="{ color: 진행바색상 }">{{ 달성률 }}%</span>
       </div>
       <div class="progress-bar">
         <div
           class="progress-fill"
-          :style="{ width: achievementRate + '%', backgroundColor: progressColor }"
+          :style="{ width: 달성률 + '%', backgroundColor: 진행바색상 }"
         ></div>
       </div>
       <div class="progress-tags">
-        <span v-if="isMandatoryAchieved" class="tag success">🎉 의무시간 달성!</span>
-        <span v-if="overtimeHours > 0" class="tag overtime">추가 {{ overtimeHours }}H 근무</span>
-        <span class="tag info">경과 근무일: {{ passedWorkDays }}일 / {{ workDays }}일</span>
+        <span v-if="의무달성여부" class="tag success">🎉 의무시간 달성!</span>
+        <span v-if="초과시간 > 0" class="tag overtime">추가 {{ 초과시간 }}H 근무</span>
+        <span class="tag info">경과 근무일: {{ 경과근무일 }}일 / {{ 소정근로일 }}일</span>
       </div>
     </section>
 
@@ -242,7 +242,7 @@ const isCurrentMonth = computed(
     <section class="card result-section">
       <h2 class="section-title">📋 남은 근무 계획</h2>
 
-      <div v-if="isPastMonth" class="notice past-notice">
+      <div v-if="지난달여부" class="notice past-notice">
         ℹ️ 지난 달입니다. 이번 달을 선택하면 남은 근무일 계산이 가능합니다.
       </div>
 
@@ -250,58 +250,58 @@ const isCurrentMonth = computed(
         <div class="result-item">
           <div class="result-label">남은 근무일</div>
           <div class="result-value highlight-blue">
-            {{ remainingWorkDays }}<span class="unit">일</span>
+            {{ 남은근무일 }}<span class="unit">일</span>
           </div>
           <div class="result-sub">오늘 포함</div>
         </div>
         <div class="result-item">
           <div class="result-label">남은 의무 근무시간</div>
           <div class="result-value highlight-green">
-            {{ remainingMandatory }}<span class="unit">H</span>
+            {{ 남은의무시간 }}<span class="unit">H</span>
           </div>
-          <div class="result-sub">{{ mandatoryHours }}H - {{ inputHours }}H</div>
+          <div class="result-sub">{{ 의무근로시간 }}H - {{ 입력시간 }}H</div>
         </div>
         <div class="result-item">
           <div class="result-label">남은 최대 근무시간</div>
           <div class="result-value highlight-purple">
-            {{ remainingMax }}<span class="unit">H</span>
+            {{ 남은최대시간 }}<span class="unit">H</span>
           </div>
-          <div class="result-sub">{{ maxHours }}H - {{ inputHours }}H</div>
+          <div class="result-sub">{{ 최대근로시간 }}H - {{ 입력시간 }}H</div>
         </div>
       </div>
 
-      <div v-if="remainingWorkDays > 0" class="avg-section">
+      <div v-if="남은근무일 > 0" class="avg-section">
         <h3>일평균 목표 근무시간</h3>
         <div class="avg-grid">
           <div class="avg-card avg-mandatory">
             <div class="avg-label">의무 달성 일평균</div>
-            <div class="avg-value">{{ avgForMandatory }}<span class="unit">H</span></div>
-            <div class="avg-sub">{{ remainingWorkDays }}일 동안 매일</div>
+            <div class="avg-value">{{ 의무달성일평균 }}<span class="unit">H</span></div>
+            <div class="avg-sub">{{ 남은근무일 }}일 동안 매일</div>
           </div>
           <div class="avg-card avg-max">
             <div class="avg-label">최대 달성 일평균</div>
-            <div class="avg-value">{{ avgForMax }}<span class="unit">H</span></div>
-            <div class="avg-sub">{{ remainingWorkDays }}일 동안 매일</div>
+            <div class="avg-value">{{ 최대달성일평균 }}<span class="unit">H</span></div>
+            <div class="avg-sub">{{ 남은근무일 }}일 동안 매일</div>
           </div>
         </div>
       </div>
-      <div v-else-if="!isPastMonth" class="notice">
+      <div v-else-if="!지난달여부" class="notice">
         🎊 남은 근무일이 없습니다!
       </div>
     </section>
 
     <!-- 공휴일 목록 -->
-    <section class="card holiday-section" v-if="holidaysInMonth.length > 0">
-      <h2 class="section-title">🗓 {{ selectedMonthLabel }} 공휴일</h2>
+    <section class="card holiday-section" v-if="이달공휴일.length > 0">
+      <h2 class="section-title">🗓 {{ 선택월표시 }} 공휴일</h2>
       <ul class="holiday-list">
-        <li v-for="h in holidaysInMonth" :key="h" class="holiday-item">
-          <span class="holiday-date">{{ formatDate(h) }} ({{ getDayOfWeek(h) }})</span>
-          <span class="holiday-name">{{ getHolidayName(h) }}</span>
+        <li v-for="항목 in 이달공휴일" :key="항목" class="holiday-item">
+          <span class="holiday-date">{{ 날짜포맷(항목) }} ({{ 요일가져오기(항목) }})</span>
+          <span class="holiday-name">{{ 공휴일이름조회(항목) }}</span>
         </li>
       </ul>
     </section>
     <section class="card holiday-section" v-else>
-      <h2 class="section-title">🗓 {{ selectedMonthLabel }} 공휴일</h2>
+      <h2 class="section-title">🗓 {{ 선택월표시 }} 공휴일</h2>
       <p class="no-holiday">이 달에는 공휴일이 없습니다.</p>
     </section>
   </div>

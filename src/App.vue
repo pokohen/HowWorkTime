@@ -1,7 +1,7 @@
 <script setup>
-import WorkHoursCalculator from './components/WorkHoursCalculator.vue'
+import 근무시간계산기 from './components/근무시간계산기.vue'
 </script>
 
 <template>
-  <WorkHoursCalculator />
+  <component :is="근무시간계산기" />
 </template>

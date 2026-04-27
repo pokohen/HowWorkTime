@@ -1,8 +1,8 @@
 /**
- * 대한민국 공휴일 (Korean Public Holidays)
+ * 대한민국 공휴일 데이터
  * 주요 공휴일 목록 (음력 기반 공휴일은 해당 연도 날짜로 변환)
  */
-const HOLIDAYS = {
+const 공휴일목록 = {
   2024: [
     '2024-01-01', // 신정
     '2024-02-09', '2024-02-10', '2024-02-11', '2024-02-12', // 설날 연휴
@@ -61,54 +61,46 @@ const HOLIDAYS = {
 
 /**
  * 연도별 공휴일 Set 반환
- * @param {number} year
+ * @param {number} 연도
  * @returns {Set<string>}
  */
-export function getHolidaysForYear(year) {
-  return new Set(HOLIDAYS[year] || [])
+export function 연도별공휴일조회(연도) {
+  return new Set(공휴일목록[연도] || [])
 }
 
 /**
  * 특정 월의 공휴일 목록 반환
- * @param {number} year
- * @param {number} month - 1~12
+ * @param {number} 연도
+ * @param {number} 월 - 1~12
  * @returns {string[]}
  */
-export function getHolidaysForMonth(year, month) {
-  const allHolidays = HOLIDAYS[year] || []
-  const prefix = `${year}-${String(month).padStart(2, '0')}`
-  return allHolidays.filter((d) => d.startsWith(prefix))
+export function 월별공휴일조회(연도, 월) {
+  const 전체공휴일 = 공휴일목록[연도] || []
+  const 날짜접두사 = `${연도}-${String(월).padStart(2, '0')}`
+  return 전체공휴일.filter((항목) => 항목.startsWith(날짜접두사))
 }
 
 /**
  * 공휴일 이름 반환
- * @param {string} dateStr - YYYY-MM-DD
+ * @param {string} 날짜문자열 - YYYY-MM-DD
  * @returns {string}
  */
-export function getHolidayName(dateStr) {
-  const names = {
-    // 신정
+export function 공휴일이름조회(날짜문자열) {
+  const 고정공휴일이름 = {
     '01-01': '신정',
-    // 삼일절
     '03-01': '삼일절',
-    // 어린이날
     '05-05': '어린이날',
-    // 현충일
     '06-06': '현충일',
-    // 광복절
     '08-15': '광복절',
-    // 개천절
     '10-03': '개천절',
-    // 한글날
     '10-09': '한글날',
-    // 성탄절
     '12-25': '성탄절',
   }
-  const mmdd = dateStr.slice(5)
-  if (names[mmdd]) return names[mmdd]
+  const 월일 = 날짜문자열.slice(5)
+  if (고정공휴일이름[월일]) return 고정공휴일이름[월일]
 
   // 설날/추석/부처님오신날/대체공휴일 등
-  const specialNames = {
+  const 특수공휴일이름 = {
     '2024-02-09': '설날 연휴',
     '2024-02-10': '설날',
     '2024-02-11': '설날 연휴',
@@ -145,5 +137,5 @@ export function getHolidayName(dateStr) {
     '2027-09-16': '추석 연휴',
     '2027-10-04': '개천절 대체공휴일',
   }
-  return specialNames[dateStr] || '공휴일'
+  return 특수공휴일이름[날짜문자열] || '공휴일'
 }
