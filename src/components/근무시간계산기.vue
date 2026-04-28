@@ -173,16 +173,6 @@ const 이번달여부 = computed(
             <input type="checkbox" v-model="입사한달여부" />
             <span>입사한 달</span>
           </label>
-          <input
-            v-if="입사한달여부"
-            id="입사일"
-            class="join-day-input"
-            type="number"
-            v-model.number="입사일"
-            :min="1"
-            :max="월말일"
-            aria-label="입사일"
-          />
         </div>
         <div class="month-badge">
           <span>{{ 선택월표시 }}</span>
@@ -190,6 +180,24 @@ const 이번달여부 = computed(
           <span v-else-if="지난달여부" class="badge past">지난 달</span>
           <span v-else class="badge future">다음 달</span>
         </div>
+      </div>
+      <div v-if="입사한달여부" class="join-row">
+        <label for="입사일" class="join-label">입사일 (일)</label>
+        <div class="input-with-unit join-input-wrap">
+          <input
+            id="입사일"
+            type="number"
+            v-model.number="입사일"
+            :min="1"
+            :max="월말일"
+            inputmode="numeric"
+            placeholder="1"
+          />
+        </div>
+        <p class="input-hint join-hint">
+          <strong>{{ 유효입사일 }}일</strong>부터 월말까지 근무일로 계산
+          <span class="hint-extra">(입사일도 포함)</span>
+        </p>
       </div>
     </section>
 
@@ -503,22 +511,24 @@ const 이번달여부 = computed(
   accent-color: #3b82f6;
   cursor: pointer;
 }
-.join-day-input {
-  width: 72px;
-  padding: 8px 10px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #0f172a;
-  background: #f8fafc;
-  text-align: center;
+.join-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #e2e8f0;
 }
-.join-day-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-  background: #fff;
+.join-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #374151;
+}
+.join-input-wrap {
+  max-width: 200px;
+}
+.join-hint {
+  margin: 0;
 }
 .month-badge {
   display: flex;
@@ -844,10 +854,11 @@ const 이번달여부 = computed(
   .join-checkbox {
     color: #cbd5e1;
   }
-  .join-day-input {
-    background: #0f172a;
-    border-color: #334155;
-    color: #f1f5f9;
+  .join-row {
+    border-top-color: #334155;
+  }
+  .join-label {
+    color: #cbd5e1;
   }
   .month-badge {
     color: #f1f5f9;
