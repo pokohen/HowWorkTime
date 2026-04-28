@@ -5,20 +5,116 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-family: 'Noto Sans KR', 'Pretendard', system-ui, sans-serif;
+
+  --bg-app: #f1f5f9;
+  --card-bg: #fff;
+  --card-border: #e2e8f0;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+  --section-title: #334155;
+  --holiday-bg: #fefce8;
+  --holiday-border: #fde68a;
+  --holiday-date: #78350f;
+  --holiday-name-bg: #fef3c7;
+  --holiday-name: #92400e;
+  --no-holiday: #94a3b8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-app: #0f172a;
+    --card-bg: #1e293b;
+    --card-border: #334155;
+    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --section-title: #cbd5e1;
+    --holiday-bg: #292524;
+    --holiday-border: #78350f;
+    --holiday-date: #fde68a;
+    --holiday-name-bg: #451a03;
+    --holiday-name: #fbbf24;
+    --no-holiday: #64748b;
+  }
+}
+
+html {
+  background: var(--bg-app);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f1f5f9;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #0f172a;
-  }
+  background: var(--bg-app);
 }
 
 #app {
   min-height: 100vh;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--card-shadow);
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--section-title);
+  margin: 0 0 20px;
+}
+
+.holiday-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.holiday-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--holiday-bg);
+  border-radius: 10px;
+  border: 1px solid var(--holiday-border);
+}
+
+.holiday-date {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--holiday-date);
+}
+
+.holiday-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--holiday-name);
+  background: var(--holiday-name-bg);
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+
+.no-holiday {
+  color: var(--no-holiday);
+  font-size: 0.9rem;
+  margin: 0;
+  text-align: center;
+  padding: 8px 0;
+}
+
+@media (max-width: 640px) {
+  .holiday-item {
+    padding: 10px 12px;
+  }
+  .holiday-date {
+    font-size: 0.85rem;
+  }
+  .holiday-name {
+    font-size: 0.8rem;
+  }
 }

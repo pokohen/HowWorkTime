@@ -9,6 +9,11 @@ export function 연도별공휴일조회(연도) {
   return new Set(항목들.map((항목) => 항목.날짜))
 }
 
+export function 공휴일데이터존재여부(연도) {
+  const 항목들 = 연도별맵.get(연도)
+  return Array.isArray(항목들) && 항목들.length > 0
+}
+
 export function 월별공휴일조회(연도, 월) {
   const 항목들 = 연도별맵.get(연도) ?? []
   const 접두사 = `${연도}-${String(월).padStart(2, '0')}`

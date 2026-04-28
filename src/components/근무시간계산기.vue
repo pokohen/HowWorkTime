@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watchEffect } from 'vue'
 import { 월소정근로일수조회, 남은근무일수조회 } from '../utils/근무시간'
-import { 월별공휴일조회 } from '../utils/공휴일'
+import { 월별공휴일조회, 공휴일데이터존재여부 } from '../utils/공휴일'
 import { 시분파싱, 시분변환 } from '../utils/시간포맷'
 import 달성현황 from './달성현황.vue'
 import 공휴일목록 from './공휴일목록.vue'
@@ -63,10 +63,14 @@ const 월목록 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 const 월말일 = computed(() =>
   new Date(선택연도.value, 선택월.value, 0).getDate(),
 )
+const 일목록 = computed(() => {
+  const 목록 = []
+  for (let 일 = 1; 일 <= 월말일.value; 일++) 목록.push(일)
+  return 목록
+})
 const 유효입사일 = computed(() => {
   if (!입사한달여부.value) return 1
-  const 일 = Number(입사일.value) || 1
-  return Math.max(1, Math.min(월말일.value, 일))
+  return Math.max(1, Math.min(월말일.value, Number(입사일.value) || 1))
 })
 const 소정근로일 = computed(() =>
   월소정근로일수조회(선택연도.value, 선택월.value, 유효입사일.value),
@@ -99,9 +103,16 @@ const 초과분 = computed(() =>
   Math.max(0, 반영분.value - 의무근로분.value),
 )
 const 의무달성여부 = computed(() => 반영분.value >= 의무근로분.value)
+const 의무대비차 = computed(() =>
+  Math.abs(반영분.value - 의무근로분.value),
+)
+const 최대대비차 = computed(() =>
+  Math.abs(반영분.value - 최대근로분.value),
+)
 const 이달공휴일 = computed(() =>
   월별공휴일조회(선택연도.value, 선택월.value),
 )
+const 공휴일데이터있음 = computed(() => 공휴일데이터존재여부(선택연도.value))
 
 // 다음 달
 const 다음달 = computed(() => {
@@ -144,6 +155,18 @@ const 지난달여부 = computed(() => {
 const 이번달여부 = computed(
   () => 선택연도.value === 현재연도 && 선택월.value === 현재월,
 )
+
+watchEffect(() => {
+  document.title = `${선택월표시.value} 근무시간 계산기`
+})
+
+watchEffect(() => {
+  if (!입사한달여부.value) return
+  const 기본 = 이번달여부.value ? 오늘.getDate() : 1
+  if (입사일.value < 1 || 입사일.value > 월말일.value) {
+    입사일.value = Math.min(월말일.value, 기본)
+  }
+})
 </script>
 
 <template>
@@ -168,12 +191,6 @@ const 이번달여부 = computed(
             <option v-for="월 in 월목록" :key="월" :value="월">{{ 월 }}월</option>
           </select>
         </div>
-        <div class="select-group join-group">
-          <label class="join-checkbox">
-            <input type="checkbox" v-model="입사한달여부" />
-            <span>입사한 달</span>
-          </label>
-        </div>
         <div class="month-badge">
           <span>{{ 선택월표시 }}</span>
           <span v-if="이번달여부" class="badge current">이번 달</span>
@@ -181,25 +198,28 @@ const 이번달여부 = computed(
           <span v-else class="badge future">다음 달</span>
         </div>
       </div>
-      <div v-if="입사한달여부" class="join-row">
-        <label for="입사일" class="join-label">입사일 (일)</label>
-        <div class="input-with-unit join-input-wrap">
-          <input
-            id="입사일"
-            type="number"
-            v-model.number="입사일"
-            :min="1"
-            :max="월말일"
-            inputmode="numeric"
-            placeholder="1"
-          />
+      <div class="join-inline">
+        <label class="join-checkbox">
+          <input type="checkbox" v-model="입사한달여부" />
+          <span>이 달에 입사했어요</span>
+        </label>
+        <div v-if="입사한달여부" class="join-date">
+          <label for="입사일" class="join-date-label">입사일</label>
+          <select id="입사일" v-model.number="입사일" class="join-date-select">
+            <option v-for="일 in 일목록" :key="일" :value="일">{{ 일 }}일</option>
+          </select>
         </div>
-        <p class="input-hint join-hint">
+        <p v-if="입사한달여부" class="input-hint join-hint">
           <strong>{{ 유효입사일 }}일</strong>부터 월말까지 근무일로 계산
           <span class="hint-extra">(입사일도 포함)</span>
         </p>
       </div>
     </section>
+
+    <!-- 공휴일 데이터 부재 알림 -->
+    <div v-if="!공휴일데이터있음" class="warn-notice" role="alert">
+      ⚠ {{ 선택연도 }}년 공휴일 데이터가 없습니다. 근무일 계산에서 공휴일이 평일로 간주되어 부정확할 수 있습니다.
+    </div>
 
     <!-- 근무일 요약 -->
     <section class="summary-grid" aria-live="polite">
@@ -229,6 +249,13 @@ const 이번달여부 = computed(
     <!-- 입력 설정 -->
     <section class="card input-section">
       <h2 class="section-title">⚙️ 근무 설정</h2>
+      <div v-if="반영분 > 0" class="reflected-summary" aria-live="polite">
+        <span class="reflected-label">총 반영 시간</span>
+        <span class="reflected-value">{{ 시분변환(반영분) }}</span>
+        <span class="reflected-formula">
+          누적 {{ 시분변환(입력분) }}<template v-if="오늘예상분 > 0"> + 오늘 {{ 시분변환(오늘예상분) }}</template>
+        </span>
+      </div>
       <div class="input-grid">
         <div class="input-group">
           <label for="고정연장">월 고정 연장근무 (시:분)</label>
@@ -295,7 +322,7 @@ const 이번달여부 = computed(
             ⚠ 형식이 올바르지 않습니다. 예: <code>8:00</code> 또는 <code>800</code>
           </p>
           <p v-else class="input-hint">
-            <strong>오늘 더 일할 시간</strong> · 누적에 합산해서 계산
+            오늘 추가로 일할 시간 · <strong>현재까지에 더해</strong> 합산
             <span class="hint-extra">(기본 <code>0:00</code>)</span>
           </p>
         </div>
@@ -317,13 +344,42 @@ const 이번달여부 = computed(
 
     <!-- 결과 -->
     <section class="card result-section" aria-live="polite">
-      <h2 class="section-title">📋 남은 근무 계획</h2>
+      <h2 class="section-title">📋 {{ 지난달여부 ? '지난 달 결과 요약' : '남은 근무 계획' }}</h2>
 
       <div v-if="지난달여부" class="notice past-notice">
-        ℹ️ 지난 달입니다. 이번 달을 선택하면 남은 근무일 계산이 가능합니다.
+        ℹ️ 지난 달입니다. 입력한 누적 시간으로 의무·최대 대비 결과만 표시합니다.
       </div>
 
-      <div v-else-if="반영분 === 0" class="empty-banner">
+      <div v-if="지난달여부 && 반영분 === 0" class="empty-banner">
+        💡 위에서 해당 달의 <strong>실제 근무시간</strong>을 입력하면 의무·최대 달성 결과를 확인할 수 있습니다.
+      </div>
+
+      <div v-if="지난달여부 && 반영분 > 0" class="result-grid">
+        <div class="result-item">
+          <div class="result-label">실제 근무시간</div>
+          <div class="result-value highlight-blue">{{ 시분변환(반영분) }}</div>
+          <div class="result-sub">달성률 {{ 달성률 }}%</div>
+        </div>
+        <div class="result-item">
+          <div class="result-label">의무 대비</div>
+          <div class="result-value" :class="의무달성여부 ? 'highlight-green' : 'highlight-red'">
+            {{ 의무달성여부 ? '+' : '−' }}{{ 시분변환(의무대비차) }}
+          </div>
+          <div class="result-sub">
+            <template v-if="의무달성여부">의무 {{ 시분변환(의무근로분) }} 초과 달성</template>
+            <template v-else>의무 {{ 시분변환(의무근로분) }} 미달</template>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="result-label">최대 대비</div>
+          <div class="result-value highlight-purple">
+            {{ 반영분 >= 최대근로분 ? '+' : '−' }}{{ 시분변환(최대대비차) }}
+          </div>
+          <div class="result-sub">최대 {{ 시분변환(최대근로분) }}</div>
+        </div>
+      </div>
+
+      <div v-if="!지난달여부 && 반영분 === 0" class="empty-banner">
         💡 위에서 <strong>현재까지 근무시간</strong>을 입력하면 남은 시간과 일평균 목표가 계산됩니다.
       </div>
 
@@ -427,24 +483,6 @@ const 이번달여부 = computed(
   margin: 0;
 }
 
-/* Card */
-.card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
-}
-
-/* Section title */
-.section-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #334155;
-  margin: 0 0 20px;
-}
-
 /* Label aside */
 .label-aside {
   font-weight: 400;
@@ -484,9 +522,10 @@ const 이번달여부 = computed(
   cursor: pointer;
   transition: border-color 0.2s;
 }
-.select-group select:focus {
+.select-group select:focus-visible {
   outline: none;
   border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 .join-group {
   flex-direction: row;
@@ -496,39 +535,80 @@ const 이번달여부 = computed(
 .join-checkbox {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 0.88rem;
   font-weight: 600;
   color: #475569;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
   cursor: pointer;
   text-transform: none;
   letter-spacing: normal;
   user-select: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.join-checkbox:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+.join-checkbox:has(input:checked) {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
 }
 .join-checkbox input[type='checkbox'] {
   width: 16px;
   height: 16px;
   accent-color: #3b82f6;
   cursor: pointer;
+  margin: 0;
 }
-.join-row {
+.join-inline {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 10px;
+  column-gap: 12px;
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px dashed #e2e8f0;
 }
-.join-label {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #374151;
+.join-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
-.join-input-wrap {
-  max-width: 200px;
+.join-date-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+}
+.join-date-select {
+  height: 36px;
+  padding: 0 32px 0 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.join-date-select:focus-visible {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 .join-hint {
   margin: 0;
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  color: #64748b;
 }
 .month-badge {
   display: flex;
@@ -612,6 +692,32 @@ const 이번달여부 = computed(
 }
 
 /* Input section */
+.reflected-summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+}
+.reflected-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e40af;
+}
+.reflected-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1d4ed8;
+}
+.reflected-formula {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-left: auto;
+}
 .input-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -749,6 +855,9 @@ const 이번달여부 = computed(
 .highlight-purple {
   color: #7c3aed;
 }
+.highlight-red {
+  color: #dc2626;
+}
 .result-sub {
   font-size: 0.75rem;
   color: #94a3b8;
@@ -819,6 +928,16 @@ const 이번달여부 = computed(
 .past-notice {
   margin-bottom: 20px;
 }
+.warn-notice {
+  padding: 12px 16px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: #92400e;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
@@ -830,14 +949,6 @@ const 이번달여부 = computed(
   }
   .subtitle {
     color: #94a3b8;
-  }
-  .card {
-    background: #1e293b;
-    border-color: #334155;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  }
-  .section-title {
-    color: #cbd5e1;
   }
   .label-aside {
     color: #64748b;
@@ -853,12 +964,29 @@ const 이번달여부 = computed(
   }
   .join-checkbox {
     color: #cbd5e1;
+    background: #0f172a;
+    border-color: #334155;
   }
-  .join-row {
+  .join-checkbox:hover {
+    background: #1e293b;
+    border-color: #475569;
+  }
+  .join-checkbox:has(input:checked) {
+    background: #172554;
+    border-color: #3b82f6;
+    color: #bfdbfe;
+  }
+  .join-inline {
     border-top-color: #334155;
   }
-  .join-label {
+  .join-date-label {
     color: #cbd5e1;
+  }
+  .join-date-select {
+    background-color: #0f172a;
+    border-color: #334155;
+    color: #e2e8f0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   }
   .month-badge {
     color: #f1f5f9;
@@ -923,6 +1051,19 @@ const 이번달여부 = computed(
     border-color: #1e3a8a;
     color: #bfdbfe;
   }
+  .reflected-summary {
+    background: #172554;
+    border-color: #1e3a8a;
+  }
+  .reflected-label {
+    color: #bfdbfe;
+  }
+  .reflected-value {
+    color: #dbeafe;
+  }
+  .reflected-formula {
+    color: #94a3b8;
+  }
   .section-divider {
     background: #334155;
   }
@@ -952,6 +1093,11 @@ const 이번달여부 = computed(
     border-color: #334155;
     color: #94a3b8;
   }
+  .warn-notice {
+    background: #451a03;
+    border-color: #92400e;
+    color: #fde68a;
+  }
 }
 
 /* Responsive */
@@ -974,8 +1120,14 @@ const 이번달여부 = computed(
   .summary-value {
     font-size: 1.8rem;
   }
+  .selector-row {
+    gap: 12px;
+  }
   .month-badge {
     margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+    order: 99;
   }
 }
 </style>

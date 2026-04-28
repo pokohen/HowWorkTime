@@ -45,20 +45,6 @@ defineProps({
 </template>
 
 <style scoped>
-.card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
-}
-.section-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #334155;
-  margin: 0 0 20px;
-}
 .progress-info {
   display: flex;
   justify-content: space-between;
@@ -109,14 +95,6 @@ defineProps({
 }
 
 @media (prefers-color-scheme: dark) {
-  .card {
-    background: #1e293b;
-    border-color: #334155;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  }
-  .section-title {
-    color: #cbd5e1;
-  }
   .progress-info {
     color: #94a3b8;
   }
@@ -126,6 +104,14 @@ defineProps({
   .tag.info {
     background: #334155;
     color: #94a3b8;
+  }
+  .tag.success {
+    background: #14532d;
+    color: #86efac;
+  }
+  .tag.overtime {
+    background: #451a03;
+    color: #fde68a;
   }
 }
 </style>
