@@ -1,5 +1,7 @@
 <script setup>
 import { ref, computed, watchEffect } from 'vue'
+import { VueDatePicker } from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
 import { 월소정근로일수조회, 남은근무일수조회 } from '../utils/근무시간'
 import { 월별공휴일조회, 공휴일데이터존재여부 } from '../utils/공휴일'
 import { 시분파싱, 시분변환 } from '../utils/시간포맷'
@@ -16,6 +18,40 @@ const 선택월 = ref(현재월)
 const 고정연장시간 = ref('10:00')
 const 입력근무시간 = ref('')
 const 오늘예상시간 = ref('0:00')
+const 오늘입력모드 = ref('출퇴근')
+const 출근시각 = ref('09:00')
+const 퇴근시각 = ref('18:00')
+const 휴게자동 = ref(true)
+const 휴게수동분 = ref(60)
+
+const 다크모드 = ref(false)
+if (typeof window !== 'undefined' && window.matchMedia) {
+  const mq = window.matchMedia('(prefers-color-scheme: dark)')
+  다크모드.value = mq.matches
+  mq.addEventListener('change', (e) => { 다크모드.value = e.matches })
+}
+
+function 시각분리(시각) {
+  const 매칭 = String(시각 ?? '').match(/^(\d{1,2}):(\d{2})$/)
+  if (!매칭) return { 시: 9, 분: 0 }
+  return { 시: Number(매칭[1]), 분: Number(매칭[2]) }
+}
+function 시각조립(시, 분) {
+  return `${String(시).padStart(2, '0')}:${String(분).padStart(2, '0')}`
+}
+function 시각객체(시각) {
+  if (!시각) return null
+  const { 시, 분 } = 시각분리(시각)
+  return { hours: 시, minutes: 분, seconds: 0 }
+}
+const 출근객체 = computed({
+  get: () => 시각객체(출근시각.value),
+  set: (값) => { 출근시각.value = 값 ? 시각조립(값.hours, 값.minutes) : '' },
+})
+const 퇴근객체 = computed({
+  get: () => 시각객체(퇴근시각.value),
+  set: (값) => { 퇴근시각.value = 값 ? 시각조립(값.hours, 값.minutes) : '' },
+})
 const 입사한달여부 = ref(false)
 const 입사일 = ref(오늘.getDate())
 
@@ -39,16 +75,68 @@ function 오늘예상정규화() {
   오늘예상시간.value = 결과.비어있음 ? '0:00' : 시분변환(Math.max(0, 결과.분))
 }
 
+function 지금시각() {
+  const 지금 = new Date()
+  const 시 = String(지금.getHours()).padStart(2, '0')
+  const 분 = String(지금.getMinutes()).padStart(2, '0')
+  return `${시}:${분}`
+}
+function 출근지금() { 출근시각.value = 지금시각() }
+function 퇴근지금() { 퇴근시각.value = 지금시각() }
+
 const 입력결과 = computed(() => 시분파싱(입력근무시간.value))
 const 고정연장결과 = computed(() => 시분파싱(고정연장시간.value))
 const 오늘예상결과 = computed(() => 시분파싱(오늘예상시간.value))
 const 입력분 = computed(() => Math.max(0, 입력결과.value.분))
 const 고정연장분 = computed(() => Math.max(0, 고정연장결과.value.분))
-const 오늘예상분 = computed(() => Math.max(0, 오늘예상결과.value.분))
-const 반영분 = computed(() => 입력분.value + 오늘예상분.value)
 const 입력유효 = computed(() => 입력결과.value.유효)
 const 고정연장유효 = computed(() => 고정연장결과.value.유효)
 const 오늘예상유효 = computed(() => 오늘예상결과.value.유효)
+
+// 출퇴근 자동 계산
+function 시각문자열을분으로(문자열) {
+  const 매칭 = String(문자열 ?? '').match(/^(\d{1,2}):(\d{2})$/)
+  if (!매칭) return null
+  const 시 = Number(매칭[1])
+  const 분 = Number(매칭[2])
+  if (시 < 0 || 시 > 23 || 분 < 0 || 분 > 59) return null
+  return 시 * 60 + 분
+}
+const 출근분 = computed(() => 시각문자열을분으로(출근시각.value))
+const 퇴근분 = computed(() => 시각문자열을분으로(퇴근시각.value))
+const 출퇴근유효 = computed(
+  () => 출근분.value !== null && 퇴근분.value !== null,
+)
+const 자정넘김여부 = computed(() => {
+  if (!출퇴근유효.value) return false
+  return 퇴근분.value < 출근분.value
+})
+const 총체류분 = computed(() => {
+  if (!출퇴근유효.value) return 0
+  let 차 = 퇴근분.value - 출근분.value
+  if (차 < 0) 차 += 24 * 60
+  return Math.max(0, 차)
+})
+const 휴게자동분 = computed(() => {
+  const 체류 = 총체류분.value
+  if (체류 > 8 * 60) return 60
+  if (체류 > 4 * 60) return 30
+  return 0
+})
+const 휴게분 = computed(() => {
+  if (!출퇴근유효.value) return 0
+  return 휴게자동.value ? 휴게자동분.value : Math.max(0, Number(휴게수동분.value) || 0)
+})
+const 출퇴근근무분 = computed(() => {
+  if (!출퇴근유효.value) return 0
+  return Math.max(0, 총체류분.value - 휴게분.value)
+})
+
+const 오늘예상분 = computed(() => {
+  if (오늘입력모드.value === '출퇴근') return 출퇴근근무분.value
+  return Math.max(0, 오늘예상결과.value.분)
+})
+const 반영분 = computed(() => 입력분.value + 오늘예상분.value)
 
 const 연도목록 = computed(() => {
   const 목록 = []
@@ -303,28 +391,124 @@ watchEffect(() => {
             <span class="hint-extra">(콜론 없이 <code>2330</code>도 가능)</span>
           </p>
         </div>
-        <div class="input-group">
-          <label for="오늘예상">오늘 예상 근무시간 (시:분)</label>
-          <div class="input-with-unit">
-            <input
-              id="오늘예상"
-              v-model="오늘예상시간"
-              @blur="오늘예상정규화"
-              :class="{ error: !오늘예상유효 }"
-              :aria-invalid="!오늘예상유효"
-              type="text"
-              inputmode="numeric"
-              placeholder="0:00"
-              pattern="[0-9:]*"
-            />
+        <div class="input-group input-today">
+          <div class="today-header">
+            <label>오늘 예상 근무시간</label>
+            <div class="mode-switch" role="tablist" aria-label="입력 방식">
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="오늘입력모드 === '출퇴근'"
+                :class="{ active: 오늘입력모드 === '출퇴근' }"
+                @click="오늘입력모드 = '출퇴근'"
+              >출·퇴근으로 계산</button>
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="오늘입력모드 === '직접'"
+                :class="{ active: 오늘입력모드 === '직접' }"
+                @click="오늘입력모드 = '직접'"
+              >직접 입력</button>
+            </div>
           </div>
-          <p v-if="!오늘예상유효" class="input-error">
-            ⚠ 형식이 올바르지 않습니다. 예: <code>8:00</code> 또는 <code>800</code>
-          </p>
-          <p v-else class="input-hint">
-            오늘 추가로 일할 시간 · <strong>현재까지에 더해</strong> 합산
-            <span class="hint-extra">(기본 <code>0:00</code>)</span>
-          </p>
+
+          <template v-if="오늘입력모드 === '출퇴근'">
+            <div class="commute-grid">
+              <div class="commute-field">
+                <label>출근</label>
+                <div class="time-input-wrap">
+                  <VueDatePicker
+                    v-model="출근객체"
+                    time-picker
+                    :is-24="true"
+                    auto-apply
+                    :clearable="false"
+                    :minutes-increment="5"
+                    :minutes-grid-increment="5"
+                    :dark="다크모드"
+                    placeholder="출근 시각"
+                    class="dp-wrap"
+                  />
+                  <button type="button" class="now-btn" @click="출근지금" title="현재 시각으로">📍 지금</button>
+                </div>
+              </div>
+              <div class="commute-field">
+                <label>퇴근 예상</label>
+                <div class="time-input-wrap">
+                  <VueDatePicker
+                    v-model="퇴근객체"
+                    time-picker
+                    :is-24="true"
+                    auto-apply
+                    :clearable="false"
+                    :minutes-increment="5"
+                    :minutes-grid-increment="5"
+                    :dark="다크모드"
+                    placeholder="퇴근 시각"
+                    class="dp-wrap"
+                  />
+                  <button type="button" class="now-btn" @click="퇴근지금" title="현재 시각으로">📍 지금</button>
+                </div>
+              </div>
+              <div class="commute-field commute-break">
+                <label for="휴게수동">휴게시간</label>
+                <div class="break-row">
+                  <select
+                    id="휴게수동"
+                    v-model.number="휴게수동분"
+                    :disabled="휴게자동"
+                    class="break-select"
+                  >
+                    <option :value="0">0분</option>
+                    <option :value="30">30분</option>
+                    <option :value="45">45분</option>
+                    <option :value="60">1시간</option>
+                    <option :value="90">1시간 30분</option>
+                    <option :value="120">2시간</option>
+                  </select>
+                  <label class="auto-toggle">
+                    <input type="checkbox" v-model="휴게자동" />
+                    <span>자동</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="commute-result" :class="{ midnight: 자정넘김여부 }" aria-live="polite">
+              <span class="result-tag">오늘 예상</span>
+              <span class="result-time">{{ 시분변환(오늘예상분) }}</span>
+              <span class="result-formula">
+                체류 {{ 시분변환(총체류분) }} − 휴게 {{ 시분변환(휴게분) }}
+                <template v-if="휴게자동">(자동)</template>
+              </span>
+              <span v-if="자정넘김여부" class="midnight-badge" title="퇴근이 출근보다 빠르거나 같음">
+                🌙 자정 넘김
+              </span>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="input-with-unit">
+              <input
+                id="오늘예상"
+                v-model="오늘예상시간"
+                @blur="오늘예상정규화"
+                :class="{ error: !오늘예상유효 }"
+                :aria-invalid="!오늘예상유효"
+                type="text"
+                inputmode="numeric"
+                placeholder="0:00"
+                pattern="[0-9:]*"
+              />
+            </div>
+            <p v-if="!오늘예상유효" class="input-error">
+              ⚠ 형식이 올바르지 않습니다. 예: <code>8:00</code> 또는 <code>800</code>
+            </p>
+            <p v-else class="input-hint">
+              오늘 추가로 일할 시간 · <strong>현재까지에 더해</strong> 합산
+              <span class="hint-extra">(기본 <code>0:00</code>)</span>
+            </p>
+          </template>
         </div>
       </div>
     </section>
@@ -383,28 +567,6 @@ watchEffect(() => {
         💡 위에서 <strong>현재까지 근무시간</strong>을 입력하면 남은 시간과 일평균 목표가 계산됩니다.
       </div>
 
-      <div v-if="!지난달여부 && 남은근무일 > 0 && 반영분 > 0" class="avg-section">
-        <h3>일평균 목표 근무시간</h3>
-        <div class="avg-grid">
-          <div class="avg-card avg-mandatory">
-            <div class="avg-label">의무 달성 일평균</div>
-            <div class="avg-value">{{ 시분변환(의무달성일평균분) }}</div>
-            <div class="avg-sub">{{ 남은근무일 }}일 동안 매일</div>
-          </div>
-          <div class="avg-card avg-max">
-            <div class="avg-label">최대 달성 일평균</div>
-            <div class="avg-value">{{ 시분변환(최대달성일평균분) }}</div>
-            <div class="avg-sub">{{ 남은근무일 }}일 동안 매일</div>
-          </div>
-        </div>
-      </div>
-
-      <div
-        v-if="!지난달여부 && 남은근무일 > 0 && 반영분 > 0"
-        class="section-divider"
-        aria-hidden="true"
-      ></div>
-
       <div v-if="!지난달여부" class="result-grid">
         <div class="result-item">
           <div class="result-label">남은 근무일</div>
@@ -434,6 +596,22 @@ watchEffect(() => {
             최대 {{ 시분변환(최대근로분) }} − 누적 {{ 시분변환(입력분) }}<template v-if="오늘예상분 > 0"> − 오늘 {{ 시분변환(오늘예상분) }}</template>
           </div>
           <div v-else class="result-sub">최대 {{ 시분변환(최대근로분) }}</div>
+        </div>
+      </div>
+
+      <div v-if="!지난달여부 && 남은근무일 > 0 && 반영분 > 0" class="avg-section">
+        <h3 class="avg-title">일평균 목표 근무시간</h3>
+        <div class="avg-grid">
+          <div class="avg-card">
+            <span class="avg-tag tag-mandatory">의무</span>
+            <div class="avg-value">{{ 시분변환(의무달성일평균분) }}</div>
+            <div class="avg-sub">{{ 남은근무일 }}일 동안 매일</div>
+          </div>
+          <div class="avg-card">
+            <span class="avg-tag tag-max">최대</span>
+            <div class="avg-value">{{ 시분변환(최대달성일평균분) }}</div>
+            <div class="avg-sub">{{ 남은근무일 }}일 동안 매일</div>
+          </div>
         </div>
       </div>
 
@@ -720,8 +898,189 @@ watchEffect(() => {
 }
 .input-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
+}
+.input-today {
+  grid-column: 1 / -1;
+}
+.today-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.mode-switch {
+  display: inline-flex;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+.mode-switch button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.mode-switch button:hover {
+  color: #334155;
+}
+.mode-switch button.active {
+  background: #fff;
+  color: #1d4ed8;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.dp-wrap {
+  flex: 1;
+  min-width: 0;
+}
+.dp-wrap :deep(.dp__input) {
+  height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  padding-left: 36px;
+}
+.dp-wrap :deep(.dp__input:focus),
+.dp-wrap :deep(.dp__input_focus) {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.commute-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+.commute-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.commute-field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.time-input-wrap {
+  display: flex;
+  gap: 6px;
+}
+.now-btn {
+  appearance: none;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  border-radius: 10px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.now-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+.break-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.break-select {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 32px 0 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.break-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.break-select:focus-visible {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.auto-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.auto-toggle input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+  margin: 0;
+}
+.commute-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+}
+.commute-result .result-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #166534;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.commute-result .result-time {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #14532d;
+}
+.commute-result .result-formula {
+  font-size: 0.78rem;
+  color: #4b5563;
+  margin-left: auto;
+}
+.commute-result.midnight {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+.midnight-badge {
+  flex-basis: 100%;
+  font-size: 0.78rem;
+  color: #4338ca;
+  font-weight: 600;
 }
 .input-group {
   display: flex;
@@ -811,109 +1170,122 @@ watchEffect(() => {
 .empty-banner strong {
   font-weight: 700;
 }
-.section-divider {
-  height: 1px;
-  background: #e2e8f0;
-  margin: 24px 0;
-}
 .result-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 .result-item {
-  background: #f8fafc;
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
-  border: 1px solid #e2e8f0;
+  background: #f9fafb;
+  border-radius: 14px;
+  padding: 18px 16px;
+  text-align: left;
+  border: 1px solid #f0f1f3;
 }
 .result-label {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  color: #64748b;
-  margin-bottom: 8px;
+  color: #8b95a1;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
 }
 .result-value {
-  font-size: 1.8rem;
-  font-weight: 800;
-  line-height: 1;
-  margin-bottom: 6px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #191f28;
+  line-height: 1.1;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
 }
 .result-value .unit {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
   margin-left: 2px;
+  color: #4e5968;
 }
 .highlight-blue {
-  color: #2563eb;
+  color: #3182f6;
 }
 .highlight-green {
-  color: #16a34a;
+  color: #00b574;
 }
 .highlight-purple {
-  color: #7c3aed;
+  color: #6e3eff;
 }
 .highlight-red {
-  color: #dc2626;
+  color: #f04452;
 }
 .result-sub {
-  font-size: 0.75rem;
-  color: #94a3b8;
+  font-size: 0.74rem;
+  color: #8b95a1;
+  line-height: 1.4;
 }
 .placeholder-dash {
-  color: #cbd5e1;
+  color: #d1d6db;
   font-weight: 600;
 }
 
 /* Average section */
-.avg-section h3 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #334155;
-  margin: 0 0 14px;
+.avg-section {
+  margin-top: 4px;
+  padding-top: 20px;
+  border-top: 1px solid #f0f1f3;
+}
+.avg-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #4e5968;
+  margin: 0 0 12px;
+  letter-spacing: -0.01em;
 }
 .avg-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 12px;
 }
 .avg-card {
-  border-radius: 12px;
-  padding: 18px;
-  text-align: center;
+  background: #f9fafb;
+  border: 1px solid #f0f1f3;
+  border-radius: 14px;
+  padding: 18px 16px;
+  text-align: left;
 }
-.avg-mandatory {
-  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-  border: 1px solid #a7f3d0;
+.avg-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  letter-spacing: 0.02em;
 }
-.avg-max {
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  border: 1px solid #c4b5fd;
+.tag-mandatory {
+  background: #e6f9f1;
+  color: #00875a;
 }
-.avg-label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #64748b;
-  margin-bottom: 8px;
+.tag-max {
+  background: #efe9ff;
+  color: #5b2bd6;
 }
 .avg-value {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #0f172a;
-  line-height: 1;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #191f28;
+  line-height: 1.1;
   margin-bottom: 6px;
+  letter-spacing: -0.02em;
 }
 .avg-value .unit {
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  color: #64748b;
+  color: #4e5968;
   margin-left: 2px;
 }
 .avg-sub {
-  font-size: 0.78rem;
-  color: #94a3b8;
+  font-size: 0.74rem;
+  color: #8b95a1;
+  line-height: 1.4;
 }
 
 /* Notice */
@@ -1051,6 +1423,67 @@ watchEffect(() => {
     border-color: #1e3a8a;
     color: #bfdbfe;
   }
+  .mode-switch {
+    background: #0f172a;
+    border-color: #334155;
+  }
+  .mode-switch button {
+    color: #94a3b8;
+  }
+  .mode-switch button.active {
+    background: #1e293b;
+    color: #bfdbfe;
+  }
+  .commute-field label {
+    color: #94a3b8;
+  }
+  .dp-wrap :deep(.dp__input) {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f1f5f9;
+  }
+  .time-input-wrap input[type='time']:focus-visible {
+    background: #0f172a;
+  }
+  .now-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+  }
+  .now-btn:hover {
+    background: #172554;
+    border-color: #1e40af;
+    color: #bfdbfe;
+  }
+  .break-select {
+    background-color: #0f172a;
+    border-color: #334155;
+    color: #e2e8f0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  }
+  .auto-toggle {
+    color: #cbd5e1;
+  }
+  .commute-result {
+    background: #14532d;
+    border-color: #166534;
+  }
+  .commute-result .result-tag {
+    color: #86efac;
+  }
+  .commute-result .result-time {
+    color: #f1f5f9;
+  }
+  .commute-result .result-formula {
+    color: #cbd5e1;
+  }
+  .commute-result.midnight {
+    background: #1e1b4b;
+    border-color: #4338ca;
+  }
+  .midnight-badge {
+    color: #c7d2fe;
+  }
   .reflected-summary {
     background: #172554;
     border-color: #1e3a8a;
@@ -1064,30 +1497,53 @@ watchEffect(() => {
   .reflected-formula {
     color: #94a3b8;
   }
-  .section-divider {
-    background: #334155;
-  }
   .result-item {
     background: #0f172a;
-    border-color: #334155;
+    border-color: #1e293b;
   }
   .result-label {
+    color: #94a3b8;
+  }
+  .result-value {
+    color: #f1f5f9;
+  }
+  .result-value .unit {
+    color: #cbd5e1;
+  }
+  .result-sub {
     color: #94a3b8;
   }
   .placeholder-dash {
     color: #475569;
   }
-  .avg-mandatory {
-    background: linear-gradient(135deg, #14532d 0%, #166534 100%);
-    border-color: #16a34a;
+  .avg-section {
+    border-top-color: #1e293b;
   }
-  .avg-max {
-    background: linear-gradient(135deg, #2e1065 0%, #4c1d95 100%);
-    border-color: #6d28d9;
+  .avg-title {
+    color: #cbd5e1;
+  }
+  .avg-card {
+    background: #0f172a;
+    border-color: #1e293b;
   }
   .avg-value {
     color: #f1f5f9;
   }
+  .avg-sub {
+    color: #94a3b8;
+  }
+  .tag-mandatory {
+    background: #052e1f;
+    color: #4ade80;
+  }
+  .tag-max {
+    background: #2e1065;
+    color: #c4b5fd;
+  }
+  .highlight-blue { color: #60a5fa; }
+  .highlight-green { color: #4ade80; }
+  .highlight-purple { color: #c4b5fd; }
+  .highlight-red { color: #f87171; }
   .notice {
     background: #0f172a;
     border-color: #334155;
@@ -1110,6 +1566,13 @@ watchEffect(() => {
   }
   .input-grid {
     grid-template-columns: 1fr;
+  }
+  .commute-grid {
+    grid-template-columns: 1fr;
+  }
+  .commute-result .result-formula {
+    margin-left: 0;
+    flex-basis: 100%;
   }
   .avg-grid {
     grid-template-columns: 1fr;
