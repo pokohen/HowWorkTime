@@ -15,6 +15,9 @@ const 선택연도 = ref(현재연도)
 const 선택월 = ref(현재월)
 const 고정연장시간 = ref('10:00')
 const 입력근무시간 = ref('')
+const 오늘예상시간 = ref('0:00')
+const 입사한달여부 = ref(false)
+const 입사일 = ref(오늘.getDate())
 
 const 하루근무분 = 8 * 60
 
@@ -30,12 +33,22 @@ function 고정연장정규화() {
   고정연장시간.value = 시분변환(Math.max(0, 결과.분))
 }
 
+function 오늘예상정규화() {
+  const 결과 = 시분파싱(오늘예상시간.value)
+  if (!결과.유효) return
+  오늘예상시간.value = 결과.비어있음 ? '0:00' : 시분변환(Math.max(0, 결과.분))
+}
+
 const 입력결과 = computed(() => 시분파싱(입력근무시간.value))
 const 고정연장결과 = computed(() => 시분파싱(고정연장시간.value))
+const 오늘예상결과 = computed(() => 시분파싱(오늘예상시간.value))
 const 입력분 = computed(() => Math.max(0, 입력결과.value.분))
 const 고정연장분 = computed(() => Math.max(0, 고정연장결과.value.분))
+const 오늘예상분 = computed(() => Math.max(0, 오늘예상결과.value.분))
+const 반영분 = computed(() => 입력분.value + 오늘예상분.value)
 const 입력유효 = computed(() => 입력결과.value.유효)
 const 고정연장유효 = computed(() => 고정연장결과.value.유효)
+const 오늘예상유효 = computed(() => 오늘예상결과.value.유효)
 
 const 연도목록 = computed(() => {
   const 목록 = []
@@ -47,20 +60,28 @@ const 연도목록 = computed(() => {
 
 const 월목록 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
+const 월말일 = computed(() =>
+  new Date(선택연도.value, 선택월.value, 0).getDate(),
+)
+const 유효입사일 = computed(() => {
+  if (!입사한달여부.value) return 1
+  const 일 = Number(입사일.value) || 1
+  return Math.max(1, Math.min(월말일.value, 일))
+})
 const 소정근로일 = computed(() =>
-  월소정근로일수조회(선택연도.value, 선택월.value),
+  월소정근로일수조회(선택연도.value, 선택월.value, 유효입사일.value),
 )
 const 의무근로분 = computed(() => 소정근로일.value * 하루근무분)
 const 최대근로분 = computed(() => 의무근로분.value + 고정연장분.value)
 const 남은근무일 = computed(() =>
-  남은근무일수조회(선택연도.value, 선택월.value),
+  남은근무일수조회(선택연도.value, 선택월.value, 유효입사일.value),
 )
 const 경과근무일 = computed(() => 소정근로일.value - 남은근무일.value)
 const 남은의무분 = computed(() =>
-  Math.max(0, 의무근로분.value - 입력분.value),
+  Math.max(0, 의무근로분.value - 반영분.value),
 )
 const 남은최대분 = computed(() =>
-  Math.max(0, 최대근로분.value - 입력분.value),
+  Math.max(0, 최대근로분.value - 반영분.value),
 )
 const 의무달성일평균분 = computed(() => {
   if (남은근무일.value === 0) return 0
@@ -72,12 +93,12 @@ const 최대달성일평균분 = computed(() => {
 })
 const 달성률 = computed(() => {
   if (의무근로분.value === 0) return 0
-  return Math.min(100, Math.round((입력분.value / 의무근로분.value) * 100))
+  return Math.min(100, Math.round((반영분.value / 의무근로분.value) * 100))
 })
 const 초과분 = computed(() =>
-  Math.max(0, 입력분.value - 의무근로분.value),
+  Math.max(0, 반영분.value - 의무근로분.value),
 )
-const 의무달성여부 = computed(() => 입력분.value >= 의무근로분.value)
+const 의무달성여부 = computed(() => 반영분.value >= 의무근로분.value)
 const 이달공휴일 = computed(() =>
   월별공휴일조회(선택연도.value, 선택월.value),
 )
@@ -147,6 +168,22 @@ const 이번달여부 = computed(
             <option v-for="월 in 월목록" :key="월" :value="월">{{ 월 }}월</option>
           </select>
         </div>
+        <div class="select-group join-group">
+          <label class="join-checkbox">
+            <input type="checkbox" v-model="입사한달여부" />
+            <span>입사한 달</span>
+          </label>
+          <input
+            v-if="입사한달여부"
+            id="입사일"
+            class="join-day-input"
+            type="number"
+            v-model.number="입사일"
+            :min="1"
+            :max="월말일"
+            aria-label="입사일"
+          />
+        </div>
         <div class="month-badge">
           <span>{{ 선택월표시 }}</span>
           <span v-if="이번달여부" class="badge current">이번 달</span>
@@ -162,7 +199,10 @@ const 이번달여부 = computed(
         <div class="summary-icon">📅</div>
         <div class="summary-label">이달 근무일 <span class="label-aside">(소정 근로일)</span></div>
         <div class="summary-value">{{ 소정근로일 }}<span class="unit">일</span></div>
-        <div class="summary-sub">주말·공휴일 제외</div>
+        <div class="summary-sub">
+          <template v-if="입사한달여부">{{ 유효입사일 }}일부터 · 주말·공휴일 제외</template>
+          <template v-else>주말·공휴일 제외</template>
+        </div>
       </div>
       <div class="summary-card green">
         <div class="summary-icon">✅</div>
@@ -228,13 +268,36 @@ const 이번달여부 = computed(
             <span class="hint-extra">(콜론 없이 <code>2330</code>도 가능)</span>
           </p>
         </div>
+        <div class="input-group">
+          <label for="오늘예상">오늘 예상 근무시간 (시:분)</label>
+          <div class="input-with-unit">
+            <input
+              id="오늘예상"
+              v-model="오늘예상시간"
+              @blur="오늘예상정규화"
+              :class="{ error: !오늘예상유효 }"
+              :aria-invalid="!오늘예상유효"
+              type="text"
+              inputmode="numeric"
+              placeholder="0:00"
+              pattern="[0-9:]*"
+            />
+          </div>
+          <p v-if="!오늘예상유효" class="input-error">
+            ⚠ 형식이 올바르지 않습니다. 예: <code>8:00</code> 또는 <code>800</code>
+          </p>
+          <p v-else class="input-hint">
+            <strong>오늘 더 일할 시간</strong> · 누적에 합산해서 계산
+            <span class="hint-extra">(기본 <code>0:00</code>)</span>
+          </p>
+        </div>
       </div>
     </section>
 
     <!-- 진행 상황 -->
     <component
       :is="달성현황"
-      :입력분="입력분"
+      :입력분="반영분"
       :의무근로분="의무근로분"
       :초과분="초과분"
       :의무달성여부="의무달성여부"
@@ -252,11 +315,11 @@ const 이번달여부 = computed(
         ℹ️ 지난 달입니다. 이번 달을 선택하면 남은 근무일 계산이 가능합니다.
       </div>
 
-      <div v-else-if="입력분 === 0" class="empty-banner">
+      <div v-else-if="반영분 === 0" class="empty-banner">
         💡 위에서 <strong>현재까지 근무시간</strong>을 입력하면 남은 시간과 일평균 목표가 계산됩니다.
       </div>
 
-      <div v-if="!지난달여부 && 남은근무일 > 0 && 입력분 > 0" class="avg-section">
+      <div v-if="!지난달여부 && 남은근무일 > 0 && 반영분 > 0" class="avg-section">
         <h3>일평균 목표 근무시간</h3>
         <div class="avg-grid">
           <div class="avg-card avg-mandatory">
@@ -273,7 +336,7 @@ const 이번달여부 = computed(
       </div>
 
       <div
-        v-if="!지난달여부 && 남은근무일 > 0 && 입력분 > 0"
+        v-if="!지난달여부 && 남은근무일 > 0 && 반영분 > 0"
         class="section-divider"
         aria-hidden="true"
       ></div>
@@ -289,22 +352,22 @@ const 이번달여부 = computed(
         <div class="result-item">
           <div class="result-label">남은 의무 근무시간</div>
           <div class="result-value highlight-green">
-            <template v-if="입력분 > 0">{{ 시분변환(남은의무분) }}</template>
+            <template v-if="반영분 > 0">{{ 시분변환(남은의무분) }}</template>
             <span v-else class="placeholder-dash">—</span>
           </div>
-          <div v-if="입력분 > 0" class="result-sub">
-            의무 {{ 시분변환(의무근로분) }} − 누적 {{ 시분변환(입력분) }}
+          <div v-if="반영분 > 0" class="result-sub">
+            의무 {{ 시분변환(의무근로분) }} − 누적 {{ 시분변환(입력분) }}<template v-if="오늘예상분 > 0"> − 오늘 {{ 시분변환(오늘예상분) }}</template>
           </div>
           <div v-else class="result-sub">의무 {{ 시분변환(의무근로분) }}</div>
         </div>
         <div class="result-item">
           <div class="result-label">남은 최대 근무시간</div>
           <div class="result-value highlight-purple">
-            <template v-if="입력분 > 0">{{ 시분변환(남은최대분) }}</template>
+            <template v-if="반영분 > 0">{{ 시분변환(남은최대분) }}</template>
             <span v-else class="placeholder-dash">—</span>
           </div>
-          <div v-if="입력분 > 0" class="result-sub">
-            최대 {{ 시분변환(최대근로분) }} − 누적 {{ 시분변환(입력분) }}
+          <div v-if="반영분 > 0" class="result-sub">
+            최대 {{ 시분변환(최대근로분) }} − 누적 {{ 시분변환(입력분) }}<template v-if="오늘예상분 > 0"> − 오늘 {{ 시분변환(오늘예상분) }}</template>
           </div>
           <div v-else class="result-sub">최대 {{ 시분변환(최대근로분) }}</div>
         </div>
@@ -417,6 +480,46 @@ const 이번달여부 = computed(
   outline: none;
   border-color: #3b82f6;
 }
+.join-group {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.join-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+  user-select: none;
+}
+.join-checkbox input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+.join-day-input {
+  width: 72px;
+  padding: 8px 10px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f8fafc;
+  text-align: center;
+}
+.join-day-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  background: #fff;
+}
 .month-badge {
   display: flex;
   align-items: center;
@@ -501,7 +604,7 @@ const 이번달여부 = computed(
 /* Input section */
 .input-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 20px;
 }
 .input-group {
@@ -737,6 +840,14 @@ const 이번달여부 = computed(
     border-color: #334155;
     color: #e2e8f0;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  }
+  .join-checkbox {
+    color: #cbd5e1;
+  }
+  .join-day-input {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f1f5f9;
   }
   .month-badge {
     color: #f1f5f9;
