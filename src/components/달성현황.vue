@@ -94,24 +94,22 @@ defineProps({
   color: #475569;
 }
 
-@media (prefers-color-scheme: dark) {
-  .progress-info {
-    color: #94a3b8;
-  }
-  .progress-bar {
-    background: #334155;
-  }
-  .tag.info {
-    background: #334155;
-    color: #94a3b8;
-  }
-  .tag.success {
-    background: #14532d;
-    color: #86efac;
-  }
-  .tag.overtime {
-    background: #451a03;
-    color: #fde68a;
-  }
+.theme-dark .progress-info {
+  color: #8b949e;
+}
+.theme-dark .progress-bar {
+  background: #21262d;
+}
+.theme-dark .tag.info {
+  background: #21262d;
+  color: #8b949e;
+}
+.theme-dark .tag.success {
+  background: #0a2e1c;
+  color: #56d364;
+}
+.theme-dark .tag.overtime {
+  background: #2a1f04;
+  color: #fcd34d;
 }
 </style>

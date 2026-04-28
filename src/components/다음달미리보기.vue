@@ -80,20 +80,18 @@ defineProps({
   margin: 0 0 10px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .next-summary-item {
-    background: #0f172a;
-    border-color: #334155;
-  }
-  .next-label {
-    color: #94a3b8;
-  }
-  .next-value {
-    color: #f1f5f9;
-  }
-  .next-subtitle {
-    color: #cbd5e1;
-  }
+.theme-dark .next-summary-item {
+  background: #0d1117;
+  border-color: #21262d;
+}
+.theme-dark .next-label {
+  color: #8b949e;
+}
+.theme-dark .next-value {
+  color: #f0f6fc;
+}
+.theme-dark .next-subtitle {
+  color: #c9d1d9;
 }
 
 @media (max-width: 640px) {

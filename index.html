@@ -16,11 +16,19 @@
       media="(prefers-color-scheme: dark)"
     />
     <style>
-      html { background: #f1f5f9; }
-      @media (prefers-color-scheme: dark) {
-        html { background: #0f172a; }
-      }
+      html { background: #f7f8fa; }
+      html.theme-dark { background: #0d1117; }
     </style>
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('how-work-time:theme');
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme = saved === 'light' || saved === 'dark' ? saved : (prefersDark ? 'dark' : 'light');
+          document.documentElement.classList.add('theme-' + theme);
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
