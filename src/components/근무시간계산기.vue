@@ -116,8 +116,7 @@ const 총체류분 = computed(() => {
 })
 const 휴게자동분 = computed(() => {
   const 체류 = 총체류분.value
-  if (체류 > 8 * 60) return 60
-  if (체류 > 4 * 60) return 30
+  if (체류 > 5 * 60) return 60
   return 0
 })
 const 휴게분 = computed(() => {
