@@ -181,7 +181,7 @@ const 최대달성일평균분 = computed(() => {
 })
 const 달성률 = computed(() => {
   if (의무근로분.value === 0) return 0
-  return Math.min(100, Math.round((반영분.value / 의무근로분.value) * 100))
+  return Math.min(100, Math.floor((반영분.value / 의무근로분.value) * 100))
 })
 const 초과분 = computed(() =>
   Math.max(0, 반영분.value - 의무근로분.value),
