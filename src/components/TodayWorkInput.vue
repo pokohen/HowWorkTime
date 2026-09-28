@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
-import { 시분파싱, 시분변환 } from '../utils/시간포맷'
+import { 시분파싱, 시분변환 } from '../utils/timeFormat'
 
 const 오늘재택근무 = defineModel('오늘재택근무')
 const 오늘입력모드 = defineModel('오늘입력모드')

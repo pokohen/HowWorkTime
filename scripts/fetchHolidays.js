@@ -4,14 +4,14 @@ import { fileURLToPath } from "node:url";
 
 const 현재파일경로 = fileURLToPath(import.meta.url);
 const 프로젝트루트 = resolve(dirname(현재파일경로), "..");
-const 출력경로 = resolve(프로젝트루트, "src/data/공휴일.json");
+const 출력경로 = resolve(프로젝트루트, "src/data/holidays.json");
 
 const 엔드포인트 =
   "https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo";
 
 const 서비스키 = process.env.DATA_GO_KR_KEY;
 
-async function 연도별공휴일가져오기(연도) {
+async function 공휴일가져오기(연도) {
   const 쿼리 = new URLSearchParams({
     serviceKey: 서비스키,
     solYear: String(연도),
@@ -57,7 +57,7 @@ async function 메인() {
 
   const 결과 = {};
   for (const 연도 of 연도범위) {
-    const 데이터 = await 연도별공휴일가져오기(연도);
+    const 데이터 = await 공휴일가져오기(연도);
     결과[연도] = 데이터;
     console.log(`✓ ${연도}년: ${데이터.length}일`);
   }

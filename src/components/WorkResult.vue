@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { 시분변환 } from '../utils/시간포맷'
+import { 시분변환 } from '../utils/timeFormat'
 
 const props = defineProps({
   지난달여부: Boolean,
@@ -19,8 +19,8 @@ const props = defineProps({
   입력분: Number,
   오늘예상분: Number,
   남은최대분: Number,
-  의무달성일평균분: Number,
-  최대달성일평균분: Number,
+  의무일평균분: Number,
+  최대일평균분: Number,
   마일리지분: Number,
   남은정규분: Number,
 })
@@ -125,12 +125,12 @@ const 남은의무합 = computed(() => props.남은정규분 - props.마일리�
         </div>
         <div class="avg-card">
           <span class="avg-tag tag-mandatory">의무</span>
-          <div class="avg-value">{{ 시분변환(의무달성일평균분) }}</div>
+          <div class="avg-value">{{ 시분변환(의무일평균분) }}</div>
           <div class="avg-sub">출근 {{ 출근남은일 }}일 동안 매일</div>
         </div>
         <div class="avg-card">
           <span class="avg-tag tag-max">최대</span>
-          <div class="avg-value">{{ 시분변환(최대달성일평균분) }}</div>
+          <div class="avg-value">{{ 시분변환(최대일평균분) }}</div>
           <div class="avg-sub">출근 {{ 출근남은일 }}일 동안 매일</div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 <script setup>
-import { 시분변환 } from '../utils/시간포맷'
+import { 시분변환 } from '../utils/timeFormat'
 
 defineProps({
   입력분: { type: Number, required: true },

@@ -1,8 +1,8 @@
 <script setup>
-import { 시분파싱, 시분변환 } from '../utils/시간포맷'
-import 재택설정 from './재택설정.vue'
-import 연차설정 from './연차설정.vue'
-import 오늘근무입력 from './오늘근무입력.vue'
+import { 시분파싱, 시분변환 } from '../utils/timeFormat'
+import RemoteWorkSettings from './RemoteWorkSettings.vue'
+import LeaveSettings from './LeaveSettings.vue'
+import TodayWorkInput from './TodayWorkInput.vue'
 
 // 직접 사용하는 모델
 const 고정연장시간 = defineModel('고정연장시간')
@@ -116,8 +116,7 @@ function 고정연장정규화() {
         </p>
       </div>
 
-      <component
-        :is="재택설정"
+      <RemoteWorkSettings
         v-if="!지난달여부"
         v-model:재택근무여부="재택근무여부"
         v-model:재택근무일수="재택근무일수"
@@ -125,9 +124,8 @@ function 고정연장정규화() {
         :재택일수="재택일수"
       />
 
-      <component
-        :is="연차설정"
-        v-model:연차여부="연차여부"
+      <LeaveSettings
+      v-model:연차여부="연차여부"
         v-model:연차일수="연차일수"
         v-model:반차수="반차수"
         v-model:반반차수="반반차수"
@@ -137,9 +135,8 @@ function 고정연장정규화() {
         :연차일수환산="연차일수환산"
       />
 
-      <component
-        :is="오늘근무입력"
-        v-model:오늘재택근무="오늘재택근무"
+      <TodayWorkInput
+      v-model:오늘재택근무="오늘재택근무"
         v-model:오늘입력모드="오늘입력모드"
         v-model:출근시각="출근시각"
         v-model:퇴근시각="퇴근시각"

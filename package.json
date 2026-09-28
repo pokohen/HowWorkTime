@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "prefetch:holidays": "node scripts/공휴일가져오기.js"
+    "prefetch:holidays": "node scripts/fetchHolidays.js"
   },
   "dependencies": {
     "@vuepic/vue-datepicker": "^12.1.0",

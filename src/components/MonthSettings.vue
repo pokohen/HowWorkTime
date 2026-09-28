@@ -1,5 +1,5 @@
 <script setup>
-import { 시분변환 } from '../utils/시간포맷'
+import { 시분변환 } from '../utils/timeFormat'
 
 const 선택연도 = defineModel('선택연도')
 const 선택월 = defineModel('선택월')
@@ -14,7 +14,7 @@ defineProps({
   지난달여부: Boolean,
   일목록: Array,
   유효입사일: Number,
-  공휴일데이터있음: Boolean,
+  공휴일있음: Boolean,
   소정근로일: Number,
   의무근로분: Number,
   최대근로분: Number,
@@ -62,7 +62,7 @@ defineProps({
   </section>
 
   <!-- 공휴일 데이터 부재 알림 -->
-  <div v-if="!공휴일데이터있음" class="warn-notice" role="alert">
+  <div v-if="!공휴일있음" class="warn-notice" role="alert">
     ⚠ {{ 선택연도 }}년 공휴일 데이터가 없습니다. 근무일 계산에서 공휴일이 평일로 간주되어 부정확할 수 있습니다.
   </div>
 

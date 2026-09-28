@@ -1,5 +1,5 @@
 <script setup>
-import { 시분변환 } from '../utils/시간포맷'
+import { 시분변환 } from '../utils/timeFormat'
 
 const 연차여부 = defineModel('연차여부')
 const 연차일수 = defineModel('연차일수')

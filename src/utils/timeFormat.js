@@ -68,7 +68,7 @@ export function 시분변환(전체분) {
 /**
  * 날짜 문자열에서 요일 가져오기
  */
-export function 요일가져오기(날짜문자열) {
+export function 요일명(날짜문자열) {
   const 요일목록 = ['일', '월', '화', '수', '목', '금', '토']
   const 날짜 = new Date(날짜문자열)
   return 요일목록[날짜.getDay()]

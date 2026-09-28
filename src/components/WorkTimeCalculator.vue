@@ -1,15 +1,15 @@
 <script setup>
 import { ref, computed, watch, watchEffect } from 'vue'
-import { 월소정근로일수조회, 남은근무일수조회, 남은금요일수조회, 급여일조회 } from '../utils/근무시간'
-import { 월별공휴일조회, 공휴일데이터존재여부 } from '../utils/공휴일'
-import { 시분파싱 } from '../utils/시간포맷'
-import { 테마사용 } from '../composables/테마'
-import 달성현황 from './달성현황.vue'
-import 공휴일목록 from './공휴일목록.vue'
-import 다음달미리보기 from './다음달미리보기.vue'
-import 월설정 from './월설정.vue'
-import 근무설정 from './근무설정.vue'
-import 근무결과 from './근무결과.vue'
+import { 소정근로일수, 남은근무일수, 남은금요일수, 급여일조회 } from '../utils/workDays'
+import { 월공휴일, 공휴일데이터여부 } from '../utils/holidays'
+import { 시분파싱 } from '../utils/timeFormat'
+import { 테마사용 } from '../composables/useTheme'
+import ProgressStatus from './ProgressStatus.vue'
+import HolidayList from './HolidayList.vue'
+import NextMonthPreview from './NextMonthPreview.vue'
+import MonthSettings from './MonthSettings.vue'
+import WorkSettings from './WorkSettings.vue'
+import WorkResult from './WorkResult.vue'
 
 const { 테마, 토글: 테마토글 } = 테마사용()
 const 다크모드 = computed(() => 테마.value === 'dark')
@@ -67,7 +67,7 @@ const 고정연장유효 = computed(() => 고정연장결과.value.유효)
 const 오늘예상유효 = computed(() => 오늘예상결과.value.유효)
 
 // 출퇴근 자동 계산
-function 시각문자열을분으로(문자열) {
+function 시각을분으로(문자열) {
   const 매칭 = String(문자열 ?? '').match(/^(\d{1,2}):(\d{2})$/)
   if (!매칭) return null
   const 시 = Number(매칭[1])
@@ -75,8 +75,8 @@ function 시각문자열을분으로(문자열) {
   if (시 < 0 || 시 > 23 || 분 < 0 || 분 > 59) return null
   return 시 * 60 + 분
 }
-const 출근분 = computed(() => 시각문자열을분으로(출근시각.value))
-const 퇴근분 = computed(() => 시각문자열을분으로(퇴근시각.value))
+const 출근분 = computed(() => 시각을분으로(출근시각.value))
+const 퇴근분 = computed(() => 시각을분으로(퇴근시각.value))
 const 출퇴근유효 = computed(
   () => 출근분.value !== null && 퇴근분.value !== null,
 )
@@ -111,13 +111,13 @@ const 오늘예상분 = computed(() => {
   return Math.max(0, 오늘예상결과.value.분)
 })
 // 재택 토글: 켜면 직접 입력값을 백업하고 0으로 리셋, 끄면 이전 값 복원
-const 오늘예상시간_백업 = ref('')
+const 오늘예상백업 = ref('')
 watch(오늘재택근무, (켜짐) => {
   if (켜짐) {
-    오늘예상시간_백업.value = 오늘예상시간.value
+    오늘예상백업.value = 오늘예상시간.value
     오늘예상시간.value = '0:00'
   } else {
-    오늘예상시간.value = 오늘예상시간_백업.value || '0:00'
+    오늘예상시간.value = 오늘예상백업.value || '0:00'
   }
 })
 const 반영분 = computed(() => 입력분.value + 오늘예상분.value)
@@ -145,19 +145,19 @@ const 유효입사일 = computed(() => {
   return Math.max(1, Math.min(월말일.value, Number(입사일.value) || 1))
 })
 const 소정근로일 = computed(() =>
-  월소정근로일수조회(선택연도.value, 선택월.value, 유효입사일.value),
+  소정근로일수(선택연도.value, 선택월.value, 유효입사일.value),
 )
 const 의무근로분 = computed(() => 소정근로일.value * 하루근무분)
 const 최대근로분 = computed(() => 의무근로분.value + 고정연장분.value)
 const 남은근무일 = computed(() =>
-  남은근무일수조회(선택연도.value, 선택월.value, 유효입사일.value),
+  남은근무일수(선택연도.value, 선택월.value, 유효입사일.value),
 )
 const 경과근무일 = computed(() => 소정근로일.value - 남은근무일.value)
 
 // 재택근무: 남은 금요일 중 신청 일수만큼은 8시간이 자동 인정되므로
 // 일평균 목표 계산에서 제외하고 '출근일'만 분모로 사용한다.
 const 남은금요일 = computed(() =>
-  남은금요일수조회(선택연도.value, 선택월.value, 유효입사일.value),
+  남은금요일수(선택연도.value, 선택월.value, 유효입사일.value),
 )
 const 재택일수 = computed(() => {
   if (!재택근무여부.value) return 0
@@ -219,11 +219,11 @@ const 남은최대분 = computed(() =>
 // 재택·연차일의 8시간은 사용자가 '현재까지 근무시간'에 포함시키므로 반영분에 이미 반영돼 있다.
 // 따라서 남은 의무(의무 − 반영)에서 재택·연차 시간을 다시 빼지 않는다(이중 차감 방지).
 // 재택·연차는 유연근무가 불가능한 날이므로, 남은 의무를 '출근 가능일' 수로만 분배한다.
-const 의무달성일평균분 = computed(() => {
+const 의무일평균분 = computed(() => {
   if (출근남은일.value === 0) return 0
   return Math.round(남은의무분.value / 출근남은일.value)
 })
-const 최대달성일평균분 = computed(() => {
+const 최대일평균분 = computed(() => {
   if (출근남은일.value === 0) return 0
   return Math.round(남은최대분.value / 출근남은일.value)
 })
@@ -249,9 +249,9 @@ const 최대대비차 = computed(() =>
   Math.abs(반영분.value - 최대근로분.value),
 )
 const 이달공휴일 = computed(() =>
-  월별공휴일조회(선택연도.value, 선택월.value),
+  월공휴일(선택연도.value, 선택월.value),
 )
-const 공휴일데이터있음 = computed(() => 공휴일데이터존재여부(선택연도.value))
+const 공휴일있음 = computed(() => 공휴일데이터여부(선택연도.value))
 
 // 다음 달
 const 다음달 = computed(() => {
@@ -262,17 +262,17 @@ const 다음달 = computed(() => {
 const 다음달표시 = computed(
   () => `${다음달.value.연도}년 ${다음달.value.월}월`,
 )
-const 다음달소정근로일 = computed(() =>
-  월소정근로일수조회(다음달.value.연도, 다음달.value.월),
+const 다음달근로일 = computed(() =>
+  소정근로일수(다음달.value.연도, 다음달.value.월),
 )
-const 다음달의무근로분 = computed(
-  () => 다음달소정근로일.value * 하루근무분,
+const 다음달의무분 = computed(
+  () => 다음달근로일.value * 하루근무분,
 )
-const 다음달최대근로분 = computed(
-  () => 다음달의무근로분.value + 고정연장분.value,
+const 다음달최대분 = computed(
+  () => 다음달의무분.value + 고정연장분.value,
 )
 const 다음달공휴일 = computed(() =>
-  월별공휴일조회(다음달.value.연도, 다음달.value.월),
+  월공휴일(다음달.value.연도, 다음달.value.월),
 )
 
 const 진행바색상 = computed(() => {
@@ -336,8 +336,7 @@ watchEffect(() => {
     </button>
 
     <!-- 월 선택 + 근무일 요약 -->
-    <component
-      :is="월설정"
+    <MonthSettings
       v-model:선택연도="선택연도"
       v-model:선택월="선택월"
       v-model:입사한달여부="입사한달여부"
@@ -349,7 +348,7 @@ watchEffect(() => {
       :지난달여부="지난달여부"
       :일목록="일목록"
       :유효입사일="유효입사일"
-      :공휴일데이터있음="공휴일데이터있음"
+      :공휴일있음="공휴일있음"
       :소정근로일="소정근로일"
       :의무근로분="의무근로분"
       :최대근로분="최대근로분"
@@ -357,8 +356,7 @@ watchEffect(() => {
     />
 
     <!-- 입력 설정 -->
-    <component
-      :is="근무설정"
+    <WorkSettings
       v-model:고정연장시간="고정연장시간"
       v-model:입력근무시간="입력근무시간"
       v-model:재택근무여부="재택근무여부"
@@ -395,8 +393,7 @@ watchEffect(() => {
     />
 
     <!-- 진행 상황 -->
-    <component
-      :is="달성현황"
+    <ProgressStatus
       :입력분="반영분"
       :의무근로분="의무근로분"
       :초과분="초과분"
@@ -408,8 +405,7 @@ watchEffect(() => {
     />
 
     <!-- 결과 -->
-    <component
-      :is="근무결과"
+    <WorkResult
       :지난달여부="지난달여부"
       :반영분="반영분"
       :달성률="달성률"
@@ -426,22 +422,21 @@ watchEffect(() => {
       :입력분="입력분"
       :오늘예상분="오늘예상분"
       :남은최대분="남은최대분"
-      :의무달성일평균분="의무달성일평균분"
-      :최대달성일평균분="최대달성일평균분"
+      :의무일평균분="의무일평균분"
+      :최대일평균분="최대일평균분"
       :마일리지분="마일리지분"
       :남은정규분="남은정규분"
     />
 
     <!-- 공휴일 목록 -->
-    <component :is="공휴일목록" :선택월표시="선택월표시" :이달공휴일="이달공휴일" />
+    <HolidayList :선택월표시="선택월표시" :이달공휴일="이달공휴일" />
 
     <!-- 다음 달 미리보기 -->
-    <component
-      :is="다음달미리보기"
+    <NextMonthPreview
       :다음달표시="다음달표시"
-      :다음달소정근로일="다음달소정근로일"
-      :다음달의무근로분="다음달의무근로분"
-      :다음달최대근로분="다음달최대근로분"
+      :다음달근로일="다음달근로일"
+      :다음달의무분="다음달의무분"
+      :다음달최대분="다음달최대분"
       :다음달공휴일="다음달공휴일"
     />
   </div>

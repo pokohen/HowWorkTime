@@ -1,12 +1,12 @@
 <script setup>
-import { 공휴일이름조회 } from '../utils/공휴일'
-import { 날짜포맷, 시분변환, 요일가져오기 } from '../utils/시간포맷'
+import { 공휴일이름 } from '../utils/holidays'
+import { 날짜포맷, 시분변환, 요일명 } from '../utils/timeFormat'
 
 defineProps({
   다음달표시: { type: String, required: true },
-  다음달소정근로일: { type: Number, required: true },
-  다음달의무근로분: { type: Number, required: true },
-  다음달최대근로분: { type: Number, required: true },
+  다음달근로일: { type: Number, required: true },
+  다음달의무분: { type: Number, required: true },
+  다음달최대분: { type: Number, required: true },
   다음달공휴일: { type: Array, required: true },
 })
 </script>
@@ -17,23 +17,23 @@ defineProps({
     <div class="next-summary-grid">
       <div class="next-summary-item">
         <div class="next-label">근무일</div>
-        <div class="next-value">{{ 다음달소정근로일 }}<span class="unit">일</span></div>
+        <div class="next-value">{{ 다음달근로일 }}<span class="unit">일</span></div>
       </div>
       <div class="next-summary-item">
         <div class="next-label">의무 근로시간</div>
-        <div class="next-value">{{ 시분변환(다음달의무근로분) }}</div>
+        <div class="next-value">{{ 시분변환(다음달의무분) }}</div>
       </div>
       <div class="next-summary-item">
         <div class="next-label">최대 근로시간</div>
-        <div class="next-value">{{ 시분변환(다음달최대근로분) }}</div>
+        <div class="next-value">{{ 시분변환(다음달최대분) }}</div>
       </div>
     </div>
     <div class="next-holiday-block">
       <h3 class="next-subtitle">공휴일</h3>
       <ul v-if="다음달공휴일.length > 0" class="holiday-list">
         <li v-for="항목 in 다음달공휴일" :key="항목" class="holiday-item">
-          <span class="holiday-date">{{ 날짜포맷(항목) }} ({{ 요일가져오기(항목) }})</span>
-          <span class="holiday-name">{{ 공휴일이름조회(항목) }}</span>
+          <span class="holiday-date">{{ 날짜포맷(항목) }} ({{ 요일명(항목) }})</span>
+          <span class="holiday-name">{{ 공휴일이름(항목) }}</span>
         </li>
       </ul>
       <p v-else class="no-holiday">다음 달에는 공휴일이 없습니다.</p>
