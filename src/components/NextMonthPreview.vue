@@ -1,101 +1,42 @@
 <script setup>
-import { 공휴일이름 } from '../utils/holidays'
-import { 날짜포맷, 시분변환, 요일명 } from '../utils/timeFormat'
+import { 시분변환 } from '../utils/timeFormat'
+import { useMonth } from '../composables/useMonth'
+import { useWorkInput } from '../composables/useWorkInput'
+import CardSection from './common/CardSection.vue'
+import StatCard from './common/StatCard.vue'
+import HolidayItems from './common/HolidayItems.vue'
 
-defineProps({
-  다음달표시: { type: String, required: true },
-  다음달근로일: { type: Number, required: true },
-  다음달의무분: { type: Number, required: true },
-  다음달최대분: { type: Number, required: true },
-  다음달공휴일: { type: Array, required: true },
-})
+const { 다음달표시, 다음달근로일, 다음달의무분, 다음달공휴일 } = useMonth()
+const { 다음달최대분 } = useWorkInput()
 </script>
 
 <template>
-  <section class="card next-month-section">
-    <h2 class="section-title">🔮 {{ 다음달표시 }} 미리보기</h2>
-    <div class="next-summary-grid">
-      <div class="next-summary-item">
-        <div class="next-label">근무일</div>
-        <div class="next-value">{{ 다음달근로일 }}<span class="unit">일</span></div>
-      </div>
-      <div class="next-summary-item">
-        <div class="next-label">의무 근로시간</div>
-        <div class="next-value">{{ 시분변환(다음달의무분) }}</div>
-      </div>
-      <div class="next-summary-item">
-        <div class="next-label">최대 근로시간</div>
-        <div class="next-value">{{ 시분변환(다음달최대분) }}</div>
-      </div>
+  <CardSection :제목="`🔮 ${다음달표시} 미리보기`">
+    <div class="next-grid">
+      <StatCard 라벨="근무일">{{ 다음달근로일 }}<span class="unit">일</span></StatCard>
+      <StatCard 라벨="의무 근로시간">{{ 시분변환(다음달의무분) }}</StatCard>
+      <StatCard 라벨="최대 근로시간">{{ 시분변환(다음달최대분) }}</StatCard>
     </div>
-    <div class="next-holiday-block">
-      <h3 class="next-subtitle">공휴일</h3>
-      <ul v-if="다음달공휴일.length > 0" class="holiday-list">
-        <li v-for="항목 in 다음달공휴일" :key="항목" class="holiday-item">
-          <span class="holiday-date">{{ 날짜포맷(항목) }} ({{ 요일명(항목) }})</span>
-          <span class="holiday-name">{{ 공휴일이름(항목) }}</span>
-        </li>
-      </ul>
-      <p v-else class="no-holiday">다음 달에는 공휴일이 없습니다.</p>
-    </div>
-  </section>
+    <h3 class="next-subtitle">공휴일</h3>
+    <HolidayItems :날짜들="다음달공휴일" 빈안내="다음 달에는 공휴일이 없습니다." />
+  </CardSection>
 </template>
 
 <style scoped>
-.next-summary-grid {
+.next-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-bottom: 20px;
 }
-.next-summary-item {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 14px;
-  text-align: center;
-}
-.next-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #64748b;
-  margin-bottom: 6px;
-}
-.next-value {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #0f172a;
-  line-height: 1;
-}
-.next-value .unit {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #64748b;
-  margin-left: 2px;
-}
 .next-subtitle {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--text-soft);
   margin: 0 0 10px;
 }
-
-.theme-dark .next-summary-item {
-  background: #0d1117;
-  border-color: #21262d;
-}
-.theme-dark .next-label {
-  color: #8b949e;
-}
-.theme-dark .next-value {
-  color: #f0f6fc;
-}
-.theme-dark .next-subtitle {
-  color: #c9d1d9;
-}
-
 @media (max-width: 640px) {
-  .next-summary-grid {
+  .next-grid {
     grid-template-columns: 1fr;
   }
 }

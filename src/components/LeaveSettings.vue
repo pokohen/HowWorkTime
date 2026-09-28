@@ -1,84 +1,58 @@
 <script setup>
 import { 시분변환 } from '../utils/timeFormat'
+import { useLeave } from '../composables/useLeave'
+import ToggleSection from './common/ToggleSection.vue'
 
-const 연차여부 = defineModel('연차여부')
-const 연차일수 = defineModel('연차일수')
-const 반차수 = defineModel('반차수')
-const 반반차수 = defineModel('반반차수')
-
-const props = defineProps({
-  연차분: Number,
-  연차예산분: Number,
-  연차잔여분: Number,
-  연차일수환산: Number,
-})
-
-// 증감: 잔여 예산(현재까지 근무시간 − 이미 지정한 연차) 안에서만 증가 허용
-function 연차증감(필드, 델타) {
-  const 단위 = 필드 === '연차' ? 480 : 필드 === '반차' ? 240 : 120
-  if (델타 > 0 && props.연차잔여분 < 단위) return
-  const 대상 = 필드 === '연차' ? 연차일수 : 필드 === '반차' ? 반차수 : 반반차수
-  대상.value = Math.max(0, (Number(대상.value) || 0) + 델타)
-}
+const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차항목, 연차증감 } = useLeave()
 </script>
 
 <template>
-  <div class="input-today setting-row">
-    <label
-      class="setting-head"
-      :class="{ disabled: 연차예산분 === 0 }"
-      :title="연차예산분 === 0 ? '현재까지 근무시간을 먼저 입력하세요' : undefined"
-    >
-      <span class="setting-title">🌴 연차 / 반차</span>
-      <span class="switch">
-        <input type="checkbox" class="switch-input" v-model="연차여부" :disabled="연차예산분 === 0" />
-        <span class="switch-track"><span class="switch-thumb"></span></span>
-      </span>
-    </label>
-    <div v-if="연차여부 && 연차예산분 > 0" class="setting-body">
-      <div class="annual-steppers">
-        <div
-          v-for="항목 in [
-            { 키: '연차', 이름: '연차', 시간: '8h', 값: 연차일수, 단위: 480 },
-            { 키: '반차', 이름: '반차', 시간: '4h', 값: 반차수, 단위: 240 },
-            { 키: '반반차', 이름: '반반차', 시간: '2h', 값: 반반차수, 단위: 120 },
-          ]"
-          :key="항목.키"
-          class="annual-stepper"
-          :class="{ filled: 항목.값 > 0 }"
-        >
-          <span class="annual-stepper-name">{{ 항목.이름 }}</span>
-          <span class="annual-stepper-hour">{{ 항목.시간 }}</span>
-          <div class="annual-stepper-ctrl">
-            <button
-              type="button"
-              class="annual-btn"
-              :disabled="항목.값 <= 0"
-              :aria-label="`${항목.이름} 줄이기`"
-              @click="연차증감(항목.키, -1)"
-            >−</button>
-            <span class="annual-count">{{ 항목.값 }}</span>
-            <button
-              type="button"
-              class="annual-btn"
-              :disabled="연차잔여분 < 항목.단위"
-              :aria-label="`${항목.이름} 늘리기`"
-              @click="연차증감(항목.키, 1)"
-            >+</button>
-          </div>
+  <ToggleSection
+    v-model="연차여부"
+    제목="🌴 연차 / 반차"
+    :비활성="연차예산분 === 0"
+    비활성안내="현재까지 근무시간을 먼저 입력하세요"
+  >
+    <div class="annual-steppers">
+      <div
+        v-for="항목 in 연차항목"
+        :key="항목.키"
+        class="annual-stepper"
+        :class="{ filled: 항목.값 > 0 }"
+      >
+        <span class="annual-stepper-name">{{ 항목.키 }}</span>
+        <span class="annual-stepper-hour">{{ 항목.시간 }}</span>
+        <div class="annual-stepper-ctrl">
+          <button
+            type="button"
+            class="annual-btn"
+            :disabled="항목.값 <= 0"
+            :aria-label="`${항목.키} 줄이기`"
+            @click="연차증감(항목.키, -1)"
+          >−</button>
+          <span class="annual-count">{{ 항목.값 }}</span>
+          <button
+            type="button"
+            class="annual-btn"
+            :disabled="연차잔여분 < 항목.단위"
+            :aria-label="`${항목.키} 늘리기`"
+            @click="연차증감(항목.키, 1)"
+          >+</button>
         </div>
       </div>
-      <p class="setting-hint">
-        <template v-if="연차분 > 0">지정 <strong>{{ 시분변환(연차분) }}</strong> · 출근일 −{{ 연차일수환산 }}일 · </template>남은 한도 {{ 시분변환(연차잔여분) }} / {{ 시분변환(연차예산분) }}
-      </p>
     </div>
-    <p v-else-if="연차예산분 === 0" class="setting-hint">현재까지 근무시간을 먼저 입력하면 그 안에서 연차를 지정할 수 있어요.</p>
-    <p v-else class="setting-hint">연차·반차를 지정하면 그만큼 출근일이 줄어요 <span class="hint-extra">· 연차 −1일 · 반차 −0.5일 · 반반차 −0.25일</span></p>
-  </div>
+
+    <template #힌트>
+      <template v-if="연차예산분 === 0">현재까지 근무시간을 먼저 입력하면 그 안에서 연차를 지정할 수 있어요.</template>
+      <template v-else-if="연차여부">
+        <template v-if="연차분 > 0">지정 <strong>{{ 시분변환(연차분) }}</strong> · 출근일 −{{ 연차일수환산 }}일 · </template>남은 한도 {{ 시분변환(연차잔여분) }} / {{ 시분변환(연차예산분) }}
+      </template>
+      <template v-else>연차·반차를 지정하면 그만큼 출근일이 줄어요 <span class="hint-extra">· 연차 −1일 · 반차 −0.5일 · 반반차 −0.25일</span></template>
+    </template>
+  </ToggleSection>
 </template>
 
 <style scoped>
-/* 연차 스텝퍼 — 1 : 1 : 1 세 열 */
 .annual-steppers {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -151,13 +125,15 @@ function 연차증감(필드, 델타) {
 .annual-count {
   font-size: 0.95rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text);
   min-width: 1.4ch;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+.hint-extra {
+  color: #94a3b8;
+}
 
-/* Dark mode */
 .theme-dark .annual-stepper {
   background: rgba(255, 255, 255, 0.05);
 }
@@ -177,5 +153,5 @@ function 연차증감(필드, 델타) {
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
 }
-.theme-dark .annual-count { color: #f0f6fc; }
+.theme-dark .hint-extra { color: #8b949e; }
 </style>

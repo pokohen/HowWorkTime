@@ -2,106 +2,70 @@
 import { computed } from 'vue'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
-import { 시분파싱, 시분변환 } from '../utils/timeFormat'
+import { 시분변환, 시각파싱, 시각조립 } from '../utils/timeFormat'
+import { useTheme } from '../composables/useTheme'
+import { useToday } from '../composables/useToday'
+import { useTodayWork } from '../composables/useTodayWork'
+import TimeField from './common/TimeField.vue'
 
-const 오늘재택근무 = defineModel('오늘재택근무')
-const 오늘입력모드 = defineModel('오늘입력모드')
-const 출근시각 = defineModel('출근시각')
-const 퇴근시각 = defineModel('퇴근시각')
-const 휴게수동분 = defineModel('휴게수동분')
-const 휴게자동 = defineModel('휴게자동')
-const 오늘예상시간 = defineModel('오늘예상시간')
+const { 테마 } = useTheme()
+const 다크모드 = computed(() => 테마.value === 'dark')
+const { 오늘금요일여부 } = useToday()
+const {
+  오늘재택근무, 오늘입력모드, 출근시각, 퇴근시각, 휴게자동, 휴게수동분, 오늘예상시간,
+  자정넘김여부, 총체류분, 휴게분, 오늘예상분,
+  오늘모드, 오늘모드설정, 출근지금, 퇴근지금,
+} = useTodayWork()
 
-defineProps({
-  오늘금요일여부: Boolean,
-  다크모드: Boolean,
-  오늘예상유효: Boolean,
-  자정넘김여부: Boolean,
-  총체류분: Number,
-  휴게분: Number,
-  오늘예상분: Number,
-})
+const 입력모드들 = [
+  { 키: '재택', 이름: '🏠 재택', 금요일만: true },
+  { 키: '출퇴근', 이름: '출·퇴근으로 계산' },
+  { 키: '직접', 이름: '직접 입력' },
+]
+const 휴게선택지 = [
+  { 분: 0, 이름: '0분' },
+  { 분: 30, 이름: '30분' },
+  { 분: 45, 이름: '45분' },
+  { 분: 60, 이름: '1시간' },
+  { 분: 90, 이름: '1시간 30분' },
+  { 분: 120, 이름: '2시간' },
+]
 
-function 시각분리(시각) {
-  const 매칭 = String(시각 ?? '').match(/^(\d{1,2}):(\d{2})$/)
-  if (!매칭) return { 시: 9, 분: 0 }
-  return { 시: Number(매칭[1]), 분: Number(매칭[2]) }
+// VueDatePicker 는 { hours, minutes } 객체를 쓰므로 "HH:MM" 문자열과 상호 변환
+function 시각객체(시각ref) {
+  return computed({
+    get: () => {
+      if (!시각ref.value) return null
+      const 분합 = 시각파싱(시각ref.value) ?? 9 * 60
+      return { hours: Math.floor(분합 / 60), minutes: 분합 % 60, seconds: 0 }
+    },
+    set: (값) => {
+      시각ref.value = 값 ? 시각조립(값.hours, 값.minutes) : ''
+    },
+  })
 }
-function 시각조립(시, 분) {
-  return `${String(시).padStart(2, '0')}:${String(분).padStart(2, '0')}`
-}
-function 시각객체(시각) {
-  if (!시각) return null
-  const { 시, 분 } = 시각분리(시각)
-  return { hours: 시, minutes: 분, seconds: 0 }
-}
-const 출근객체 = computed({
-  get: () => 시각객체(출근시각.value),
-  set: (값) => { 출근시각.value = 값 ? 시각조립(값.hours, 값.minutes) : '' },
-})
-const 퇴근객체 = computed({
-  get: () => 시각객체(퇴근시각.value),
-  set: (값) => { 퇴근시각.value = 값 ? 시각조립(값.hours, 값.minutes) : '' },
-})
-
-// 오늘 입력 방식: 재택 / 출퇴근 / 직접 을 하나의 세그먼트 토글로 통합
-const 오늘모드 = computed(() => (오늘재택근무.value ? '재택' : 오늘입력모드.value))
-function 오늘모드설정(모드) {
-  if (모드 === '재택') {
-    오늘재택근무.value = true
-  } else {
-    오늘재택근무.value = false
-    오늘입력모드.value = 모드
-  }
-}
-
-function 지금시각() {
-  const 지금 = new Date()
-  const 시 = String(지금.getHours()).padStart(2, '0')
-  const 분 = String(지금.getMinutes()).padStart(2, '0')
-  return `${시}:${분}`
-}
-function 출근지금() { 출근시각.value = 지금시각() }
-function 퇴근지금() { 퇴근시각.value = 지금시각() }
-
-function 오늘예상정규화() {
-  const 결과 = 시분파싱(오늘예상시간.value)
-  if (!결과.유효) return
-  오늘예상시간.value = 결과.비어있음 ? '0:00' : 시분변환(Math.max(0, 결과.분))
-}
+const 출근객체 = 시각객체(출근시각)
+const 퇴근객체 = 시각객체(퇴근시각)
 </script>
 
 <template>
-  <div class="input-today">
+  <div class="today-input">
     <div class="today-header">
       <label>오늘 예상 근무시간</label>
       <div class="mode-switch" role="tablist" aria-label="입력 방식">
-        <button
-          v-if="오늘금요일여부"
-          type="button"
-          role="tab"
-          :aria-selected="오늘모드 === '재택'"
-          :class="{ active: 오늘모드 === '재택' }"
-          @click="오늘모드설정('재택')"
-        >🏠 재택</button>
-        <button
-          type="button"
-          role="tab"
-          :aria-selected="오늘모드 === '출퇴근'"
-          :class="{ active: 오늘모드 === '출퇴근' }"
-          @click="오늘모드설정('출퇴근')"
-        >출·퇴근으로 계산</button>
-        <button
-          type="button"
-          role="tab"
-          :aria-selected="오늘모드 === '직접'"
-          :class="{ active: 오늘모드 === '직접' }"
-          @click="오늘모드설정('직접')"
-        >직접 입력</button>
+        <template v-for="모드 in 입력모드들" :key="모드.키">
+          <button
+            v-if="!모드.금요일만 || 오늘금요일여부"
+            type="button"
+            role="tab"
+            :aria-selected="오늘모드 === 모드.키"
+            :class="{ active: 오늘모드 === 모드.키 }"
+            @click="오늘모드설정(모드.키)"
+          >{{ 모드.이름 }}</button>
+        </template>
       </div>
     </div>
 
-    <!-- 재택근무 활성 상태: 입력 영역을 대체 -->
     <div v-if="오늘재택근무" class="wfh-active-card">
       <span class="wfh-active-icon">🏠</span>
       <div class="wfh-active-body">
@@ -113,7 +77,7 @@ function 오늘예상정규화() {
       </div>
     </div>
 
-    <template v-if="!오늘재택근무 && 오늘입력모드 === '출퇴근'">
+    <template v-else-if="오늘입력모드 === '출퇴근'">
       <div class="commute-grid">
         <div class="commute-field">
           <label>출근</label>
@@ -130,7 +94,7 @@ function 오늘예상정규화() {
               placeholder="출근 시각"
               class="dp-wrap"
             />
-            <button type="button" class="now-btn" @click="출근지금" title="현재 시각으로">📍 지금</button>
+            <button type="button" class="now-btn" title="현재 시각으로" @click="출근지금">📍 지금</button>
           </div>
         </div>
         <div class="commute-field">
@@ -148,24 +112,19 @@ function 오늘예상정규화() {
               placeholder="퇴근 시각"
               class="dp-wrap"
             />
-            <button type="button" class="now-btn" @click="퇴근지금" title="현재 시각으로">📍 지금</button>
+            <button type="button" class="now-btn" title="현재 시각으로" @click="퇴근지금">📍 지금</button>
           </div>
         </div>
-        <div class="commute-field commute-break">
+        <div class="commute-field">
           <label for="휴게수동">휴게시간</label>
           <div class="break-row">
             <select
               id="휴게수동"
               v-model.number="휴게수동분"
               :disabled="휴게자동"
-              class="break-select"
+              class="select-field select-field--lg break-select"
             >
-              <option :value="0">0분</option>
-              <option :value="30">30분</option>
-              <option :value="45">45분</option>
-              <option :value="60">1시간</option>
-              <option :value="90">1시간 30분</option>
-              <option :value="120">2시간</option>
+              <option v-for="선택 in 휴게선택지" :key="선택.분" :value="선택.분">{{ 선택.이름 }}</option>
             </select>
             <label class="auto-toggle">
               <input type="checkbox" v-model="휴게자동" />
@@ -188,28 +147,18 @@ function 오늘예상정규화() {
       </div>
     </template>
 
-    <template v-else-if="!오늘재택근무">
-      <div class="input-with-unit">
-        <input
-          id="오늘예상"
-          v-model="오늘예상시간"
-          @blur="오늘예상정규화"
-          :class="{ error: !오늘예상유효 }"
-          :aria-invalid="!오늘예상유효"
-          type="text"
-          inputmode="numeric"
-          placeholder="0:00"
-          pattern="[0-9:]*"
-        />
-      </div>
-      <p v-if="!오늘예상유효" class="input-error">
-        ⚠ 형식이 올바르지 않습니다. 예: <code>8:00</code> 또는 <code>800</code>
-      </p>
-      <p v-else class="input-hint">
+    <TimeField
+      v-else
+      id="오늘예상"
+      v-model="오늘예상시간"
+      :예시="['8:00']"
+      빈값="0:00"
+    >
+      <template #힌트>
         오늘 추가로 일할 시간 · <strong>현재까지에 더해</strong> 합산
         <span class="hint-extra">(기본 <code>0:00</code>)</span>
-      </p>
-    </template>
+      </template>
+    </TimeField>
   </div>
 </template>
 
@@ -221,6 +170,11 @@ function 오늘예상정규화() {
   flex-wrap: wrap;
   gap: 8px 12px;
   margin-bottom: 12px;
+}
+.today-header > label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #374151;
 }
 .mode-switch {
   display: inline-flex;
@@ -251,7 +205,6 @@ function 오늘예상정규화() {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-/* 재택근무 활성 상태 카드 */
 .wfh-active-card {
   display: flex;
   align-items: flex-start;
@@ -314,7 +267,7 @@ function 오늘예상정규화() {
 .commute-field label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--label);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -348,26 +301,6 @@ function 오늘예상정규화() {
 .break-select {
   flex: 1;
   min-width: 0;
-  height: 40px;
-  padding: 0 32px 0 12px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #0f172a;
-  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center;
-  appearance: none;
-  cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.break-select:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.break-select:focus-visible {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 .auto-toggle {
   display: inline-flex;
@@ -427,7 +360,7 @@ function 오늘예상정규화() {
   font-weight: 600;
 }
 
-/* Dark mode */
+.theme-dark .today-header > label { color: #c9d1d9; }
 .theme-dark .mode-switch {
   background: #0d1117;
   border-color: #21262d;
@@ -437,7 +370,6 @@ function 오늘예상정규화() {
   background: #161b22;
   color: #56d364;
 }
-.theme-dark .commute-field label { color: #8b949e; }
 .theme-dark .dp-wrap :deep(.dp__input) {
   background: #0d1117;
   border-color: #21262d;
@@ -452,12 +384,6 @@ function 오늘예상정규화() {
   background: #0a2e1c;
   border-color: #2ea44f;
   color: #56d364;
-}
-.theme-dark .break-select {
-  background-color: #0d1117;
-  border-color: #21262d;
-  color: #f0f6fc;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
 }
 .theme-dark .auto-toggle { color: #c9d1d9; }
 .theme-dark .commute-result {
@@ -479,7 +405,6 @@ function 오늘예상정규화() {
 .theme-dark .wfh-active-title { color: #8cc2ff; }
 .theme-dark .wfh-active-sub { color: #8b949e; }
 
-/* Responsive */
 @media (max-width: 640px) {
   .commute-grid {
     grid-template-columns: 1fr;

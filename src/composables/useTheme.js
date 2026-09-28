@@ -37,7 +37,7 @@ watch(테마, (값) => {
   try { localStorage.setItem(저장키, 값) } catch (_) {}
 })
 
-export function 테마사용() {
+export function useTheme() {
   function 토글() {
     테마.value = 테마.value === 'dark' ? 'light' : 'dark'
   }

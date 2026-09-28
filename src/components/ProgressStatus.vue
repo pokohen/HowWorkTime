@@ -1,23 +1,17 @@
 <script setup>
 import { 시분변환 } from '../utils/timeFormat'
+import { useMonth } from '../composables/useMonth'
+import { useWorkResult } from '../composables/useWorkResult'
+import CardSection from './common/CardSection.vue'
 
-defineProps({
-  입력분: { type: Number, required: true },
-  의무근로분: { type: Number, required: true },
-  초과분: { type: Number, required: true },
-  의무달성여부: { type: Boolean, required: true },
-  경과근무일: { type: Number, required: true },
-  소정근로일: { type: Number, required: true },
-  달성률: { type: Number, required: true },
-  진행바색상: { type: String, required: true },
-})
+const { 의무근로분, 경과근무일, 소정근로일 } = useMonth()
+const { 반영분, 초과분, 의무달성여부, 달성률, 진행바색상 } = useWorkResult()
 </script>
 
 <template>
-  <section class="card progress-section" aria-live="polite">
-    <h2 class="section-title">📊 달성 현황</h2>
+  <CardSection 제목="📊 달성 현황" aria-live="polite">
     <div class="progress-info">
-      <span>{{ 시분변환(입력분) }} / {{ 시분변환(의무근로분) }}</span>
+      <span>{{ 시분변환(반영분) }} / {{ 시분변환(의무근로분) }}</span>
       <span class="achievement-rate" :style="{ color: 진행바색상 }">{{ 달성률 }}%</span>
     </div>
     <div
@@ -28,20 +22,17 @@ defineProps({
       aria-valuemax="100"
       :aria-label="`의무 근로시간 달성률 ${달성률}%`"
     >
-      <div
-        class="progress-fill"
-        :style="{ width: 달성률 + '%', backgroundColor: 진행바색상 }"
-      ></div>
+      <div class="progress-fill" :style="{ width: 달성률 + '%', backgroundColor: 진행바색상 }" />
     </div>
     <div class="progress-tags">
-      <span v-if="입력분 === 0" class="tag info">아직 근무시간을 입력하지 않았습니다</span>
+      <span v-if="반영분 === 0" class="tag info">아직 근무시간을 입력하지 않았습니다</span>
       <template v-else>
         <span v-if="의무달성여부" class="tag success">🎉 의무시간 달성!</span>
         <span v-if="초과분 > 0" class="tag overtime">추가 {{ 시분변환(초과분) }} 근무</span>
         <span class="tag info">경과 근무일: {{ 경과근무일 }}일 / {{ 소정근로일 }}일</span>
       </template>
     </div>
-  </section>
+  </CardSection>
 </template>
 
 <style scoped>
@@ -52,7 +43,7 @@ defineProps({
   margin-bottom: 8px;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #64748b;
+  color: var(--label);
 }
 .achievement-rate {
   font-size: 1.1rem;
@@ -81,35 +72,12 @@ defineProps({
   padding: 4px 10px;
   border-radius: 20px;
 }
-.tag.success {
-  background: #dcfce7;
-  color: #166534;
-}
-.tag.overtime {
-  background: #fef3c7;
-  color: #92400e;
-}
-.tag.info {
-  background: #f1f5f9;
-  color: #475569;
-}
+.tag.success  { background: #dcfce7; color: #166534; }
+.tag.overtime { background: #fef3c7; color: #92400e; }
+.tag.info     { background: #f1f5f9; color: #475569; }
 
-.theme-dark .progress-info {
-  color: #8b949e;
-}
-.theme-dark .progress-bar {
-  background: #21262d;
-}
-.theme-dark .tag.info {
-  background: #21262d;
-  color: #8b949e;
-}
-.theme-dark .tag.success {
-  background: #0a2e1c;
-  color: #56d364;
-}
-.theme-dark .tag.overtime {
-  background: #2a1f04;
-  color: #fcd34d;
-}
+.theme-dark .progress-bar { background: #21262d; }
+.theme-dark .tag.info     { background: #21262d; color: #8b949e; }
+.theme-dark .tag.success  { background: #0a2e1c; color: #56d364; }
+.theme-dark .tag.overtime { background: #2a1f04; color: #fcd34d; }
 </style>

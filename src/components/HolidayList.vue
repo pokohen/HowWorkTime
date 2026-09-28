@@ -1,23 +1,13 @@
 <script setup>
-import { 공휴일이름 } from '../utils/holidays'
-import { 날짜포맷, 요일명 } from '../utils/timeFormat'
+import { useMonth } from '../composables/useMonth'
+import CardSection from './common/CardSection.vue'
+import HolidayItems from './common/HolidayItems.vue'
 
-defineProps({
-  선택월표시: { type: String, required: true },
-  이달공휴일: { type: Array, required: true },
-})
+const { 선택월표시, 이달공휴일 } = useMonth()
 </script>
 
 <template>
-  <section class="card holiday-section">
-    <h2 class="section-title">🗓 {{ 선택월표시 }} 공휴일</h2>
-    <ul v-if="이달공휴일.length > 0" class="holiday-list">
-      <li v-for="항목 in 이달공휴일" :key="항목" class="holiday-item">
-        <span class="holiday-date">{{ 날짜포맷(항목) }} ({{ 요일명(항목) }})</span>
-        <span class="holiday-name">{{ 공휴일이름(항목) }}</span>
-      </li>
-    </ul>
-    <p v-else class="no-holiday">이 달에는 공휴일이 없습니다.</p>
-  </section>
+  <CardSection :제목="`🗓 ${선택월표시} 공휴일`">
+    <HolidayItems :날짜들="이달공휴일" 빈안내="이 달에는 공휴일이 없습니다." />
+  </CardSection>
 </template>
-
