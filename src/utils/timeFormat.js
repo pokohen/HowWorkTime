@@ -1,6 +1,6 @@
 import { 요일이름 } from '../constants'
 
-const 두자리 = (n) => String(n).padStart(2, '0')
+export const 두자리 = (n) => String(n).padStart(2, '0')
 
 /**
  * 근무시간 문자열을 분 단위로 파싱

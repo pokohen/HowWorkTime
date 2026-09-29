@@ -51,7 +51,7 @@ defineProps({
   border-radius: 999px;
 }
 .no-holiday {
-  color: var(--no-holiday);
+  color: var(--hint);
   font-size: 0.9rem;
   margin: 0;
   text-align: center;

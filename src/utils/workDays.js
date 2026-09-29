@@ -1,11 +1,15 @@
 import { 연도공휴일 } from './holidays'
+import { 두자리 } from './timeFormat'
 import { 급여기준일 } from '../constants'
+
+/** 해당 월의 마지막 날짜 (28~31) */
+export function 월말일수(연도, 월) {
+  return new Date(연도, 월, 0).getDate()
+}
 
 /** Date → "YYYY-MM-DD" */
 function 날짜키(날짜) {
-  const 월 = String(날짜.getMonth() + 1).padStart(2, '0')
-  const 일 = String(날짜.getDate()).padStart(2, '0')
-  return `${날짜.getFullYear()}-${월}-${일}`
+  return `${날짜.getFullYear()}-${두자리(날짜.getMonth() + 1)}-${두자리(날짜.getDate())}`
 }
 
 function 주말여부(날짜) {
@@ -20,7 +24,7 @@ function 근무일여부(날짜, 공휴일셋) {
 
 /** 해당 월의 [시작일, 말일] 범위. 시작일은 1~말일로 보정한다. */
 function 월범위(연도, 월, 시작일) {
-  const 말일 = new Date(연도, 월, 0)
+  const 말일 = new Date(연도, 월 - 1, 월말일수(연도, 월))
   const 시작 = Math.max(1, Math.min(말일.getDate(), 시작일))
   return { 월시작: new Date(연도, 월 - 1, 시작), 말일 }
 }

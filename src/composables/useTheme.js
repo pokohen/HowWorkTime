@@ -1,10 +1,14 @@
 import { ref, watch } from 'vue'
 import { 테마저장키 as 저장키 } from '../constants'
+import { 모듈상태 } from './moduleState'
 
 function 저장된테마() {
-  if (typeof localStorage === 'undefined') return null
-  const 값 = localStorage.getItem(저장키)
-  return 값 === 'light' || 값 === 'dark' ? 값 : null
+  try {
+    const 값 = localStorage.getItem(저장키)
+    return 값 === 'light' || 값 === 'dark' ? 값 : null
+  } catch {
+    return null
+  }
 }
 
 function 시스템테마() {
@@ -12,33 +16,37 @@ function 시스템테마() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-const 테마 = ref(저장된테마() ?? 시스템테마())
-
 function 적용(값) {
   if (typeof document === 'undefined') return
   document.documentElement.classList.toggle('theme-dark', 값 === 'dark')
   document.documentElement.classList.toggle('theme-light', 값 === 'light')
 }
 
-적용(테마.value)
+const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
+  const 테마 = ref(저장된테마() ?? 시스템테마())
 
-if (typeof window !== 'undefined' && window.matchMedia) {
-  const mq = window.matchMedia('(prefers-color-scheme: dark)')
-  mq.addEventListener('change', (e) => {
-    if (저장된테마() == null) {
-      테마.value = e.matches ? 'dark' : 'light'
+  watch(테마, 적용, { immediate: true })
+
+  // 사용자가 직접 고른 적이 없을 때만 시스템 테마를 따라간다.
+  // 시스템 변경은 저장하지 않으므로 이후에도 계속 따라간다.
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const 시스템변경 = (e) => {
+      if (저장된테마() == null) 테마.value = e.matches ? 'dark' : 'light'
     }
-  })
-}
+    mq.addEventListener('change', 시스템변경)
+    정리등록(() => mq.removeEventListener('change', 시스템변경))
+  }
 
-watch(테마, (값) => {
-  적용(값)
-  try { localStorage.setItem(저장키, 값) } catch (_) {}
+  /** 사용자가 명시적으로 바꿀 때만 저장한다 */
+  function 토글() {
+    테마.value = 테마.value === 'dark' ? 'light' : 'dark'
+    try { localStorage.setItem(저장키, 테마.value) } catch { /* 저장 불가 환경 */ }
+  }
+
+  return { 테마, 토글 }
 })
 
 export function useTheme() {
-  function 토글() {
-    테마.value = 테마.value === 'dark' ? 'light' : 'dark'
-  }
-  return { 테마, 토글 }
+  return 상태
 }

@@ -59,6 +59,6 @@ src/
     ProgressStatus, WorkResult, HolidayList, NextMonthPreview
 ```
 
-테스트는 `tests/`에 있으며 순수 함수인 `utils/`를 대상으로 합니다. CI에서 빌드 전에 실행됩니다.
+테스트는 `tests/`에 있으며 순수 함수인 `utils/`를 대상으로 합니다. 공휴일은 `tests/fixtures/holidays.json`(2026년 스냅샷)에 고정되어 실데이터 갱신과 무관합니다. CI에서 빌드 전에 실행됩니다.
 
 네이밍 규칙: 파일·컴포넌트·composable 이름은 영어, 변수·함수·prop 이름은 한글.

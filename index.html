@@ -19,11 +19,11 @@
       html { background: #f7f8fa; }
       html.theme-dark { background: #0d1117; }
     </style>
-    <!-- 첫 렌더 전에 테마 클래스를 붙여 깜빡임을 막는다. 저장 키는 src/constants.js 의 테마저장키와 같아야 한다. -->
+    <!-- 첫 렌더 전에 테마 클래스를 붙여 깜빡임을 막는다. %THEME_KEY% 는 vite.config.js 가 constants.테마저장키로 치환한다. -->
     <script>
       (function () {
         try {
-          var saved = localStorage.getItem('how-work-time:theme');
+          var saved = localStorage.getItem('%THEME_KEY%');
           var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
           var theme = saved === 'light' || saved === 'dark' ? saved : (prefersDark ? 'dark' : 'light');
           document.documentElement.classList.add('theme-' + theme);
