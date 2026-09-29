@@ -1,6 +1,5 @@
 import { ref, watch } from 'vue'
-
-const 저장키 = 'how-work-time:theme'
+import { 테마저장키 as 저장키 } from '../constants'
 
 function 저장된테마() {
   if (typeof localStorage === 'undefined') return null

@@ -100,23 +100,14 @@ defineProps({
   font-size: 0.78rem;
 }
 
-/* 배경 톤 */
-.bg-blue   { background: #eff6ff; border-color: #bfdbfe; }
-.bg-green  { background: #f0fdf4; border-color: #bbf7d0; }
-.bg-purple { background: #faf5ff; border-color: #e9d5ff; }
-.theme-dark .bg-blue   { background: #0d1f3a; border-color: #1f3a68; }
-.theme-dark .bg-green  { background: #0a2e1c; border-color: #155f3a; }
-.theme-dark .bg-purple { background: #1d1638; border-color: #3d2c63; }
+.bg-blue   { background: var(--tint-blue-bg);   border-color: var(--tint-blue-border); }
+.bg-green  { background: var(--tint-green-bg);  border-color: var(--tint-green-border); }
+.bg-purple { background: var(--tint-purple-bg); border-color: var(--tint-purple-border); }
 
-/* 값 강조색 */
-.accent-blue   { color: #3182f6; }
-.accent-green  { color: #06c755; }
-.accent-purple { color: #6e3eff; }
-.accent-red    { color: #f04452; }
-.theme-dark .accent-blue   { color: #58a6ff; }
-.theme-dark .accent-green  { color: #56d364; }
-.theme-dark .accent-purple { color: #d2a8ff; }
-.theme-dark .accent-red    { color: #ff7b72; }
+.accent-blue   { color: var(--accent-blue); }
+.accent-green  { color: var(--accent-green); }
+.accent-purple { color: var(--accent-purple); }
+.accent-red    { color: var(--accent-red); }
 
 @media (max-width: 640px) {
   .size-lg .stat-value {

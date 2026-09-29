@@ -72,6 +72,8 @@ const { 오늘표시, 재택안내, 급여주여부 } = useToday()
   border-radius: 50%;
   font-size: 0.74rem;
   line-height: 1;
+  background: var(--elevated);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 .chip-ico,
 .chip-txt {
@@ -83,23 +85,17 @@ const { 오늘표시, 재택안내, 급여주여부 } = useToday()
   to { opacity: 1; transform: translateY(0); }
 }
 .chip--date {
-  background: #f4f6f8;
-  border-color: #e6e9ee;
-  color: #3f4b5b;
-}
-.chip--date .chip-ico {
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
+  background: var(--surface-muted);
+  border-color: var(--input-border);
+  color: var(--text-soft);
 }
 .chip--wfh {
-  background: #eef4ff;
-  border-color: #cfe0ff;
-  color: #1d4ed8;
+  background: var(--tint-blue-bg);
+  border-color: var(--tint-blue-border);
+  color: var(--tint-blue-text);
 }
-.chip--wfh .chip-ico {
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(29, 78, 216, 0.14);
-}
+
+/* 급여 주간 칩: 금색 그라데이션. 토큰 없이 라이트/다크 각각 지정 */
 .chip--pay {
   background: linear-gradient(135deg, #fdeaa6 0%, #f6c945 52%, #efb429 100%);
   border-color: #e0a100;
@@ -129,29 +125,6 @@ const { 오늘표시, 재택안내, 급여주여부 } = useToday()
   16% { left: 135%; }
   100% { left: 135%; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .chip { animation: none; }
-  .chip--pay::before { animation: none; opacity: 0; }
-}
-
-.theme-dark .chip--date {
-  background: #1a212b;
-  border-color: #2b333f;
-  color: #c9d1d9;
-}
-.theme-dark .chip--date .chip-ico {
-  background: #0d1117;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-}
-.theme-dark .chip--wfh {
-  background: #122440;
-  border-color: #27477e;
-  color: #8cc2ff;
-}
-.theme-dark .chip--wfh .chip-ico {
-  background: #0d1117;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-}
 .theme-dark .chip--pay {
   background: linear-gradient(135deg, #6a4d0a 0%, #9a7615 52%, #c2961c 100%);
   border-color: #d3a525;
@@ -163,6 +136,10 @@ const { 오늘표시, 재택안내, 급여주여부 } = useToday()
 .theme-dark .chip--pay .chip-ico {
   background: rgba(255, 255, 255, 0.18);
   box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chip { animation: none; }
+  .chip--pay::before { animation: none; opacity: 0; }
 }
 
 @media (max-width: 640px) {

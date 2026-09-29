@@ -84,26 +84,26 @@ const {
   border-radius: 10px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #475569;
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
+  color: var(--text-soft);
+  background: var(--input-bg);
+  border: 1.5px solid var(--input-border);
   cursor: pointer;
   user-select: none;
   transition: background 0.15s, border-color 0.15s;
 }
 .join-checkbox:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: var(--surface-muted);
+  border-color: var(--input-border-hover);
 }
 .join-checkbox:has(input:checked) {
-  background: #eff6ff;
-  border-color: #93c5fd;
-  color: #1d4ed8;
+  background: var(--tint-green-bg);
+  border-color: var(--tint-green-border);
+  color: var(--tint-green-text);
 }
 .join-checkbox input[type='checkbox'] {
   width: 16px;
   height: 16px;
-  accent-color: #3b82f6;
+  accent-color: var(--focus);
   cursor: pointer;
   margin: 0;
 }
@@ -123,7 +123,7 @@ const {
   color: var(--label);
 }
 .join-hint .hint-extra {
-  color: #94a3b8;
+  color: var(--hint);
   margin-left: 6px;
 }
 
@@ -142,40 +142,19 @@ const {
   padding: 2px 9px;
   border-radius: 20px;
 }
-.badge.current { background: #dbeafe; color: #1d4ed8; }
-.badge.past    { background: #f1f5f9; color: #64748b; }
-.badge.future  { background: #fef3c7; color: #92400e; }
+.badge.current { background: var(--tint-blue-bg);  color: var(--tint-blue-text); }
+.badge.past    { background: var(--surface-muted); color: var(--label); }
+.badge.future  { background: var(--tint-amber-bg); color: var(--tint-amber-text); }
 
 .warn-notice {
   padding: 12px 16px;
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
+  background: var(--tint-amber-bg);
+  border: 1px solid var(--tint-amber-border);
   border-radius: 10px;
   font-size: 0.88rem;
-  color: #92400e;
+  color: var(--tint-amber-text);
   margin-bottom: 20px;
   line-height: 1.5;
-}
-
-.theme-dark .join-checkbox {
-  color: #c9d1d9;
-  background: #0d1117;
-  border-color: #21262d;
-}
-.theme-dark .join-checkbox:hover {
-  background: #161b22;
-  border-color: #30363d;
-}
-.theme-dark .join-checkbox:has(input:checked) {
-  background: #0a2e1c;
-  border-color: #2ea44f;
-  color: #56d364;
-}
-.theme-dark .join-hint .hint-extra { color: #8b949e; }
-.theme-dark .warn-notice {
-  background: #2d1f06;
-  border-color: #4a3a08;
-  color: #fbbf24;
 }
 
 @media (max-width: 640px) {

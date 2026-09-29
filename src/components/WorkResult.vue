@@ -124,13 +124,13 @@ const 부호 = (n) => (n >= 0 ? '+' : '−')
 
 <style scoped>
 .empty-banner {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--tint-blue-bg);
+  border: 1px solid var(--tint-blue-border);
   border-radius: 12px;
   padding: 14px 18px;
   margin-bottom: 20px;
   font-size: 0.92rem;
-  color: #1e40af;
+  color: var(--tint-blue-text);
   line-height: 1.5;
 }
 .result-grid {
@@ -140,7 +140,7 @@ const 부호 = (n) => (n >= 0 ? '+' : '−')
   margin-bottom: 20px;
 }
 .placeholder-dash {
-  color: #d1d6db;
+  color: var(--switch-off);
   font-weight: 600;
 }
 
@@ -164,20 +164,20 @@ const 부호 = (n) => (n >= 0 ? '+' : '−')
   line-height: 1.5;
 }
 .avg-note strong {
-  color: #3182f6;
+  color: var(--accent-blue);
   font-weight: 700;
 }
-:deep(.pill-mandatory) { background: #e6f9f0; color: #06873e; }
-:deep(.pill-max)       { background: #efe9ff; color: #5b2bd6; }
+:deep(.pill-mandatory) { background: var(--tint-green-bg);  color: var(--tint-green-text); }
+:deep(.pill-max)       { background: var(--tint-purple-bg); color: var(--tint-purple-text); }
 
 /* 마일리지 카드: 부호에 따라 카드 전체 톤이 바뀐다 */
-.mileage-card :deep(.stat-label) { background: #eef1f4; color: #4e5968; }
-.mileage-card.is-plus  { background: #edfaf3; border-color: #bdeccf; }
-.mileage-card.is-minus { background: #fdeef0; border-color: #f8cace; }
-.mileage-card.is-plus  :deep(.stat-label) { background: #06c755; color: #fff; }
-.mileage-card.is-minus :deep(.stat-label) { background: #f04452; color: #fff; }
-.mileage-card.is-plus  :deep(.stat-value) { color: #06873e; }
-.mileage-card.is-minus :deep(.stat-value) { color: #d63a46; }
+.mileage-card :deep(.stat-label) { background: var(--btn-bg); color: var(--text-soft); }
+.mileage-card.is-plus  { background: var(--tint-green-bg); border-color: var(--tint-green-border); }
+.mileage-card.is-minus { background: var(--tint-red-bg);   border-color: var(--tint-red-border); }
+.mileage-card.is-plus  :deep(.stat-label) { background: var(--accent-green); color: #fff; }
+.mileage-card.is-minus :deep(.stat-label) { background: var(--accent-red);   color: #fff; }
+.mileage-card.is-plus  :deep(.stat-value) { color: var(--accent-green-deep); }
+.mileage-card.is-minus :deep(.stat-value) { color: var(--accent-red-deep); }
 
 .mileage-calc {
   display: flex;
@@ -194,8 +194,8 @@ const 부호 = (n) => (n >= 0 ? '+' : '−')
   color: var(--text-soft);
 }
 .mileage-calc strong { font-weight: 800; }
-.mileage-calc strong.is-plus  { color: #06873e; }
-.mileage-calc strong.is-minus { color: #d63a46; }
+.mileage-calc strong.is-plus  { color: var(--accent-green-deep); }
+.mileage-calc strong.is-minus { color: var(--accent-red-deep); }
 
 .notice {
   padding: 14px 18px;
@@ -208,26 +208,6 @@ const 부호 = (n) => (n >= 0 ? '+' : '−')
 .past-notice {
   margin-bottom: 20px;
 }
-
-.theme-dark .empty-banner {
-  background: #0d1f3a;
-  border-color: #1f3a68;
-  color: #79b8ff;
-}
-.theme-dark .placeholder-dash { color: #484f58; }
-.theme-dark .avg-note strong { color: #58a6ff; }
-.theme-dark :deep(.pill-mandatory) { background: #0a2e1c; color: #56d364; }
-.theme-dark :deep(.pill-max)       { background: #1d1638; color: #c4b5fd; }
-.theme-dark .mileage-card :deep(.stat-label) { background: #21262d; color: #adb6c0; }
-.theme-dark .mileage-card.is-plus  { background: #0a2e1c; border-color: #17512f; }
-.theme-dark .mileage-card.is-minus { background: #3a1518; border-color: #5e2329; }
-.theme-dark .mileage-card.is-plus  :deep(.stat-label) { background: #2ea043; color: #fff; }
-.theme-dark .mileage-card.is-minus :deep(.stat-label) { background: #da3633; color: #fff; }
-.theme-dark .mileage-card.is-plus  :deep(.stat-value) { color: #56d364; }
-.theme-dark .mileage-card.is-minus :deep(.stat-value) { color: #ff7b72; }
-.theme-dark .mileage-calc strong.is-plus  { color: #56d364; }
-.theme-dark .mileage-calc strong.is-minus { color: #ff7b72; }
-.theme-dark .notice { color: #8b949e; }
 
 @media (max-width: 640px) {
   .result-grid {

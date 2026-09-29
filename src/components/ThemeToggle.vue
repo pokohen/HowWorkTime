@@ -36,33 +36,25 @@ const 다크모드 = computed(() => 테마.value === 'dark')
   padding: 0;
   font-size: 1.35rem;
   color: var(--text-soft);
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12), 0 2px 4px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14), 0 2px 4px rgba(0, 0, 0, 0.08);
   transition: background 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
 }
 .theme-fab:hover {
-  background: var(--surface-soft);
-  border-color: #d1d6db;
+  background: var(--surface-muted);
+  border-color: var(--input-border-hover);
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.15), 0 3px 6px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18), 0 3px 6px rgba(0, 0, 0, 0.1);
 }
 .theme-fab:active {
   transform: translateY(0) scale(0.95);
 }
 .theme-fab:focus-visible {
   outline: none;
-  border-color: #06c755;
-  box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.22), 0 6px 20px rgba(15, 23, 42, 0.12);
+  border-color: var(--accent-green);
+  box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.22), 0 6px 20px rgba(0, 0, 0, 0.14);
 }
 .theme-fab-icon {
   display: inline-block;
   line-height: 1;
-}
-.theme-dark .theme-fab {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-.theme-dark .theme-fab:hover {
-  background: #21262d;
-  border-color: #30363d;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55), 0 3px 6px rgba(0, 0, 0, 0.35);
 }
 </style>

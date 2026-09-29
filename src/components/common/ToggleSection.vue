@@ -110,7 +110,7 @@ defineProps({
   width: 44px;
   height: 26px;
   border-radius: 999px;
-  background: #d1d6db;
+  background: var(--switch-off);
   transition: background 0.2s ease;
 }
 .switch-thumb {
@@ -125,7 +125,7 @@ defineProps({
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .switch-input:checked + .switch-track {
-  background: #3182f6;
+  background: var(--primary);
 }
 .switch-input:checked + .switch-track .switch-thumb {
   transform: translateX(18px);
@@ -133,8 +133,6 @@ defineProps({
 .switch-input:focus-visible + .switch-track {
   box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.3);
 }
-.theme-dark .switch-track { background: #30363d; }
-.theme-dark .switch-input:checked + .switch-track { background: #1f6feb; }
 @media (prefers-reduced-motion: reduce) {
   .switch-thumb { transition: none; }
 }

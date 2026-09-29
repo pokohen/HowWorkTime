@@ -119,12 +119,12 @@ const 휴게선택지 = [
 .today-header > label {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-soft);
 }
 .mode-switch {
   display: inline-flex;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-muted);
+  border: 1px solid var(--input-border);
   border-radius: 10px;
   padding: 3px;
   gap: 2px;
@@ -136,17 +136,17 @@ const 휴게선택지 = [
   padding: 6px 12px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--label);
   border-radius: 7px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 .mode-switch button:hover {
-  color: #334155;
+  color: var(--text-soft);
 }
 .mode-switch button.active {
-  background: #fff;
-  color: #1d4ed8;
+  background: var(--elevated);
+  color: var(--tint-blue-text);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
@@ -155,8 +155,8 @@ const 휴게선택지 = [
   align-items: flex-start;
   gap: 12px;
   padding: 14px 16px;
-  background: #eff6ff;
-  border: 1.5px solid #bfdbfe;
+  background: var(--tint-blue-bg);
+  border: 1.5px solid var(--tint-blue-border);
   border-radius: 12px;
 }
 .wfh-active-icon {
@@ -170,12 +170,12 @@ const 휴게선택지 = [
 .wfh-active-title {
   font-size: 0.92rem;
   font-weight: 700;
-  color: #1d4ed8;
+  color: var(--tint-blue-text);
   margin: 0 0 4px;
 }
 .wfh-active-sub {
   font-size: 0.8rem;
-  color: #475569;
+  color: var(--text-soft);
   margin: 0;
   line-height: 1.55;
 }
@@ -212,7 +212,7 @@ const 휴게선택지 = [
   gap: 6px;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--text-soft);
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
@@ -220,7 +220,7 @@ const 휴게선택지 = [
 .auto-toggle input[type='checkbox'] {
   width: 14px;
   height: 14px;
-  accent-color: #3b82f6;
+  accent-color: var(--focus);
   cursor: pointer;
   margin: 0;
 }
@@ -231,68 +231,38 @@ const 휴게선택지 = [
   gap: 6px 12px;
   margin-top: 12px;
   padding: 12px 16px;
-  background: #e6f9f0;
-  border: 1px solid #b7e8c8;
+  background: var(--tint-green-bg);
+  border: 1px solid var(--tint-green-border);
   border-radius: 12px;
 }
 .commute-result .result-tag {
   font-size: 0.72rem;
   font-weight: 700;
-  color: #06873e;
+  color: var(--tint-green-text);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .commute-result .result-time {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #04632d;
+  color: var(--text);
   letter-spacing: -0.02em;
 }
 .commute-result .result-formula {
   font-size: 0.78rem;
-  color: #4b5563;
+  color: var(--text-soft);
   margin-left: auto;
 }
 .commute-result.midnight {
-  background: #eef2ff;
-  border-color: #c7d2fe;
+  background: var(--tint-indigo-bg);
+  border-color: var(--tint-indigo-border);
 }
 .midnight-badge {
   flex-basis: 100%;
   font-size: 0.78rem;
-  color: #4338ca;
+  color: var(--tint-indigo-text);
   font-weight: 600;
 }
-
-.theme-dark .today-header > label { color: #c9d1d9; }
-.theme-dark .mode-switch {
-  background: #0d1117;
-  border-color: #21262d;
-}
-.theme-dark .mode-switch button { color: #8b949e; }
-.theme-dark .mode-switch button.active {
-  background: #161b22;
-  color: #56d364;
-}
-.theme-dark .auto-toggle { color: #c9d1d9; }
-.theme-dark .commute-result {
-  background: #0a2e1c;
-  border-color: #155f3a;
-}
-.theme-dark .commute-result .result-tag { color: #56d364; }
-.theme-dark .commute-result .result-time { color: #f0f6fc; }
-.theme-dark .commute-result .result-formula { color: #c9d1d9; }
-.theme-dark .commute-result.midnight {
-  background: #161335;
-  border-color: #3730a3;
-}
-.theme-dark .midnight-badge { color: #a5b4fc; }
-.theme-dark .wfh-active-card {
-  background: #122440;
-  border-color: #27477e;
-}
-.theme-dark .wfh-active-title { color: #8cc2ff; }
-.theme-dark .wfh-active-sub { color: #8b949e; }
 
 @media (max-width: 640px) {
   .commute-grid {

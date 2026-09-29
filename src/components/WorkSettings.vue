@@ -57,19 +57,19 @@ const { 반영분, 오늘반영분 } = useWorkResult()
   gap: 8px 12px;
   padding: 12px 16px;
   margin-bottom: 18px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--tint-blue-bg);
+  border: 1px solid var(--tint-blue-border);
   border-radius: 10px;
 }
 .reflected-label {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #1e40af;
+  color: var(--tint-blue-text);
 }
 .reflected-value {
   font-size: 1.1rem;
   font-weight: 800;
-  color: #1d4ed8;
+  color: var(--tint-blue-text);
 }
 .reflected-formula {
   font-size: 0.78rem;
@@ -84,13 +84,6 @@ const { 반영분, 오늘반영분 } = useWorkResult()
 .full-row {
   grid-column: 1 / -1;
 }
-
-.theme-dark .reflected-summary {
-  background: #0d1f3a;
-  border-color: #1f3a68;
-}
-.theme-dark .reflected-label { color: #79b8ff; }
-.theme-dark .reflected-value { color: #c9d1ff; }
 
 @media (max-width: 640px) {
   .input-grid {

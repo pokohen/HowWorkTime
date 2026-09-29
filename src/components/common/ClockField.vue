@@ -74,49 +74,34 @@ const 시각객체 = computed({
 .dp-wrap :deep(.dp__input) {
   height: 40px;
   border-radius: 10px;
-  border: 1.5px solid #e2e8f0;
-  background: #f8fafc;
+  border: 1.5px solid var(--input-border);
+  background: var(--input-bg);
   font-size: 0.95rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--input-text);
   padding-left: 36px;
 }
 .dp-wrap :deep(.dp__input:focus),
 .dp-wrap :deep(.dp__input_focus) {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .now-btn {
   appearance: none;
-  border: 1.5px solid #e2e8f0;
-  background: #fff;
+  border: 1.5px solid var(--input-border);
+  background: var(--elevated);
   border-radius: 10px;
   padding: 0 10px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--text-soft);
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .now-btn:hover {
-  background: #eff6ff;
-  border-color: #93c5fd;
-  color: #1d4ed8;
-}
-.theme-dark .dp-wrap :deep(.dp__input) {
-  background: #0d1117;
-  border-color: #21262d;
-  color: #f0f6fc;
-}
-.theme-dark .now-btn {
-  background: #161b22;
-  border-color: #21262d;
-  color: #c9d1d9;
-}
-.theme-dark .now-btn:hover {
-  background: #0a2e1c;
-  border-color: #2ea44f;
-  color: #56d364;
+  background: var(--tint-green-bg);
+  border-color: var(--tint-green-border);
+  color: var(--tint-green-text);
 }
 </style>

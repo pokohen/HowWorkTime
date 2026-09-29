@@ -63,23 +63,23 @@ const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수�
   align-items: center;
   gap: 6px;
   padding: 7px 9px;
-  background: #f7f8fa;
+  background: var(--surface-soft);
   border-radius: 10px;
   transition: background 0.15s;
 }
 .annual-stepper.filled {
-  background: #e8fbfb;
+  background: var(--tint-blue-bg);
 }
 .annual-stepper-name {
   font-size: 0.84rem;
   font-weight: 700;
-  color: #33383f;
+  color: var(--text);
 }
 .annual-stepper-hour {
   font-size: 0.68rem;
   font-weight: 800;
-  color: #0e7490;
-  background: #d3f6f7;
+  color: var(--tint-blue-text);
+  background: var(--tint-blue-border);
   padding: 2px 5px;
   border-radius: 5px;
   letter-spacing: 0.01em;
@@ -96,8 +96,8 @@ const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수�
   flex: none;
   border-radius: 7px;
   border: none;
-  background: #eef1f4;
-  color: #4e5968;
+  background: var(--btn-bg);
+  color: var(--text-soft);
   font-size: 1rem;
   font-weight: 700;
   line-height: 1;
@@ -108,15 +108,15 @@ const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수�
   transition: background 0.12s, transform 0.08s;
 }
 .annual-btn:hover:not(:disabled) {
-  background: #e2e6ea;
-  color: #191f28;
+  background: var(--btn-bg-hover);
+  color: var(--text);
 }
 .annual-btn:active:not(:disabled) {
   transform: scale(0.92);
 }
 .annual-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.22);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .annual-btn:disabled {
   opacity: 0.4;
@@ -131,27 +131,6 @@ const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수�
   font-variant-numeric: tabular-nums;
 }
 .hint-extra {
-  color: #94a3b8;
+  color: var(--hint);
 }
-
-.theme-dark .annual-stepper {
-  background: rgba(255, 255, 255, 0.05);
-}
-.theme-dark .annual-stepper.filled {
-  background: rgba(14, 165, 233, 0.16);
-}
-.theme-dark .annual-stepper-name { color: #f0f6fc; }
-.theme-dark .annual-stepper-hour {
-  background: #0c3a52;
-  color: #7dd3fc;
-}
-.theme-dark .annual-btn {
-  background: rgba(255, 255, 255, 0.08);
-  color: #c9d1d9;
-}
-.theme-dark .annual-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
-}
-.theme-dark .hint-extra { color: #8b949e; }
 </style>

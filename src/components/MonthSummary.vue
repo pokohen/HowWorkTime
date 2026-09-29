@@ -37,11 +37,10 @@ const { 최대근로분, 고정연장분 } = useWorkInput()
 }
 .label-aside {
   font-weight: 400;
-  color: #94a3b8;
+  color: var(--hint);
   font-size: 0.78rem;
   margin-left: 4px;
 }
-.theme-dark .label-aside { color: #6e7681; }
 
 @media (max-width: 640px) {
   .summary-grid {

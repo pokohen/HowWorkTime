@@ -63,7 +63,7 @@ function 정규화() {
 .input-group > label {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-soft);
 }
 .input-with-unit {
   position: relative;
@@ -73,24 +73,23 @@ function 정규화() {
 .input-with-unit input {
   width: 100%;
   padding: 12px 14px;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--input-border);
   border-radius: 10px;
   font-size: 1.05rem;
   font-weight: 600;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--input-text);
+  background: var(--input-bg);
   box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .input-with-unit input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-  background: #fff;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .input-with-unit input.error {
-  border-color: #ef4444;
-  background: #fef2f2;
+  border-color: var(--accent-red);
+  background: var(--tint-red-bg);
 }
 .input-with-unit input.error:focus {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
@@ -101,10 +100,10 @@ function 정규화() {
   margin: 0;
 }
 .input-hint {
-  color: #475569;
+  color: var(--text-soft);
 }
 .input-error {
-  color: #b91c1c;
+  color: var(--tint-red-text);
   font-weight: 500;
 }
 .input-hint :deep(code),
@@ -116,42 +115,17 @@ function 정규화() {
   font-size: 0.78rem;
 }
 .input-hint :deep(code) {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  color: #0f172a;
+  background: var(--surface-muted);
+  border-color: var(--input-border);
+  color: var(--input-text);
 }
 .input-error code {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
+  background: var(--tint-red-bg);
+  border-color: var(--tint-red-border);
+  color: var(--tint-red-text);
 }
 .input-hint :deep(.hint-extra) {
-  color: #94a3b8;
+  color: var(--hint);
   margin-left: 6px;
-}
-
-.theme-dark .input-group > label { color: #c9d1d9; }
-.theme-dark .input-with-unit input {
-  background: #0d1117;
-  border-color: #21262d;
-  color: #f0f6fc;
-}
-.theme-dark .input-with-unit input:focus { background: #0d1117; }
-.theme-dark .input-with-unit input.error {
-  border-color: #f85149;
-  background: #2d0f0f;
-}
-.theme-dark .input-hint { color: #c9d1d9; }
-.theme-dark .input-hint :deep(code) {
-  background: #161b22;
-  border-color: #21262d;
-  color: #f0f6fc;
-}
-.theme-dark .input-hint :deep(.hint-extra) { color: #8b949e; }
-.theme-dark .input-error { color: #ff7b72; }
-.theme-dark .input-error code {
-  background: #2d0f0f;
-  border-color: #6e1414;
-  color: #ffa198;
 }
 </style>

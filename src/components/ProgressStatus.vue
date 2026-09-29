@@ -51,7 +51,7 @@ const { 반영분, 초과분, 의무달성여부, 달성률, 진행바색상 } =
 }
 .progress-bar {
   height: 12px;
-  background: #f1f5f9;
+  background: var(--surface-muted);
   border-radius: 99px;
   overflow: hidden;
   margin-bottom: 12px;
@@ -72,12 +72,7 @@ const { 반영분, 초과분, 의무달성여부, 달성률, 진행바색상 } =
   padding: 4px 10px;
   border-radius: 20px;
 }
-.tag.success  { background: #dcfce7; color: #166534; }
-.tag.overtime { background: #fef3c7; color: #92400e; }
-.tag.info     { background: #f1f5f9; color: #475569; }
-
-.theme-dark .progress-bar { background: #21262d; }
-.theme-dark .tag.info     { background: #21262d; color: #8b949e; }
-.theme-dark .tag.success  { background: #0a2e1c; color: #56d364; }
-.theme-dark .tag.overtime { background: #2a1f04; color: #fcd34d; }
+.tag.success  { background: var(--tint-green-bg); color: var(--tint-green-text); }
+.tag.overtime { background: var(--tint-amber-bg); color: var(--tint-amber-text); }
+.tag.info     { background: var(--surface-muted); color: var(--label); }
 </style>

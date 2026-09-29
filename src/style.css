@@ -6,25 +6,68 @@
   -moz-osx-font-smoothing: grayscale;
   font-family: 'Noto Sans KR', 'Pretendard', system-ui, sans-serif;
 
+  /* 바탕·카드 */
   --bg-app: #f7f8fa;
   --card-bg: #ffffff;
   --card-border: #ebedf0;
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --section-title: #191f28;
-  --label: #8b95a1;
+  --elevated: #ffffff;
+  --surface-soft: #f7f8fa;
+  --surface-muted: #f1f5f9;
+  --hairline: #f0f1f3;
+
+  /* 글자 */
   --text: #191f28;
   --text-soft: #4e5968;
-  --hairline: #f0f1f3;
-  --surface-soft: #f7f8fa;
-  --line-green: #06c755;
-  --line-green-soft: #e6f9f0;
-  --line-green-text: #00875a;
+  --label: #8b95a1;
+  --hint: #94a3b8;
+
+  /* 입력 요소 */
+  --input-bg: #f8fafc;
+  --input-border: #e2e8f0;
+  --input-border-hover: #cbd5e1;
+  --input-text: #0f172a;
+  --focus: #3b82f6;
+  --focus-ring: rgba(59, 130, 246, 0.15);
+  --primary: #3182f6;
+  --switch-off: #d1d6db;
+  --btn-bg: #eef1f4;
+  --btn-bg-hover: #e2e6ea;
+
+  /* 강조색 (숫자·상태) */
+  --accent-blue: #3182f6;
+  --accent-green: #06c755;
+  --accent-green-deep: #06873e;
+  --accent-purple: #6e3eff;
+  --accent-red: #f04452;
+  --accent-red-deep: #d63a46;
+
+  /* 연한 배경 톤 (배너·태그·카드) */
+  --tint-blue-bg: #eff6ff;
+  --tint-blue-border: #bfdbfe;
+  --tint-blue-text: #1d4ed8;
+  --tint-green-bg: #e6f9f0;
+  --tint-green-border: #b7e8c8;
+  --tint-green-text: #06873e;
+  --tint-purple-bg: #faf5ff;
+  --tint-purple-border: #e9d5ff;
+  --tint-purple-text: #5b2bd6;
+  --tint-amber-bg: #fef3c7;
+  --tint-amber-border: #fcd34d;
+  --tint-amber-text: #92400e;
+  --tint-red-bg: #fef2f2;
+  --tint-red-border: #fecaca;
+  --tint-red-text: #b91c1c;
+  --tint-indigo-bg: #eef2ff;
+  --tint-indigo-border: #c7d2fe;
+  --tint-indigo-text: #4338ca;
+
+  /* 공휴일 */
   --holiday-bg: #fffbeb;
   --holiday-border: #fde68a;
   --holiday-date: #92400e;
   --holiday-name-bg: #fef3c7;
   --holiday-name: #b45309;
-  --no-holiday: #8b95a1;
 }
 
 :root.theme-dark {
@@ -32,21 +75,56 @@
   --card-bg: #161b22;
   --card-border: #21262d;
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --section-title: #f0f6fc;
-  --label: #8b949e;
+  --elevated: #161b22;
+  --surface-soft: #161b22;
+  --surface-muted: #21262d;
+  --hairline: #21262d;
+
   --text: #f0f6fc;
   --text-soft: #c9d1d9;
-  --hairline: #21262d;
-  --surface-soft: #161b22;
-  --line-green: #2ea44f;
-  --line-green-soft: #0a2e1c;
-  --line-green-text: #56d364;
+  --label: #8b949e;
+  --hint: #8b949e;
+
+  --input-bg: #0d1117;
+  --input-border: #21262d;
+  --input-border-hover: #30363d;
+  --input-text: #f0f6fc;
+  --primary: #1f6feb;
+  --switch-off: #30363d;
+  --btn-bg: rgba(255, 255, 255, 0.08);
+  --btn-bg-hover: rgba(255, 255, 255, 0.14);
+
+  --accent-blue: #58a6ff;
+  --accent-green: #56d364;
+  --accent-green-deep: #56d364;
+  --accent-purple: #d2a8ff;
+  --accent-red: #ff7b72;
+  --accent-red-deep: #ff7b72;
+
+  --tint-blue-bg: #0d1f3a;
+  --tint-blue-border: #1f3a68;
+  --tint-blue-text: #79b8ff;
+  --tint-green-bg: #0a2e1c;
+  --tint-green-border: #155f3a;
+  --tint-green-text: #56d364;
+  --tint-purple-bg: #1d1638;
+  --tint-purple-border: #3d2c63;
+  --tint-purple-text: #c4b5fd;
+  --tint-amber-bg: #2a1f04;
+  --tint-amber-border: #4a3a08;
+  --tint-amber-text: #fcd34d;
+  --tint-red-bg: #2d0f0f;
+  --tint-red-border: #6e1414;
+  --tint-red-text: #ff7b72;
+  --tint-indigo-bg: #161335;
+  --tint-indigo-border: #3730a3;
+  --tint-indigo-text: #a5b4fc;
+
   --holiday-bg: #1f1b07;
   --holiday-border: #4a3a08;
   --holiday-date: #fbbf24;
   --holiday-name-bg: #2a1f04;
   --holiday-name: #fcd34d;
-  --no-holiday: #6b7280;
 }
 
 html {
@@ -77,21 +155,21 @@ body {
 .section-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--section-title);
+  color: var(--text);
   margin: 0 0 20px;
   letter-spacing: -0.02em;
 }
 
-/* 공용 select. 컴포넌트 여러 곳에서 같은 모양의 드롭다운을 쓴다 */
+/* 공용 select. 화살표 아이콘은 currentColor 를 못 쓰므로 라이트/다크 두 벌 */
 .select-field {
   height: 36px;
   padding: 0 32px 0 12px;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--input-border);
   border-radius: 10px;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #0f172a;
-  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center;
+  color: var(--input-text);
+  background: var(--input-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center;
   appearance: none;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -105,16 +183,13 @@ body {
 }
 .select-field:focus-visible {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .select-field:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 .theme-dark .select-field {
-  background-color: #0d1117;
-  border-color: #21262d;
-  color: #f0f6fc;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
 }
