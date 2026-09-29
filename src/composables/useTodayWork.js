@@ -11,6 +11,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const { 오늘금요일여부 } = useToday()
 
   const 오늘재택근무 = ref(false)
+  // 재택은 금요일에만 유효하다. 저장값을 고치는 대신 유효 여부를 파생시킨다
+  const 오늘재택적용 = computed(() => 오늘재택근무.value && 오늘금요일여부.value)
   const 오늘입력모드 = ref('출퇴근')
   const 출근시각 = ref('09:00')
   const 퇴근시각 = ref('18:00')
@@ -41,7 +43,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
 
   // ── 최종값 ─────────────────────────────────────────────────
   const 오늘예상분 = computed(() => {
-    if (오늘재택근무.value) return 0
+    if (오늘재택적용.value) return 0
     if (오늘입력모드.value === '출퇴근') return 출퇴근근무분.value
     return Math.max(0, 시분파싱(오늘예상시간.value).분)
   })
@@ -57,13 +59,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
     }
   })
 
-  // 재택은 금요일에만 고를 수 있다. 자정을 넘겨 금요일이 끝나면 자동 해제
-  watch(오늘금요일여부, (금요일) => {
-    if (!금요일) 오늘재택근무.value = false
-  })
-
   // UI용: 재택 / 출퇴근 / 직접 을 하나의 세그먼트 값으로
-  const 오늘모드 = computed(() => (오늘재택근무.value ? '재택' : 오늘입력모드.value))
+  const 오늘모드 = computed(() => (오늘재택적용.value ? '재택' : 오늘입력모드.value))
   function 오늘모드설정(모드) {
     if (모드 === '재택') {
       오늘재택근무.value = true
@@ -74,7 +71,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   }
 
   return {
-    오늘재택근무, 오늘입력모드, 출근시각, 퇴근시각, 휴게자동, 휴게수동분, 오늘예상시간,
+    오늘재택근무, 오늘재택적용, 오늘입력모드, 출근시각, 퇴근시각, 휴게자동, 휴게수동분, 오늘예상시간,
     자정넘김여부, 총체류분, 휴게분, 오늘예상분,
     오늘모드, 오늘모드설정,
   }

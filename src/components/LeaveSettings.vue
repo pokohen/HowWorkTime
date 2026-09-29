@@ -3,7 +3,7 @@ import { 시분변환 } from '../utils/timeFormat'
 import { useLeave } from '../composables/useLeave'
 import ToggleSection from './common/ToggleSection.vue'
 
-const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차항목, 연차증감 } = useLeave()
+const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차초과여부, 연차항목, 연차증감 } = useLeave()
 </script>
 
 <template>
@@ -44,6 +44,9 @@ const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수�
 
     <template #힌트>
       <template v-if="연차예산분 === 0">현재까지 근무시간을 먼저 입력하면 그 안에서 연차를 지정할 수 있어요.</template>
+      <template v-else-if="연차초과여부">
+        ⚠ 지정한 연차가 근무시간 한도를 넘어 <strong>{{ 시분변환(연차분) }}</strong>만 반영됩니다 · 출근일 −{{ 연차일수환산 }}일
+      </template>
       <template v-else-if="연차여부">
         <template v-if="연차분 > 0">지정 <strong>{{ 시분변환(연차분) }}</strong> · 출근일 −{{ 연차일수환산 }}일 · </template>남은 한도 {{ 시분변환(연차잔여분) }} / {{ 시분변환(연차예산분) }}
       </template>

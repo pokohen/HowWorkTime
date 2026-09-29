@@ -1,6 +1,6 @@
 import { 연도공휴일 } from './holidays'
 import { 두자리 } from './timeFormat'
-import { 급여기준일 } from '../constants'
+import { 급여기준일, 재택요일 } from '../constants'
 
 /** 해당 월의 마지막 날짜 (28~31) */
 export function 월말일수(연도, 월) {
@@ -82,7 +82,7 @@ export function 남은금요일수(연도, 월, 시작일 = 1, 오늘 = new Date
   const 공휴일셋 = 연도공휴일(연도)
   return 남은날수(
     연도, 월, 시작일, 오늘,
-    (날짜) => 날짜.getDay() === 5 && !공휴일셋.has(날짜키(날짜)),
+    (날짜) => 날짜.getDay() === 재택요일 && !공휴일셋.has(날짜키(날짜)),
   )
 }
 

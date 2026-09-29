@@ -15,9 +15,14 @@ export function 모듈상태(hot, 정의) {
   const 스코프 = effectScope(true)
   const 정리목록 = []
   const 상태 = 스코프.run(() => 정의((fn) => 정리목록.push(fn)))
-  hot?.dispose(() => {
-    스코프.stop()
-    정리목록.forEach((fn) => fn())
-  })
+  if (hot) {
+    hot.dispose(() => {
+      스코프.stop()
+      정리목록.forEach((fn) => fn())
+    })
+    // 스스로 accept 해야 Vite 가 이 모듈의 dispose 를 호출한다.
+    // 곧바로 invalidate 해서 새 상태를 쓰는 컴포넌트까지 갱신을 전파한다.
+    hot.accept(() => hot.invalidate())
+  }
   return 상태
 }

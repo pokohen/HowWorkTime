@@ -8,7 +8,7 @@ import ClockField from './common/ClockField.vue'
 
 const { 오늘금요일여부 } = useToday()
 const {
-  오늘재택근무, 오늘입력모드, 출근시각, 퇴근시각, 휴게자동, 휴게수동분, 오늘예상시간,
+  오늘재택근무, 오늘재택적용, 오늘입력모드, 출근시각, 퇴근시각, 휴게자동, 휴게수동분, 오늘예상시간,
   자정넘김여부, 총체류분, 휴게분, 오늘예상분,
   오늘모드, 오늘모드설정,
 } = useTodayWork()
@@ -29,7 +29,7 @@ const 휴게선택지 = [
 </script>
 
 <template>
-  <div class="today-input">
+  <div>
     <div class="today-header">
       <label>오늘 예상 근무시간</label>
       <div class="mode-switch" role="tablist" aria-label="입력 방식">
@@ -46,7 +46,7 @@ const 휴게선택지 = [
       </div>
     </div>
 
-    <div v-if="오늘재택근무" class="wfh-active-card">
+    <div v-if="오늘재택적용" class="wfh-active-card">
       <span class="wfh-active-icon">🏠</span>
       <div class="wfh-active-body">
         <p class="wfh-active-title">오늘 재택근무 적용됨 · <strong>{{ 시분변환(하루근무분) }}</strong></p>
@@ -87,7 +87,7 @@ const 휴게선택지 = [
           체류 {{ 시분변환(총체류분) }} − 휴게 {{ 시분변환(휴게분) }}
           <template v-if="휴게자동">(자동)</template>
         </span>
-        <span v-if="자정넘김여부" class="midnight-badge" title="퇴근이 출근보다 빠르거나 같음">
+        <span v-if="자정넘김여부" class="midnight-badge" title="퇴근 시각이 출근보다 빨라 다음 날로 계산">
           🌙 자정 넘김
         </span>
       </div>

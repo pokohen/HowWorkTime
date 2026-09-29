@@ -40,7 +40,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 출근남은일 = computed(() =>
     Math.max(0, 남은근무일.value - 재택일수.value - 연차일수환산.value),
   )
-  const 남은의무분 = computed(() => Math.max(0, 의무근로분.value - 반영분.value))
+  const 남은의무원값 = computed(() => 의무근로분.value - 반영분.value) // 음수 허용
+  const 남은의무분 = computed(() => Math.max(0, 남은의무원값.value))
   const 남은최대분 = computed(() => Math.max(0, 최대근로분.value - 반영분.value))
 
   const 일평균 = (남은분) => (출근남은일.value === 0 ? 0 : Math.round(남은분 / 출근남은일.value))
@@ -49,7 +50,6 @@ const 상태 = 모듈상태(import.meta.hot, () => {
 
   // 근무 마일리지: 남은 출근일을 매일 8시간씩 채웠을 때 의무 대비 초과(+)/부족(−)
   const 남은정규분 = computed(() => 출근남은일.value * 하루근무분)
-  const 남은의무원값 = computed(() => 의무근로분.value - 반영분.value) // 음수 허용
   const 마일리지분 = computed(() => 남은정규분.value - 남은의무원값.value)
 
   return {

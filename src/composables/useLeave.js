@@ -1,4 +1,4 @@
-import { ref, computed, watchEffect } from 'vue'
+import { ref, computed } from 'vue'
 import { 연차단위 } from '../constants'
 import { 모듈상태 } from './moduleState'
 import { useWorkInput } from './useWorkInput'
@@ -25,6 +25,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
     연차여부.value ? Math.min(연차분요청.value, 연차예산분.value) : 0,
   )
   const 연차일수환산 = computed(() => 연차분.value / 연차단위.연차)
+  // 근무시간을 줄여 지정한 연차가 한도를 넘으면 자동으로 깎지 않고(입력 중 값이 흔들려도 지정이 지워지지 않도록) 안내만 한다
+  const 연차초과여부 = computed(() => 연차여부.value && 연차분요청.value > 연차예산분.value)
 
   // 스텝퍼 UI에 뿌릴 항목 목록
   const 연차항목 = computed(() =>
@@ -40,23 +42,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
     대상.value = Math.max(0, 개수(대상) + 델타)
   }
 
-  // '현재까지 근무시간'이 줄면 합계가 한도를 넘지 않도록 반반차→반차→연차 순으로 줄인다
-  watchEffect(() => {
-    const 예산 = 연차예산분.value
-    let 연 = 개수(연차일수)
-    let 반 = 개수(반차수)
-    let 반반 = 개수(반반차수)
-    let 합 = 연 * 연차단위.연차 + 반 * 연차단위.반차 + 반반 * 연차단위.반반차
-    while (합 > 예산 && 반반 > 0) { 반반--; 합 -= 연차단위.반반차 }
-    while (합 > 예산 && 반 > 0) { 반--; 합 -= 연차단위.반차 }
-    while (합 > 예산 && 연 > 0) { 연--; 합 -= 연차단위.연차 }
-    if (연 !== 연차일수.value) 연차일수.value = 연
-    if (반 !== 반차수.value) 반차수.value = 반
-    if (반반 !== 반반차수.value) 반반차수.value = 반반
-  })
-
   return {
-    연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차항목,
+    연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차초과여부, 연차항목,
     연차증감,
   }
 })
