@@ -139,7 +139,7 @@ body {
   min-height: 100vh;
   background: var(--bg-app);
   color: var(--text);
-  transition: background 0.2s ease;
+  /* 테마 전환 트랜지션은 두지 않는다: Chrome 에서 var() 배경에 transition 을 걸면 값이 갱신되지 않는 현상이 있었다 */
 }
 
 #app {
