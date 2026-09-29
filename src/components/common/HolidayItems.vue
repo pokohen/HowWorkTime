@@ -1,19 +1,18 @@
 <script setup>
-import { 공휴일이름 } from '../../utils/holidays'
 import { 날짜포맷, 요일명 } from '../../utils/timeFormat'
 
-// "YYYY-MM-DD" 배열을 받아 공휴일 목록으로 표시
+// { 날짜, 이름 } 배열을 받아 공휴일 목록으로 표시
 defineProps({
-  날짜들: { type: Array, required: true },
+  공휴일들: { type: Array, required: true },
   빈안내: { type: String, default: '공휴일이 없습니다.' },
 })
 </script>
 
 <template>
-  <ul v-if="날짜들.length > 0" class="holiday-list">
-    <li v-for="날짜 in 날짜들" :key="날짜" class="holiday-item">
-      <span class="holiday-date">{{ 날짜포맷(날짜) }} ({{ 요일명(날짜) }})</span>
-      <span class="holiday-name">{{ 공휴일이름(날짜) }}</span>
+  <ul v-if="공휴일들.length > 0" class="holiday-list">
+    <li v-for="항목 in 공휴일들" :key="항목.날짜" class="holiday-item">
+      <span class="holiday-date">{{ 날짜포맷(항목.날짜) }} ({{ 요일명(항목.날짜) }})</span>
+      <span class="holiday-name">{{ 항목.이름 }}</span>
     </li>
   </ul>
   <p v-else class="no-holiday">{{ 빈안내 }}</p>

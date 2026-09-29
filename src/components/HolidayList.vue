@@ -8,6 +8,6 @@ const { 선택월표시, 이달공휴일 } = useMonth()
 
 <template>
   <CardSection :제목="`🗓 ${선택월표시} 공휴일`">
-    <HolidayItems :날짜들="이달공휴일" 빈안내="이 달에는 공휴일이 없습니다." />
+    <HolidayItems :공휴일들="이달공휴일" 빈안내="이 달에는 공휴일이 없습니다." />
   </CardSection>
 </template>

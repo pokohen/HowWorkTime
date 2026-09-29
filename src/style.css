@@ -6,8 +6,7 @@
   -moz-osx-font-smoothing: grayscale;
   font-family: 'Noto Sans KR', 'Pretendard', system-ui, sans-serif;
 
-  /* 바탕·카드 */
-  --bg-app: #f7f8fa;
+  /* 바탕·카드 (--bg-app 은 index.html 인라인 스타일에서 정의) */
   --card-bg: #ffffff;
   --card-border: #ebedf0;
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -76,7 +75,6 @@
 
 :root.theme-dark {
   color-scheme: dark;
-  --bg-app: #0d1117;
   --card-bg: #161b22;
   --card-border: #21262d;
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);

@@ -6,10 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <!-- 브라우저 툴바 색. 초기값은 아래 스크립트가, 이후에는 useTheme 가 --bg-app 값으로 갱신한다 -->
-    <meta name="theme-color" content="#f7f8fa" />
+    <meta name="theme-color" content="%THEME_BG_LIGHT%" />
+    <!-- 앱 배경 토큰. 값은 vite.config.js 의 THEME_BG_* 에서 주입되며 style.css 는 이 변수를 참조만 한다 -->
     <style>
-      html { background: #f7f8fa; }
-      html.theme-dark { background: #0d1117; }
+      :root { --bg-app: %THEME_BG_LIGHT%; }
+      :root.theme-dark { --bg-app: %THEME_BG_DARK%; }
+      html { background: var(--bg-app); }
     </style>
     <!-- 첫 렌더 전에 테마 클래스를 붙여 깜빡임을 막는다. 저장 키 플레이스홀더는 vite.config.js 의 define(THEME_KEY) 값으로 치환된다. -->
     <script>
@@ -19,7 +21,7 @@
           var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
           var theme = saved === 'light' || saved === 'dark' ? saved : (prefersDark ? 'dark' : 'light');
           document.documentElement.classList.add('theme-' + theme);
-          document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#0d1117' : '#f7f8fa';
+          document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '%THEME_BG_DARK%' : '%THEME_BG_LIGHT%';
         } catch (e) {}
       })();
     </script>

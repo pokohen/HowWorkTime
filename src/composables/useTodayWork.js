@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { 시분파싱, 시각파싱 } from '../utils/timeFormat'
 import { 모듈상태 } from './moduleState'
 import { useToday } from './useToday'
@@ -8,11 +8,13 @@ import { useToday } from './useToday'
 //  - 출퇴근: 출근·퇴근 시각과 휴게시간으로 계산
 //  - 직접: "h:mm" 문자열 입력
 const 상태 = 모듈상태(import.meta.hot, () => {
-  const { 오늘금요일여부 } = useToday()
+  const { 오늘, 오늘금요일여부 } = useToday()
 
   const 오늘재택근무 = ref(false)
   // 재택은 금요일에만 유효하다. 저장값을 고치는 대신 유효 여부를 파생시킨다
   const 오늘재택적용 = computed(() => 오늘재택근무.value && 오늘금요일여부.value)
+  // 재택은 '오늘' 하루에 대한 선택이므로 날짜가 바뀌면 초기화 (다음 금요일에 저절로 켜지지 않도록)
+  watch(오늘, () => { 오늘재택근무.value = false })
   const 오늘입력모드 = ref('출퇴근')
   const 출근시각 = ref('09:00')
   const 퇴근시각 = ref('18:00')

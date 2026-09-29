@@ -40,6 +40,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 출근남은일 = computed(() =>
     Math.max(0, 남은근무일.value - 재택일수.value - 연차일수환산.value),
   )
+  // 재택·연차로 출근일이 남은 근무일보다 줄었는지 (부제·안내 문구 분기용)
+  const 출근조정있음 = computed(() => 재택일수.value > 0 || 연차일수환산.value > 0)
   const 남은의무원값 = computed(() => 의무근로분.value - 반영분.value) // 음수 허용
   const 남은의무분 = computed(() => Math.max(0, 남은의무원값.value))
   const 남은최대분 = computed(() => Math.max(0, 최대근로분.value - 반영분.value))
@@ -55,7 +57,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   return {
     반영분, 오늘반영분,
     달성률, 의무달성여부, 초과분, 의무대비분, 최대대비분, 진행바색상,
-    출근남은일, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
+    출근남은일, 출근조정있음, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
     남은정규분, 남은의무원값, 마일리지분,
   }
 })

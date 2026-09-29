@@ -18,7 +18,7 @@ const { 다음달최대분 } = useWorkInput()
       <StatCard 라벨="최대 근로시간">{{ 시분변환(다음달최대분) }}</StatCard>
     </div>
     <h3 class="next-subtitle">공휴일</h3>
-    <HolidayItems :날짜들="다음달공휴일" 빈안내="다음 달에는 공휴일이 없습니다." />
+    <HolidayItems :공휴일들="다음달공휴일" 빈안내="다음 달에는 공휴일이 없습니다." />
   </CardSection>
 </template>
 

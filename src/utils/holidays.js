@@ -23,17 +23,9 @@ export function 공휴일데이터여부(연도) {
   return Array.isArray(항목들) && 항목들.length > 0
 }
 
+/** 해당 월의 공휴일 목록. 각 항목은 { 날짜: 'YYYY-MM-DD', 이름 } */
 export function 월공휴일(연도, 월) {
   const 항목들 = 연도별맵.get(연도) ?? []
   const 접두사 = `${연도}-${두자리(월)}`
-  return 항목들
-    .filter((항목) => 항목.날짜.startsWith(접두사))
-    .map((항목) => 항목.날짜)
-}
-
-export function 공휴일이름(날짜문자열) {
-  const 연도 = Number(날짜문자열.slice(0, 4))
-  const 항목들 = 연도별맵.get(연도) ?? []
-  const 매칭 = 항목들.find((항목) => 항목.날짜 === 날짜문자열)
-  return 매칭?.이름 ?? '공휴일'
+  return 항목들.filter((항목) => 항목.날짜.startsWith(접두사))
 }

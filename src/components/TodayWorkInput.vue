@@ -29,9 +29,9 @@ const 휴게선택지 = [
 </script>
 
 <template>
-  <div>
+  <div role="group" aria-labelledby="오늘예상라벨">
     <div class="today-header">
-      <label for="오늘예상">오늘 예상 근무시간</label>
+      <label id="오늘예상라벨" :for="오늘모드 === '직접' ? '오늘예상' : undefined">오늘 예상 근무시간</label>
       <div class="mode-switch" role="tablist" aria-label="입력 방식">
         <template v-for="모드 in 입력모드들" :key="모드.키">
           <button
