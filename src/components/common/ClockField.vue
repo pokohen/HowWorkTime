@@ -13,8 +13,7 @@ defineProps({
   placeholder: String,
 })
 
-const { 테마 } = useTheme()
-const 다크모드 = computed(() => 테마.value === 'dark')
+const { 다크모드 } = useTheme()
 
 // VueDatePicker 는 { hours, minutes } 객체를 쓰므로 문자열과 상호 변환
 const 시각객체 = computed({

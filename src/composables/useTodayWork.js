@@ -1,12 +1,15 @@
 import { ref, computed, watch } from 'vue'
 import { 시분파싱, 시각파싱 } from '../utils/timeFormat'
 import { 모듈상태 } from './moduleState'
+import { useToday } from './useToday'
 
 // 오늘 하루의 예상 근무시간. 세 가지 방식 중 하나로 정한다.
 //  - 재택: 8시간 자동 인정. 누적 근무시간에 이미 포함된 것으로 보고 0으로 계산
 //  - 출퇴근: 출근·퇴근 시각과 휴게시간으로 계산
 //  - 직접: "h:mm" 문자열 입력
 const 상태 = 모듈상태(import.meta.hot, () => {
+  const { 오늘금요일여부 } = useToday()
+
   const 오늘재택근무 = ref(false)
   const 오늘입력모드 = ref('출퇴근')
   const 출근시각 = ref('09:00')
@@ -52,6 +55,11 @@ const 상태 = 모듈상태(import.meta.hot, () => {
     } else {
       오늘예상시간.value = 오늘예상백업.value || '0:00'
     }
+  })
+
+  // 재택은 금요일에만 고를 수 있다. 자정을 넘겨 금요일이 끝나면 자동 해제
+  watch(오늘금요일여부, (금요일) => {
+    if (!금요일) 오늘재택근무.value = false
   })
 
   // UI용: 재택 / 출퇴근 / 직접 을 하나의 세그먼트 값으로

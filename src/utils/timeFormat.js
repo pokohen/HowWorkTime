@@ -16,13 +16,13 @@ export function 시분파싱(문자열) {
   const 정리 = String(문자열).trim()
   if (!정리) return { 분: 0, 유효: true, 비어있음: true }
 
-  const 콜론매칭 = 정리.match(/^(-?\d+):(\d{1,2})$/)
+  const 콜론매칭 = 정리.match(/^(-?)(\d+):(\d{1,2})$/)
   if (콜론매칭) {
-    const 시 = parseInt(콜론매칭[1], 10)
-    const 분 = parseInt(콜론매칭[2], 10)
+    const 부호 = 콜론매칭[1] === '-' ? -1 : 1
+    const 시 = parseInt(콜론매칭[2], 10)
+    const 분 = parseInt(콜론매칭[3], 10)
     if (분 >= 60) return 무효
-    const 합 = 시 < 0 ? 시 * 60 - 분 : 시 * 60 + 분
-    return { 분: 합, 유효: true, 비어있음: false }
+    return { 분: 부호 * (시 * 60 + 분), 유효: true, 비어있음: false }
   }
 
   const 숫자매칭 = 정리.match(/^(-?)(\d+)$/)

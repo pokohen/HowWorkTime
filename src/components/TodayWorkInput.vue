@@ -1,5 +1,6 @@
 <script setup>
 import { 시분변환 } from '../utils/timeFormat'
+import { 하루근무분 } from '../constants'
 import { useToday } from '../composables/useToday'
 import { useTodayWork } from '../composables/useTodayWork'
 import TimeField from './common/TimeField.vue'
@@ -48,9 +49,9 @@ const 휴게선택지 = [
     <div v-if="오늘재택근무" class="wfh-active-card">
       <span class="wfh-active-icon">🏠</span>
       <div class="wfh-active-body">
-        <p class="wfh-active-title">오늘 재택근무 적용됨 · <strong>8:00</strong></p>
+        <p class="wfh-active-title">오늘 재택근무 적용됨 · <strong>{{ 시분변환(하루근무분) }}</strong></p>
         <p class="wfh-active-sub">
-          오늘 근무시간은 <strong>8:00</strong>으로 계산됩니다.
+          오늘 근무시간은 <strong>{{ 시분변환(하루근무분) }}</strong>으로 계산됩니다.
           재택 근무시간은 위 ‘현재까지 근무시간’에 포함해 주세요.
         </p>
       </div>

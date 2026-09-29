@@ -20,6 +20,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
       선택연도.value = 연도
       선택월.value = 월
     }
+    // 연도 목록(현재−1 ~ 현재+2)이 밀리면서 선택연도가 목록 밖으로 나가면 가장자리로 보정
+    선택연도.value = Math.max(연도 - 1, Math.min(연도 + 2, 선택연도.value))
   })
 
   const 연도목록 = computed(() => Array.from({ length: 4 }, (_, i) => 현재연도.value - 1 + i))

@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { 테마저장키 as 저장키 } from '../constants'
 import { 모듈상태 } from './moduleState'
 
@@ -44,7 +44,9 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     try { localStorage.setItem(저장키, 테마.value) } catch { /* 저장 불가 환경 */ }
   }
 
-  return { 테마, 토글 }
+  const 다크모드 = computed(() => 테마.value === 'dark')
+
+  return { 테마, 다크모드, 토글 }
 })
 
 export function useTheme() {

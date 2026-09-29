@@ -9,5 +9,5 @@ export const 급여기준일 = 25
 
 export const 요일이름 = ['일', '월', '화', '수', '목', '금', '토']
 
-/** 테마 localStorage 키. vite.config.js 가 index.html 의 %THEME_KEY% 에도 주입한다. */
-export const 테마저장키 = 'how-work-time:theme'
+/** 테마 localStorage 키. 값은 vite.config.js 의 define 에서 오며 index.html 의 %THEME_KEY% 에도 같은 값이 들어간다. */
+export const 테마저장키 = import.meta.env.THEME_KEY

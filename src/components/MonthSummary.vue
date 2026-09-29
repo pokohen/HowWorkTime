@@ -1,5 +1,6 @@
 <script setup>
 import { 시분변환 } from '../utils/timeFormat'
+import { 하루근무분 } from '../constants'
 import { useMonth } from '../composables/useMonth'
 import { useWorkInput } from '../composables/useWorkInput'
 import StatCard from './common/StatCard.vue'
@@ -19,11 +20,11 @@ const { 최대근로분, 고정연장분 } = useWorkInput()
     </StatCard>
     <StatCard 라벨="의무 근로시간" 아이콘="✅" 배경="green" 크기="lg">
       {{ 시분변환(의무근로분) }}
-      <template #부제>8:00 × {{ 소정근로일 }}일</template>
+      <template #부제>{{ 시분변환(하루근무분) }} × {{ 소정근로일 }}일</template>
     </StatCard>
     <StatCard 라벨="최대 근로시간" 아이콘="⏰" 배경="purple" 크기="lg">
       {{ 시분변환(최대근로분) }}
-      <template #부제>8:00 × {{ 소정근로일 }}일 + {{ 시분변환(고정연장분) }}</template>
+      <template #부제>{{ 시분변환(하루근무분) }} × {{ 소정근로일 }}일 + {{ 시분변환(고정연장분) }}</template>
     </StatCard>
   </section>
 </template>

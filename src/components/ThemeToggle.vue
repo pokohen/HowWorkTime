@@ -1,9 +1,7 @@
 <script setup>
-import { computed } from 'vue'
 import { useTheme } from '../composables/useTheme'
 
-const { 테마, 토글 } = useTheme()
-const 다크모드 = computed(() => 테마.value === 'dark')
+const { 다크모드, 토글 } = useTheme()
 </script>
 
 <template>

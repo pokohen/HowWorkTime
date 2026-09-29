@@ -1,18 +1,15 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { 테마저장키 } from './src/constants.js'
 
-/** index.html 의 첫 렌더 테마 스크립트에 저장 키를 주입해 constants.js 와 한 곳에서 관리한다 */
-function 테마키주입() {
-  return {
-    name: 'theme-key-inject',
-    transformIndexHtml: (html) => html.replaceAll('%THEME_KEY%', 테마저장키),
-  }
-}
+/** 테마 localStorage 키. define 으로 넣어 index.html 의 %THEME_KEY% 와 import.meta.env.THEME_KEY 양쪽에 주입된다 */
+const THEME_KEY = 'how-work-time:theme'
 
 export default defineConfig({
   base: '/HowWorkTime/',
-  plugins: [vue(), 테마키주입()],
+  plugins: [vue()],
+  define: {
+    'import.meta.env.THEME_KEY': JSON.stringify(THEME_KEY),
+  },
   test: {
     setupFiles: ['tests/setup.js'],
   },

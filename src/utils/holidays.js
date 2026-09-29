@@ -1,4 +1,5 @@
 import 공휴일데이터 from '../data/holidays.json'
+import { 두자리 } from './timeFormat'
 
 const 연도별맵 = new Map(
   Object.entries(공휴일데이터).map(([연도, 항목들]) => [Number(연도), 항목들]),
@@ -16,7 +17,7 @@ export function 공휴일데이터여부(연도) {
 
 export function 월공휴일(연도, 월) {
   const 항목들 = 연도별맵.get(연도) ?? []
-  const 접두사 = `${연도}-${String(월).padStart(2, '0')}`
+  const 접두사 = `${연도}-${두자리(월)}`
   return 항목들
     .filter((항목) => 항목.날짜.startsWith(접두사))
     .map((항목) => 항목.날짜)
