@@ -1,20 +1,15 @@
 <script setup>
-import { computed } from 'vue'
-import { VueDatePicker } from '@vuepic/vue-datepicker'
-import '@vuepic/vue-datepicker/dist/main.css'
-import { 시분변환, 시각파싱, 시각조립 } from '../utils/timeFormat'
-import { useTheme } from '../composables/useTheme'
+import { 시분변환 } from '../utils/timeFormat'
 import { useToday } from '../composables/useToday'
 import { useTodayWork } from '../composables/useTodayWork'
 import TimeField from './common/TimeField.vue'
+import ClockField from './common/ClockField.vue'
 
-const { 테마 } = useTheme()
-const 다크모드 = computed(() => 테마.value === 'dark')
 const { 오늘금요일여부 } = useToday()
 const {
   오늘재택근무, 오늘입력모드, 출근시각, 퇴근시각, 휴게자동, 휴게수동분, 오늘예상시간,
   자정넘김여부, 총체류분, 휴게분, 오늘예상분,
-  오늘모드, 오늘모드설정, 출근지금, 퇴근지금,
+  오늘모드, 오늘모드설정,
 } = useTodayWork()
 
 const 입력모드들 = [
@@ -30,22 +25,6 @@ const 휴게선택지 = [
   { 분: 90, 이름: '1시간 30분' },
   { 분: 120, 이름: '2시간' },
 ]
-
-// VueDatePicker 는 { hours, minutes } 객체를 쓰므로 "HH:MM" 문자열과 상호 변환
-function 시각객체(시각ref) {
-  return computed({
-    get: () => {
-      if (!시각ref.value) return null
-      const 분합 = 시각파싱(시각ref.value) ?? 9 * 60
-      return { hours: Math.floor(분합 / 60), minutes: 분합 % 60, seconds: 0 }
-    },
-    set: (값) => {
-      시각ref.value = 값 ? 시각조립(값.hours, 값.minutes) : ''
-    },
-  })
-}
-const 출근객체 = 시각객체(출근시각)
-const 퇴근객체 = 시각객체(퇴근시각)
 </script>
 
 <template>
@@ -79,42 +58,8 @@ const 퇴근객체 = 시각객체(퇴근시각)
 
     <template v-else-if="오늘입력모드 === '출퇴근'">
       <div class="commute-grid">
-        <div class="commute-field">
-          <label>출근</label>
-          <div class="time-input-wrap">
-            <VueDatePicker
-              v-model="출근객체"
-              time-picker
-              :is-24="true"
-              auto-apply
-              :clearable="false"
-              :minutes-increment="5"
-              :minutes-grid-increment="5"
-              :dark="다크모드"
-              placeholder="출근 시각"
-              class="dp-wrap"
-            />
-            <button type="button" class="now-btn" title="현재 시각으로" @click="출근지금">📍 지금</button>
-          </div>
-        </div>
-        <div class="commute-field">
-          <label>퇴근 예상</label>
-          <div class="time-input-wrap">
-            <VueDatePicker
-              v-model="퇴근객체"
-              time-picker
-              :is-24="true"
-              auto-apply
-              :clearable="false"
-              :minutes-increment="5"
-              :minutes-grid-increment="5"
-              :dark="다크모드"
-              placeholder="퇴근 시각"
-              class="dp-wrap"
-            />
-            <button type="button" class="now-btn" title="현재 시각으로" @click="퇴근지금">📍 지금</button>
-          </div>
-        </div>
+        <ClockField v-model="출근시각" 라벨="출근" placeholder="출근 시각" />
+        <ClockField v-model="퇴근시각" 라벨="퇴근 예상" placeholder="퇴근 시각" />
         <div class="commute-field">
           <label for="휴게수동">휴게시간</label>
           <div class="break-row">
@@ -235,25 +180,6 @@ const 퇴근객체 = 시각객체(퇴근시각)
   line-height: 1.55;
 }
 
-.dp-wrap {
-  flex: 1;
-  min-width: 0;
-}
-.dp-wrap :deep(.dp__input) {
-  height: 40px;
-  border-radius: 10px;
-  border: 1.5px solid #e2e8f0;
-  background: #f8fafc;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #0f172a;
-  padding-left: 36px;
-}
-.dp-wrap :deep(.dp__input:focus),
-.dp-wrap :deep(.dp__input_focus) {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-}
 .commute-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -270,28 +196,6 @@ const 퇴근객체 = 시각객체(퇴근시각)
   color: var(--label);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-.time-input-wrap {
-  display: flex;
-  gap: 6px;
-}
-.now-btn {
-  appearance: none;
-  border: 1.5px solid #e2e8f0;
-  background: #fff;
-  border-radius: 10px;
-  padding: 0 10px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #475569;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-.now-btn:hover {
-  background: #eff6ff;
-  border-color: #93c5fd;
-  color: #1d4ed8;
 }
 .break-row {
   display: flex;
@@ -368,21 +272,6 @@ const 퇴근객체 = 시각객체(퇴근시각)
 .theme-dark .mode-switch button { color: #8b949e; }
 .theme-dark .mode-switch button.active {
   background: #161b22;
-  color: #56d364;
-}
-.theme-dark .dp-wrap :deep(.dp__input) {
-  background: #0d1117;
-  border-color: #21262d;
-  color: #f0f6fc;
-}
-.theme-dark .now-btn {
-  background: #161b22;
-  border-color: #21262d;
-  color: #c9d1d9;
-}
-.theme-dark .now-btn:hover {
-  background: #0a2e1c;
-  border-color: #2ea44f;
   color: #56d364;
 }
 .theme-dark .auto-toggle { color: #c9d1d9; }

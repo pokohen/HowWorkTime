@@ -20,6 +20,7 @@
 pnpm install
 pnpm dev
 pnpm build
+pnpm test
 ```
 
 공휴일 데이터는 공공데이터포털 특일 정보 API에서 가져옵니다.
@@ -57,5 +58,7 @@ src/
     RemoteWorkSettings, LeaveSettings, TodayWorkInput,
     ProgressStatus, WorkResult, HolidayList, NextMonthPreview
 ```
+
+테스트는 `tests/`에 있으며 순수 함수인 `utils/`를 대상으로 합니다. CI에서 빌드 전에 실행됩니다.
 
 네이밍 규칙: 파일·컴포넌트·composable 이름은 영어, 변수·함수·prop 이름은 한글.
