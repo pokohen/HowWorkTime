@@ -8,7 +8,7 @@ import ClockField from './common/ClockField.vue'
 
 const { 오늘금요일여부 } = useToday()
 const {
-  오늘재택근무, 오늘재택적용, 오늘입력모드, 출근시각, 퇴근시각, 휴게자동, 휴게수동분, 오늘예상시간,
+  오늘재택적용, 출근시각, 퇴근시각, 휴게자동, 휴게수동분, 오늘예상시간,
   자정넘김여부, 총체류분, 휴게분, 오늘예상분,
   오늘모드, 오늘모드설정,
 } = useTodayWork()
@@ -31,7 +31,7 @@ const 휴게선택지 = [
 <template>
   <div>
     <div class="today-header">
-      <label>오늘 예상 근무시간</label>
+      <label for="오늘예상">오늘 예상 근무시간</label>
       <div class="mode-switch" role="tablist" aria-label="입력 방식">
         <template v-for="모드 in 입력모드들" :key="모드.키">
           <button
@@ -57,7 +57,7 @@ const 휴게선택지 = [
       </div>
     </div>
 
-    <template v-else-if="오늘입력모드 === '출퇴근'">
+    <template v-else-if="오늘모드 === '출퇴근'">
       <div class="commute-grid">
         <ClockField v-model="출근시각" 라벨="출근" placeholder="출근 시각" />
         <ClockField v-model="퇴근시각" 라벨="퇴근 예상" placeholder="퇴근 시각" />

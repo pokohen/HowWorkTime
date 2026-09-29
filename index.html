@@ -5,16 +5,8 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <meta
-      name="theme-color"
-      content="#f1f5f9"
-      media="(prefers-color-scheme: light)"
-    />
-    <meta
-      name="theme-color"
-      content="#0f172a"
-      media="(prefers-color-scheme: dark)"
-    />
+    <!-- 브라우저 툴바 색. 초기값은 아래 스크립트가, 이후에는 useTheme 가 --bg-app 값으로 갱신한다 -->
+    <meta name="theme-color" content="#f7f8fa" />
     <style>
       html { background: #f7f8fa; }
       html.theme-dark { background: #0d1117; }
@@ -27,6 +19,7 @@
           var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
           var theme = saved === 'light' || saved === 'dark' ? saved : (prefersDark ? 'dark' : 'light');
           document.documentElement.classList.add('theme-' + theme);
+          document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#0d1117' : '#f7f8fa';
         } catch (e) {}
       })();
     </script>

@@ -20,6 +20,9 @@ function 적용(값) {
   if (typeof document === 'undefined') return
   document.documentElement.classList.toggle('theme-dark', 값 === 'dark')
   document.documentElement.classList.toggle('theme-light', 값 === 'light')
+  // 브라우저 툴바 색을 앱 배경 토큰과 맞춘다
+  const 메타 = document.querySelector('meta[name="theme-color"]')
+  if (메타) 메타.content = getComputedStyle(document.documentElement).getPropertyValue('--bg-app').trim()
 }
 
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {

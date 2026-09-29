@@ -13,12 +13,14 @@ const { 입력분, 최대근로분 } = useWorkInput()
 const { 재택일수 } = useRemoteWork()
 const { 연차일수환산 } = useLeave()
 const {
-  반영분, 오늘반영분, 달성률, 의무달성여부, 의무대비차, 최대대비차,
+  반영분, 오늘반영분, 달성률, 의무달성여부, 의무대비분, 최대대비분,
   출근남은일, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
   남은정규분, 남은의무원값, 마일리지분,
 } = useWorkResult()
 
 const 부호 = (n) => (n >= 0 ? '+' : '−')
+/** 부호 + 절대값 시:분 (예: +5:00, −3:30) */
+const 부호시분 = (n) => `${부호(n)}${시분변환(Math.abs(n))}`
 </script>
 
 <template>
@@ -39,11 +41,11 @@ const 부호 = (n) => (n >= 0 ? '+' : '−')
           <template #부제>달성률 {{ 달성률 }}%</template>
         </StatCard>
         <StatCard 라벨="의무 대비" :강조="의무달성여부 ? 'green' : 'red'">
-          {{ 부호(반영분 - 의무근로분) }}{{ 시분변환(의무대비차) }}
+          {{ 부호시분(의무대비분) }}
           <template #부제>의무 {{ 시분변환(의무근로분) }} {{ 의무달성여부 ? '초과 달성' : '미달' }}</template>
         </StatCard>
         <StatCard 라벨="최대 대비" 강조="purple">
-          {{ 부호(반영분 - 최대근로분) }}{{ 시분변환(최대대비차) }}
+          {{ 부호시분(최대대비분) }}
           <template #부제>최대 {{ 시분변환(최대근로분) }}</template>
         </StatCard>
       </div>
@@ -93,7 +95,7 @@ const 부호 = (n) => (n >= 0 ? '+' : '−')
             class="mileage-card"
             :class="마일리지분 >= 0 ? 'is-plus' : 'is-minus'"
           >
-            {{ 부호(마일리지분) }}{{ 시분변환(Math.abs(마일리지분)) }}
+            {{ 부호시분(마일리지분) }}
             <template #부제>정규시간 대비 {{ 마일리지분 >= 0 ? '초과' : '부족' }}</template>
           </StatCard>
           <StatCard 라벨="의무" 라벨필 라벨클래스="pill-mandatory">
@@ -108,8 +110,10 @@ const 부호 = (n) => (n >= 0 ? '+' : '−')
         <div class="mileage-calc">
           <div>출근 {{ 출근남은일 }}일 × 8h = <b>정규 {{ 시분변환(남은정규분) }}</b></div>
           <div>
-            정규 {{ 시분변환(남은정규분) }} − 남은 의무 {{ 시분변환(남은의무원값) }} =
-            <strong :class="마일리지분 >= 0 ? 'is-plus' : 'is-minus'">{{ 부호(마일리지분) }}{{ 시분변환(Math.abs(마일리지분)) }}</strong>
+            정규 {{ 시분변환(남은정규분) }}
+            <template v-if="남은의무원값 >= 0">− 남은 의무 {{ 시분변환(남은의무원값) }}</template>
+            <template v-else>+ 이미 초과한 {{ 시분변환(-남은의무원값) }}</template>
+            = <strong :class="마일리지분 >= 0 ? 'is-plus' : 'is-minus'">{{ 부호시분(마일리지분) }}</strong>
           </div>
         </div>
       </div>

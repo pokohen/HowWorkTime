@@ -1,9 +1,11 @@
 <script setup>
 import { 시분변환 } from '../utils/timeFormat'
+import { useWorkInput } from '../composables/useWorkInput'
 import { useLeave } from '../composables/useLeave'
 import ToggleSection from './common/ToggleSection.vue'
 
-const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차초과여부, 연차항목, 연차증감 } = useLeave()
+const { 입력분: 연차예산분 } = useWorkInput() // 현재까지 근무시간 = 연차 지정 한도
+const { 연차여부, 연차분, 연차잔여분, 연차일수환산, 연차초과여부, 연차항목, 연차증감 } = useLeave()
 </script>
 
 <template>

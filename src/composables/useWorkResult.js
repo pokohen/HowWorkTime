@@ -25,8 +25,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   })
   const 의무달성여부 = computed(() => 반영분.value >= 의무근로분.value)
   const 초과분 = computed(() => Math.max(0, 반영분.value - 의무근로분.value))
-  const 의무대비차 = computed(() => Math.abs(반영분.value - 의무근로분.value))
-  const 최대대비차 = computed(() => Math.abs(반영분.value - 최대근로분.value))
+  const 의무대비분 = computed(() => 반영분.value - 의무근로분.value) // +: 초과, −: 미달
+  const 최대대비분 = computed(() => 반영분.value - 최대근로분.value)
   // 인라인 style 에 그대로 쓰는 CSS 토큰. 테마에 따라 값이 바뀐다.
   const 진행바색상 = computed(() => {
     if (달성률.value >= 100) return 'var(--accent-green)'
@@ -54,7 +54,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
 
   return {
     반영분, 오늘반영분,
-    달성률, 의무달성여부, 초과분, 의무대비차, 최대대비차, 진행바색상,
+    달성률, 의무달성여부, 초과분, 의무대비분, 최대대비분, 진행바색상,
     출근남은일, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
     남은정규분, 남은의무원값, 마일리지분,
   }

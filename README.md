@@ -52,7 +52,7 @@ src/
     useWorkResult.js      반영분, 달성률, 남은 시간, 일평균, 마일리지
     useTheme.js           다크 모드
   components/
-    common/               CardSection, StatCard, ToggleSection, TimeField, HolidayItems
+    common/               CardSection, StatCard, ToggleSection, TimeField, ClockField, HolidayItems
     WorkTimeCalculator    레이아웃 루트
     AppHeader, ThemeToggle, MonthSelector, MonthSummary, WorkSettings,
     RemoteWorkSettings, LeaveSettings, TodayWorkInput,

@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: light dark; /* 클래스가 붙기 전 기본값. 아래에서 테마별로 좁힌다 */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -70,7 +70,12 @@
   --holiday-name: #b45309;
 }
 
+:root.theme-light {
+  color-scheme: light;
+}
+
 :root.theme-dark {
+  color-scheme: dark;
   --bg-app: #0d1117;
   --card-bg: #161b22;
   --card-border: #21262d;
