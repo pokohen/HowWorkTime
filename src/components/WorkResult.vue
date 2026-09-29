@@ -2,7 +2,6 @@
 import { 시분변환 } from '../utils/timeFormat'
 import { useMonth } from '../composables/useMonth'
 import { useWorkInput } from '../composables/useWorkInput'
-import { useTodayWork } from '../composables/useTodayWork'
 import { useRemoteWork } from '../composables/useRemoteWork'
 import { useLeave } from '../composables/useLeave'
 import { useWorkResult } from '../composables/useWorkResult'
@@ -11,11 +10,10 @@ import StatCard from './common/StatCard.vue'
 
 const { 지난달여부, 의무근로분, 남은근무일 } = useMonth()
 const { 입력분, 최대근로분 } = useWorkInput()
-const { 오늘예상분 } = useTodayWork()
 const { 재택일수 } = useRemoteWork()
 const { 연차일수환산 } = useLeave()
 const {
-  반영분, 달성률, 의무달성여부, 의무대비차, 최대대비차,
+  반영분, 오늘반영분, 달성률, 의무달성여부, 의무대비차, 최대대비차,
   출근남은일, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
   남은정규분, 남은의무원값, 마일리지분,
 } = useWorkResult()
@@ -71,14 +69,14 @@ const 부호 = (n) => (n >= 0 ? '+' : '−')
           <template v-if="반영분 > 0">{{ 시분변환(남은의무분) }}</template>
           <span v-else class="placeholder-dash">—</span>
           <template #부제>
-            의무 {{ 시분변환(의무근로분) }}<template v-if="반영분 > 0"> − 누적 {{ 시분변환(입력분) }}<template v-if="오늘예상분 > 0"> − 오늘 {{ 시분변환(오늘예상분) }}</template></template>
+            의무 {{ 시분변환(의무근로분) }}<template v-if="반영분 > 0"> − 누적 {{ 시분변환(입력분) }}<template v-if="오늘반영분 > 0"> − 오늘 {{ 시분변환(오늘반영분) }}</template></template>
           </template>
         </StatCard>
         <StatCard 라벨="남은 최대 근무시간" 강조="purple">
           <template v-if="반영분 > 0">{{ 시분변환(남은최대분) }}</template>
           <span v-else class="placeholder-dash">—</span>
           <template #부제>
-            최대 {{ 시분변환(최대근로분) }}<template v-if="반영분 > 0"> − 누적 {{ 시분변환(입력분) }}<template v-if="오늘예상분 > 0"> − 오늘 {{ 시분변환(오늘예상분) }}</template></template>
+            최대 {{ 시분변환(최대근로분) }}<template v-if="반영분 > 0"> − 누적 {{ 시분변환(입력분) }}<template v-if="오늘반영분 > 0"> − 오늘 {{ 시분변환(오늘반영분) }}</template></template>
           </template>
         </StatCard>
       </div>

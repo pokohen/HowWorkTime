@@ -2,7 +2,6 @@
 import { 시분변환 } from '../utils/timeFormat'
 import { useMonth } from '../composables/useMonth'
 import { useWorkInput } from '../composables/useWorkInput'
-import { useTodayWork } from '../composables/useTodayWork'
 import { useLeave } from '../composables/useLeave'
 import { useWorkResult } from '../composables/useWorkResult'
 import CardSection from './common/CardSection.vue'
@@ -11,11 +10,10 @@ import RemoteWorkSettings from './RemoteWorkSettings.vue'
 import LeaveSettings from './LeaveSettings.vue'
 import TodayWorkInput from './TodayWorkInput.vue'
 
-const { 지난달여부 } = useMonth()
+const { 지난달여부, 이번달여부 } = useMonth()
 const { 고정연장시간, 입력근무시간, 입력분 } = useWorkInput()
-const { 오늘예상분 } = useTodayWork()
 const { 연차분 } = useLeave()
-const { 반영분 } = useWorkResult()
+const { 반영분, 오늘반영분 } = useWorkResult()
 </script>
 
 <template>
@@ -24,7 +22,7 @@ const { 반영분 } = useWorkResult()
       <span class="reflected-label">총 반영 시간</span>
       <span class="reflected-value">{{ 시분변환(반영분) }}</span>
       <span class="reflected-formula">
-        누적 {{ 시분변환(입력분) }}<template v-if="연차분 > 0"> (연차 {{ 시분변환(연차분) }} 포함)</template><template v-if="오늘예상분 > 0"> + 오늘 {{ 시분변환(오늘예상분) }}</template>
+        누적 {{ 시분변환(입력분) }}<template v-if="연차분 > 0"> (연차 {{ 시분변환(연차분) }} 포함)</template><template v-if="오늘반영분 > 0"> + 오늘 {{ 시분변환(오늘반영분) }}</template>
       </span>
     </div>
 
@@ -46,7 +44,7 @@ const { 반영분 } = useWorkResult()
 
       <RemoteWorkSettings v-if="!지난달여부" class="full-row" />
       <LeaveSettings class="full-row" />
-      <TodayWorkInput class="full-row" />
+      <TodayWorkInput v-if="이번달여부" class="full-row" />
     </div>
   </CardSection>
 </template>

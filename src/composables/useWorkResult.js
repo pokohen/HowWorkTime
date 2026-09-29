@@ -6,14 +6,15 @@ import { useTodayWork } from './useTodayWork'
 import { useRemoteWork } from './useRemoteWork'
 import { useLeave } from './useLeave'
 
-const { 의무근로분, 남은근무일 } = useMonth()
+const { 의무근로분, 남은근무일, 이번달여부 } = useMonth()
 const { 입력분, 최대근로분 } = useWorkInput()
 const { 오늘예상분 } = useTodayWork()
 const { 재택일수 } = useRemoteWork()
 const { 연차일수환산 } = useLeave()
 
-// 계산에 반영되는 총 근무시간 = 누적 입력 + 오늘 예상
-const 반영분 = computed(() => 입력분.value + 오늘예상분.value)
+// 계산에 반영되는 총 근무시간 = 누적 입력 + 오늘 예상 (오늘은 이번 달에만 속한다)
+const 오늘반영분 = computed(() => (이번달여부.value ? 오늘예상분.value : 0))
+const 반영분 = computed(() => 입력분.value + 오늘반영분.value)
 
 // ── 달성 현황 ──────────────────────────────────────────────
 const 달성률 = computed(() => {
@@ -50,7 +51,7 @@ const 마일리지분 = computed(() => 남은정규분.value - 남은의무원�
 
 export function useWorkResult() {
   return {
-    반영분,
+    반영분, 오늘반영분,
     달성률, 의무달성여부, 초과분, 의무대비차, 최대대비차, 진행바색상,
     출근남은일, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
     남은정규분, 남은의무원값, 마일리지분,
