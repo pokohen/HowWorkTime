@@ -160,6 +160,15 @@ body {
   letter-spacing: -0.02em;
 }
 
+/* 입력 필드 위 작은 대문자 캡션 */
+.field-caption {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--label);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 /* 공용 select. 화살표 아이콘은 currentColor 를 못 쓰므로 라이트/다크 두 벌 */
 .select-field {
   height: 36px;

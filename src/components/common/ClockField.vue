@@ -30,7 +30,7 @@ const 시각객체 = computed({
 
 <template>
   <div class="clock-field">
-    <label>{{ 라벨 }}</label>
+    <label class="field-caption">{{ 라벨 }}</label>
     <div class="clock-row">
       <VueDatePicker
         v-model="시각객체"
@@ -54,13 +54,6 @@ const 시각객체 = computed({
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-.clock-field label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--label);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 .clock-row {
   display: flex;

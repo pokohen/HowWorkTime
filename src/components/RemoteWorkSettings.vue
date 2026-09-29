@@ -4,7 +4,7 @@ import { useRemoteWork } from '../composables/useRemoteWork'
 import ToggleSection from './common/ToggleSection.vue'
 
 const { 남은금요일 } = useMonth()
-const { 재택근무여부, 재택근무일수, 재택일수 } = useRemoteWork()
+const { 재택근무여부, 재택선택일수, 재택일수 } = useRemoteWork()
 </script>
 
 <template>
@@ -15,7 +15,7 @@ const { 재택근무여부, 재택근무일수, 재택일수 } = useRemoteWork()
     인라인
   >
     <label for="재택일수" class="field-label">재택 일수</label>
-    <select id="재택일수" v-model.number="재택근무일수" class="select-field">
+    <select id="재택일수" v-model.number="재택선택일수" class="select-field">
       <option v-for="n in 남은금요일 + 1" :key="n - 1" :value="n - 1">{{ n - 1 }}일</option>
     </select>
     <span class="setting-hint">

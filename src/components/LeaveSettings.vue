@@ -34,7 +34,7 @@ const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수�
           <button
             type="button"
             class="annual-btn"
-            :disabled="연차잔여분 < 항목.단위"
+            :disabled="!항목.증가가능"
             :aria-label="`${항목.키} 늘리기`"
             @click="연차증감(항목.키, 1)"
           >+</button>

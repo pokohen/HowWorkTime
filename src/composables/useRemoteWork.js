@@ -1,4 +1,4 @@
-import { ref, computed, watch, watchEffect } from 'vue'
+import { ref, computed } from 'vue'
 import { 모듈상태 } from './moduleState'
 import { useMonth } from './useMonth'
 
@@ -8,27 +8,16 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const { 남은금요일 } = useMonth()
 
   const 재택근무여부 = ref(false)
-  const 재택근무일수 = ref(0)
+  // null 이면 '남은 금요일 전체'. 사용자가 고르면 그 값을 기억하되 남은 금요일 수를 넘지 않게 표시한다.
+  const 재택근무일수 = ref(null)
 
-  const 재택일수 = computed(() => {
-    if (!재택근무여부.value) return 0
-    return Math.max(0, Math.min(남은금요일.value, Number(재택근무일수.value) || 0))
+  const 재택선택일수 = computed({
+    get: () => Math.min(남은금요일.value, 재택근무일수.value ?? 남은금요일.value),
+    set: (값) => { 재택근무일수.value = Math.max(0, Number(값) || 0) },
   })
+  const 재택일수 = computed(() => (재택근무여부.value ? 재택선택일수.value : 0))
 
-  // 처음 켤 때 남은 금요일 전체를 기본 선택
-  watch(재택근무여부, (켜짐) => {
-    if (켜짐 && 재택근무일수.value === 0) 재택근무일수.value = 남은금요일.value
-  })
-  // 월·입사일 변경으로 남은 금요일이 줄면 선택값 보정
-  watchEffect(() => {
-    if (재택근무일수.value > 남은금요일.value) 재택근무일수.value = 남은금요일.value
-  })
-  // 0으로 깎인 뒤 금요일이 있는 달로 돌아오면, 켜져 있는 토글이 무의미해지지 않도록 다시 전체 선택
-  watch(남은금요일, (지금, 이전) => {
-    if (재택근무여부.value && 이전 === 0 && 지금 > 0 && 재택근무일수.value === 0) 재택근무일수.value = 지금
-  })
-
-  return { 재택근무여부, 재택근무일수, 재택일수 }
+  return { 재택근무여부, 재택선택일수, 재택일수 }
 })
 
 export function useRemoteWork() {

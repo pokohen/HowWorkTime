@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { 시분파싱, 시각파싱 } from '../utils/timeFormat'
 import { 모듈상태 } from './moduleState'
 import { useToday } from './useToday'
@@ -46,17 +46,6 @@ const 상태 = 모듈상태(import.meta.hot, () => {
     if (오늘재택적용.value) return 0
     if (오늘입력모드.value === '출퇴근') return 출퇴근근무분.value
     return Math.max(0, 시분파싱(오늘예상시간.value).분)
-  })
-
-  // 재택 토글: 켜면 직접 입력값을 백업하고 0으로, 끄면 복원
-  const 오늘예상백업 = ref('')
-  watch(오늘재택근무, (켜짐) => {
-    if (켜짐) {
-      오늘예상백업.value = 오늘예상시간.value
-      오늘예상시간.value = '0:00'
-    } else {
-      오늘예상시간.value = 오늘예상백업.value || '0:00'
-    }
   })
 
   // UI용: 재택 / 출퇴근 / 직접 을 하나의 세그먼트 값으로

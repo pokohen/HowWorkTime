@@ -12,13 +12,13 @@ const {
   <section class="card month-selector">
     <div class="selector-row">
       <div class="select-group">
-        <label for="연도선택">연도</label>
+        <label for="연도선택" class="field-caption">연도</label>
         <select id="연도선택" v-model="선택연도" class="select-field select-field--sm">
           <option v-for="연도 in 연도목록" :key="연도" :value="연도">{{ 연도 }}년</option>
         </select>
       </div>
       <div class="select-group">
-        <label for="월선택">월</label>
+        <label for="월선택" class="field-caption">월</label>
         <select id="월선택" v-model="선택월" class="select-field select-field--sm">
           <option v-for="월 in 월목록" :key="월" :value="월">{{ 월 }}월</option>
         </select>
@@ -65,13 +65,6 @@ const {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-.select-group label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--label);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .join-checkbox {

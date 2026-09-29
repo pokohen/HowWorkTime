@@ -62,7 +62,7 @@ const 휴게선택지 = [
         <ClockField v-model="출근시각" 라벨="출근" placeholder="출근 시각" />
         <ClockField v-model="퇴근시각" 라벨="퇴근 예상" placeholder="퇴근 시각" />
         <div class="commute-field">
-          <label for="휴게수동">휴게시간</label>
+          <label for="휴게수동" class="field-caption">휴게시간</label>
           <div class="break-row">
             <select
               id="휴게수동"
@@ -190,13 +190,6 @@ const 휴게선택지 = [
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-.commute-field label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--label);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 .break-row {
   display: flex;

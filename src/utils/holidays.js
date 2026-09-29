@@ -5,9 +5,17 @@ const 연도별맵 = new Map(
   Object.entries(공휴일데이터).map(([연도, 항목들]) => [Number(연도), 항목들]),
 )
 
+const 연도별셋 = new Map()
+
+/** 연도의 공휴일 날짜 Set. 데이터가 불변이므로 연도별로 한 번만 만든다 */
 export function 연도공휴일(연도) {
-  const 항목들 = 연도별맵.get(연도) ?? []
-  return new Set(항목들.map((항목) => 항목.날짜))
+  let 셋 = 연도별셋.get(연도)
+  if (!셋) {
+    const 항목들 = 연도별맵.get(연도) ?? []
+    셋 = new Set(항목들.map((항목) => 항목.날짜))
+    연도별셋.set(연도, 셋)
+  }
+  return 셋
 }
 
 export function 공휴일데이터여부(연도) {
