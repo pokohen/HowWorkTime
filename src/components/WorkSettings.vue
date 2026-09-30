@@ -43,7 +43,7 @@ const { 반영분, 오늘반영분 } = useWorkResult()
       />
 
       <RemoteWorkSettings v-if="!지난달여부" class="full-row" />
-      <LeaveSettings class="full-row" />
+      <LeaveSettings v-if="!지난달여부" class="full-row" />
       <TodayWorkInput v-if="이번달여부" class="full-row" />
     </div>
   </CardSection>

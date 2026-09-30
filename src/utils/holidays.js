@@ -1,18 +1,9 @@
 import 공휴일데이터 from '../data/holidays.json'
 import { 두자리 } from './timeFormat'
 
-/** 같은 날짜가 여러 줄이면(예: 어린이날·부처님오신날) 이름을 합쳐 한 항목으로 */
-function 날짜별병합(항목들) {
-  const 맵 = new Map()
-  for (const { 날짜, 이름 } of 항목들) {
-    const 기존 = 맵.get(날짜)
-    맵.set(날짜, { 날짜, 이름: 기존 && !기존.이름.includes(이름) ? `${기존.이름} · ${이름}` : (기존?.이름 ?? 이름) })
-  }
-  return [...맵.values()]
-}
-
+// 데이터는 scripts/fetchHolidays.js 가 날짜별로 병합해 저장하므로 날짜는 연도 안에서 유일하다
 const 연도별맵 = new Map(
-  Object.entries(공휴일데이터).map(([연도, 항목들]) => [Number(연도), 날짜별병합(항목들)]),
+  Object.entries(공휴일데이터).map(([연도, 항목들]) => [Number(연도), 항목들]),
 )
 
 const 연도별셋 = new Map()

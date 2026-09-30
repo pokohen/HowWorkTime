@@ -45,7 +45,8 @@ async function 공휴일가져오기(연도) {
     const 날짜 = `${locdate.slice(0, 4)}-${locdate.slice(4, 6)}-${locdate.slice(6, 8)}`;
     // 같은 날짜에 공휴일이 겹치면(예: 어린이날·부처님오신날) 이름을 합쳐 한 항목으로
     const 기존 = 날짜별.get(날짜);
-    날짜별.set(날짜, { 날짜, 이름: 기존 ? `${기존.이름} · ${항목.dateName}` : 항목.dateName });
+    if (!기존) 날짜별.set(날짜, { 날짜, 이름: 항목.dateName });
+    else if (!기존.이름.split(" · ").includes(항목.dateName)) 기존.이름 += ` · ${항목.dateName}`;
   }
   return [...날짜별.values()].sort((a, b) => a.날짜.localeCompare(b.날짜));
 }
@@ -70,22 +71,26 @@ async function 메인() {
   const 현재연도 = new Date().getFullYear();
   const 연도범위 = [현재연도 - 1, 현재연도, 현재연도 + 1, 현재연도 + 2];
 
+  // 연도별 조회는 서로 독립이므로 동시에 보낸다
+  const 응답들 = await Promise.allSettled(연도범위.map(공휴일가져오기));
+
   let 변경 = false;
-  for (const 연도 of 연도범위) {
-    try {
-      const 데이터 = await 공휴일가져오기(연도);
-      const 기존 = 결과[연도] ?? [];
-      if (데이터.length === 0 && 기존.length > 0) {
-        console.warn(`△ ${연도}년: API 응답이 비어 있어 기존 ${기존.length}일을 유지합니다`);
-        continue;
-      }
-      if (JSON.stringify(데이터) !== JSON.stringify(기존)) 변경 = true;
-      결과[연도] = 데이터;
-      console.log(`✓ ${연도}년: ${데이터.length}일`);
-    } catch (오류) {
-      console.warn(`✗ ${연도}년 갱신 실패, 기존 데이터 유지: ${오류.message}`);
+  연도범위.forEach((연도, i) => {
+    const 응답 = 응답들[i];
+    if (응답.status === "rejected") {
+      console.warn(`✗ ${연도}년 갱신 실패, 기존 데이터 유지: ${응답.reason?.message ?? 응답.reason}`);
+      return;
     }
-  }
+    const 데이터 = 응답.value;
+    const 기존 = 결과[연도] ?? [];
+    if (데이터.length === 0 && 기존.length > 0) {
+      console.warn(`△ ${연도}년: API 응답이 비어 있어 기존 ${기존.length}일을 유지합니다`);
+      return;
+    }
+    if (JSON.stringify(데이터) !== JSON.stringify(기존)) 변경 = true;
+    결과[연도] = 데이터;
+    console.log(`✓ ${연도}년: ${데이터.length}일`);
+  });
 
   if (!변경) {
     console.log("\n변경 없음");

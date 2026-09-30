@@ -2,6 +2,8 @@ import { 요일이름 } from '../constants'
 
 export const 두자리 = (n) => String(n).padStart(2, '0')
 
+const 무효 = Object.freeze({ 분: 0, 유효: false, 비어있음: false })
+
 /**
  * 근무시간 문자열을 분 단위로 파싱 (0 이상만 허용)
  *  - "23:30" → 1410
@@ -39,13 +41,11 @@ export function 시분파싱(문자열) {
   if (분 >= 60) return 무효
   return { 분: 시 * 60 + 분, 유효: true, 비어있음: false }
 }
-const 무효 = Object.freeze({ 분: 0, 유효: false, 비어있음: false })
-
-/** 분 → "h:mm" (음수는 "-h:mm") */
+/** 분 → "h:mm". 음수는 U+2212 '−' 를 붙인다 (UI 의 부호 표기와 같은 글리프) */
 export function 시분변환(전체분) {
   if (!Number.isFinite(전체분)) return '0:00'
   const 정수분 = Math.round(전체분)
-  const 부호 = 정수분 < 0 ? '-' : ''
+  const 부호 = 정수분 < 0 ? '−' : ''
   const 절대분 = Math.abs(정수분)
   return `${부호}${Math.floor(절대분 / 60)}:${두자리(절대분 % 60)}`
 }
