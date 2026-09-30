@@ -91,6 +91,8 @@ jobs:
     concurrency:
       group: pages
       cancel-in-progress: false
+    outputs:
+      stale: ${{ steps.tip.outputs.stale }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -121,7 +123,8 @@ jobs:
   # GITHUB_TOKEN 으로 한 푸시는 워크플로우를 다시 트리거하지 않는다.
   commit-data:
     needs: [build, deploy]
-    if: needs.build.outputs.changed == 'true' && github.ref == 'refs/heads/main'
+    # 이 실행이 실제로 배포한 경우에만 커밋한다 (더 새 커밋 때문에 배포를 건너뛰었다면 그 실행이 데이터도 맡는다)
+    if: needs.build.outputs.changed == 'true' && needs.deploy.outputs.stale != 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
       group: commit-data
