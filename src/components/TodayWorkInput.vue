@@ -32,13 +32,12 @@ const 휴게선택지 = [
   <div role="group" aria-labelledby="오늘예상라벨">
     <div class="today-header">
       <label id="오늘예상라벨" :for="오늘모드 === '직접' ? '오늘예상' : undefined">오늘 예상 근무시간</label>
-      <div class="mode-switch" role="tablist" aria-label="입력 방식">
+      <div class="mode-switch" role="group" aria-label="입력 방식">
         <template v-for="모드 in 입력모드들" :key="모드.키">
           <button
             v-if="!모드.금요일만 || 오늘금요일여부"
             type="button"
-            role="tab"
-            :aria-selected="오늘모드 === 모드.키"
+            :aria-pressed="오늘모드 === 모드.키"
             :class="{ active: 오늘모드 === 모드.키 }"
             @click="오늘모드설정(모드.키)"
           >{{ 모드.이름 }}</button>
@@ -59,8 +58,8 @@ const 휴게선택지 = [
 
     <template v-else-if="오늘모드 === '출퇴근'">
       <div class="commute-grid">
-        <ClockField v-model="출근시각" 라벨="출근" placeholder="출근 시각" />
-        <ClockField v-model="퇴근시각" 라벨="퇴근 예상" placeholder="퇴근 시각" />
+        <ClockField id="출근" v-model="출근시각" 라벨="출근" placeholder="출근 시각" />
+        <ClockField id="퇴근" v-model="퇴근시각" 라벨="퇴근 예상" placeholder="퇴근 시각" />
         <div class="commute-field">
           <label for="휴게수동" class="field-caption">휴게시간</label>
           <div class="break-row">

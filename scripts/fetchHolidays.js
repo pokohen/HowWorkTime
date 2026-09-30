@@ -1,6 +1,10 @@
-import { writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+// 공공데이터포털 특일 정보 API 에서 공휴일을 받아 src/data/holidays.json 을 갱신한다.
+// 커밋된 파일을 항상 기준으로 삼고, API 가 비었거나 실패한 연도는 기존 데이터를 유지한다.
+// 따라서 이 스크립트는 배포를 막지 않는다 (실패해도 exit 0).
 
 const 현재파일경로 = fileURLToPath(import.meta.url);
 const 프로젝트루트 = resolve(dirname(현재파일경로), "..");
@@ -44,30 +48,53 @@ async function 공휴일가져오기(연도) {
     .sort((a, b) => a.날짜.localeCompare(b.날짜));
 }
 
+async function 기존데이터() {
+  try {
+    return JSON.parse(await readFile(출력경로, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
 async function 메인() {
+  const 결과 = await 기존데이터();
+
   if (!서비스키) {
-    console.error("환경변수 DATA_GO_KR_KEY가 설정되지 않았습니다.");
-    console.error("로컬: .env.local 또는 export DATA_GO_KR_KEY=...");
-    console.error("CI:   GitHub Secrets에 DATA_GO_KR_KEY 등록");
-    process.exit(1);
+    console.warn("환경변수 DATA_GO_KR_KEY 가 없어 공휴일 갱신을 건너뜁니다. 기존 데이터를 그대로 씁니다.");
+    console.warn("로컬: .env.local 또는 export DATA_GO_KR_KEY=... / CI: GitHub Secrets 에 등록");
+    return;
   }
 
   const 현재연도 = new Date().getFullYear();
   const 연도범위 = [현재연도 - 1, 현재연도, 현재연도 + 1, 현재연도 + 2];
 
-  const 결과 = {};
+  let 변경 = false;
   for (const 연도 of 연도범위) {
-    const 데이터 = await 공휴일가져오기(연도);
-    결과[연도] = 데이터;
-    console.log(`✓ ${연도}년: ${데이터.length}일`);
+    try {
+      const 데이터 = await 공휴일가져오기(연도);
+      const 기존 = 결과[연도] ?? [];
+      if (데이터.length === 0 && 기존.length > 0) {
+        console.warn(`△ ${연도}년: API 응답이 비어 있어 기존 ${기존.length}일을 유지합니다`);
+        continue;
+      }
+      if (JSON.stringify(데이터) !== JSON.stringify(기존)) 변경 = true;
+      결과[연도] = 데이터;
+      console.log(`✓ ${연도}년: ${데이터.length}일`);
+    } catch (오류) {
+      console.warn(`✗ ${연도}년 갱신 실패, 기존 데이터 유지: ${오류.message}`);
+    }
   }
 
+  if (!변경) {
+    console.log("\n변경 없음");
+    return;
+  }
   await mkdir(dirname(출력경로), { recursive: true });
   await writeFile(출력경로, JSON.stringify(결과, null, 2) + "\n", "utf-8");
   console.log(`\n저장: ${출력경로}`);
 }
 
 메인().catch((오류) => {
-  console.error(오류.message);
-  process.exit(1);
+  // 예기치 못한 오류도 배포를 막지 않는다. 기존 데이터로 빌드한다.
+  console.warn(`공휴일 갱신 중 오류, 기존 데이터 유지: ${오류.message}`);
 });

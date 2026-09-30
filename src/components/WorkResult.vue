@@ -2,19 +2,15 @@
 import { 시분변환 } from '../utils/timeFormat'
 import { useMonth } from '../composables/useMonth'
 import { useWorkInput } from '../composables/useWorkInput'
-import { useRemoteWork } from '../composables/useRemoteWork'
-import { useLeave } from '../composables/useLeave'
 import { useWorkResult } from '../composables/useWorkResult'
 import CardSection from './common/CardSection.vue'
 import StatCard from './common/StatCard.vue'
 
 const { 지난달여부, 의무근로분, 남은근무일 } = useMonth()
 const { 입력분, 최대근로분 } = useWorkInput()
-const { 재택일수 } = useRemoteWork()
-const { 연차일수환산 } = useLeave()
 const {
   반영분, 오늘반영분, 달성률, 의무달성여부, 의무대비분, 최대대비분,
-  출근남은일, 출근조정있음, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
+  출근남은일, 출근조정있음, 출근조정내역, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
   남은정규분, 남은의무원값, 마일리지분,
 } = useWorkResult()
 
@@ -61,9 +57,7 @@ const 부호시분 = (n) => `${부호(n)}${시분변환(Math.abs(n))}`
         <StatCard 라벨="남은 근무일" 강조="blue">
           {{ 남은근무일 }}<span class="unit">일</span>
           <template #부제>
-            <template v-if="출근조정있음">
-              출근 {{ 출근남은일 }}일<template v-if="재택일수 > 0"> · 재택 {{ 재택일수 }}일</template><template v-if="연차일수환산 > 0"> · 연차 {{ 연차일수환산 }}일</template> · 오늘 제외
-            </template>
+            <template v-if="출근조정있음">출근 {{ 출근남은일 }}일 · {{ 출근조정내역 }} · 오늘 제외</template>
             <template v-else>오늘 제외 · 내일부터</template>
           </template>
         </StatCard>
@@ -86,7 +80,7 @@ const 부호시분 = (n) => `${부호(n)}${시분변환(Math.abs(n))}`
       <div v-if="출근남은일 > 0 && 반영분 > 0" class="avg-section">
         <h3 class="avg-title">일평균 목표 근무시간</h3>
         <p v-if="출근조정있음" class="avg-note">
-          <template v-if="재택일수 > 0">재택 {{ 재택일수 }}일</template><template v-if="재택일수 > 0 && 연차일수환산 > 0"> · </template><template v-if="연차일수환산 > 0">연차 {{ 연차일수환산 }}일</template>(8시간 자동 인정)을 제외한 <strong>출근 {{ 출근남은일 }}일</strong> 기준입니다.
+          {{ 출근조정내역 }}(8시간 자동 인정)을 제외한 <strong>출근 {{ 출근남은일 }}일</strong> 기준입니다.
         </p>
         <div class="result-grid">
           <StatCard

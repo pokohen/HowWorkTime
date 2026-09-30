@@ -9,6 +9,7 @@ import { useTheme } from '../../composables/useTheme'
 const 시각 = defineModel({ type: String, default: '' })
 
 defineProps({
+  id: { type: String, required: true },
   라벨: { type: String, required: true },
   placeholder: String,
 })
@@ -30,10 +31,12 @@ const 시각객체 = computed({
 
 <template>
   <div class="clock-field">
-    <label class="field-caption">{{ 라벨 }}</label>
+    <label class="field-caption" :for="id">{{ 라벨 }}</label>
     <div class="clock-row">
       <VueDatePicker
         v-model="시각객체"
+        :input-attrs="{ id }"
+        :aria-labels="{ input: 라벨 }"
         time-picker
         :is-24="true"
         auto-apply

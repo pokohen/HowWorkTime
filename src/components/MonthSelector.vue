@@ -4,7 +4,7 @@ import { useMonth } from '../composables/useMonth'
 const {
   선택연도, 선택월, 입사한달여부, 입사일,
   연도목록, 월목록, 일목록, 유효입사일,
-  선택월표시, 이번달여부, 지난달여부, 공휴일있음,
+  선택월표시, 이번달여부, 지난달여부, 공휴일누락연도,
 } = useMonth()
 </script>
 
@@ -46,8 +46,8 @@ const {
     </p>
   </section>
 
-  <div v-if="!공휴일있음" class="warn-notice" role="alert">
-    ⚠ {{ 선택연도 }}년 공휴일 데이터가 없습니다. 근무일 계산에서 공휴일이 평일로 간주되어 부정확할 수 있습니다.
+  <div v-if="공휴일누락연도.length > 0" class="warn-notice" role="alert">
+    ⚠ {{ 공휴일누락연도.join('년, ') }}년 공휴일 데이터가 없습니다. 근무일 계산에서 공휴일이 평일로 간주되어 부정확할 수 있습니다.
   </div>
 </template>
 

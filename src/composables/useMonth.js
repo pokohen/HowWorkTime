@@ -1,4 +1,4 @@
-import { ref, computed, watch, watchEffect } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { 월말일수, 소정근로일수, 남은근무일수, 남은금요일수 } from '../utils/workDays'
 import { 월공휴일, 공휴일데이터여부 } from '../utils/holidays'
 import { 하루근무분 } from '../constants'
@@ -45,13 +45,10 @@ const 상태 = 모듈상태(import.meta.hot, () => {
     return 선택 < 이번달
   })
 
-  // 월을 바꾸거나 입사 체크를 켰을 때 입사일이 범위를 벗어나면 보정
-  watchEffect(() => {
-    if (!입사한달여부.value) return
-    const 기본 = 이번달여부.value ? 오늘.value.getDate() : 1
-    if (입사일.value < 1 || 입사일.value > 월말일.value) {
-      입사일.value = Math.min(월말일.value, 기본)
-    }
+  // 입사 체크를 켜거나 월을 바꾸면 입사일을 그 달의 기본값으로: 이번 달이면 오늘, 아니면 1일
+  watch([입사한달여부, 선택연도, 선택월], ([켜짐]) => {
+    if (!켜짐) return
+    입사일.value = 이번달여부.value ? 오늘.value.getDate() : 1
   })
 
   // ── 근무일 계산 ────────────────────────────────────────────
@@ -62,7 +59,6 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 남은금요일 = computed(() => 남은금요일수(선택연도.value, 선택월.value, 유효입사일.value, 오늘.value))
 
   const 이달공휴일 = computed(() => 월공휴일(선택연도.value, 선택월.value))
-  const 공휴일있음 = computed(() => 공휴일데이터여부(선택연도.value))
 
   // ── 다음 달 ────────────────────────────────────────────────
   const 다음달 = computed(() => {
@@ -75,12 +71,17 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 다음달의무분 = computed(() => 다음달근로일.value * 하루근무분)
   const 다음달공휴일 = computed(() => 월공휴일(다음달.value.연도, 다음달.value.월))
 
+  // 선택 월과 다음 달(미리보기)이 속한 연도 중 공휴일 데이터가 없는 연도 목록
+  const 공휴일누락연도 = computed(() =>
+    [...new Set([선택연도.value, 다음달.value.연도])].filter((연도) => !공휴일데이터여부(연도)),
+  )
+
   return {
     선택연도, 선택월, 입사한달여부, 입사일,
-    연도목록, 월목록, 일목록, 월말일, 유효입사일,
+    연도목록, 월목록, 일목록, 유효입사일,
     선택월표시, 이번달여부, 지난달여부,
     소정근로일, 의무근로분, 남은근무일, 경과근무일, 남은금요일,
-    이달공휴일, 공휴일있음,
+    이달공휴일, 공휴일누락연도,
     다음달표시, 다음달근로일, 다음달의무분, 다음달공휴일,
   }
 })
