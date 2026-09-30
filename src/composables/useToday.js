@@ -12,21 +12,14 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     if (지금.toDateString() !== 오늘.value.toDateString()) 오늘.value = 지금
   }
 
-  if (typeof document !== 'undefined') {
-    const 복귀시갱신 = () => {
-      if (document.visibilityState === 'visible') 갱신()
+  // 자정 하나만 예약하면 절전에서 깨어났을 때 늦게 울릴 수 있어, 1분마다 확인하고 화면 복귀 시에도 확인한다
+  if (typeof window !== 'undefined') {
+    const 타이머 = setInterval(갱신, 60_000)
+    정리등록(() => clearInterval(타이머))
+    for (const [대상, 이벤트] of [[document, 'visibilitychange'], [window, 'focus'], [window, 'pageshow']]) {
+      대상.addEventListener(이벤트, 갱신)
+      정리등록(() => 대상.removeEventListener(이벤트, 갱신))
     }
-    document.addEventListener('visibilitychange', 복귀시갱신)
-    정리등록(() => document.removeEventListener('visibilitychange', 복귀시갱신))
-
-    let 타이머
-    const 자정예약 = () => {
-      const 다음자정 = new Date()
-      다음자정.setHours(24, 0, 0, 0)
-      타이머 = setTimeout(() => { 갱신(); 자정예약() }, 다음자정 - Date.now() + 1000)
-    }
-    자정예약()
-    정리등록(() => clearTimeout(타이머))
   }
 
   const 현재연도 = computed(() => 오늘.value.getFullYear())

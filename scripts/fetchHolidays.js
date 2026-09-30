@@ -16,6 +16,11 @@ const 엔드포인트 =
 
 const 서비스키 = process.env.DATA_GO_KR_KEY;
 
+// API 의 dateName 표기를 화면에 쓰는 이름으로 통일
+const 이름정규화 = { "1월1일": "신정" };
+// 기존보다 이만큼까지 줄어든 응답은 정정(임시공휴일 취소 등)으로 보고 받아들인다. 그보다 크게 줄면 불완전한 응답으로 본다
+const 허용감소 = 2;
+
 async function 공휴일가져오기(연도) {
   const 쿼리 = new URLSearchParams({
     serviceKey: 서비스키,
@@ -43,11 +48,12 @@ async function 공휴일가져오기(연도) {
   for (const 항목 of 배열) {
     if (항목.isHoliday !== "Y") continue;
     const locdate = String(항목.locdate);
+    const 이름 = 이름정규화[항목.dateName] ?? 항목.dateName;
     const 날짜 = `${locdate.slice(0, 4)}-${locdate.slice(4, 6)}-${locdate.slice(6, 8)}`;
     // 같은 날짜에 공휴일이 겹치면(예: 어린이날·부처님오신날) 이름을 합쳐 한 항목으로
     const 기존 = 날짜별.get(날짜);
-    if (!기존) 날짜별.set(날짜, { 날짜, 이름: 항목.dateName });
-    else if (!기존.이름.split(" · ").includes(항목.dateName)) 기존.이름 += ` · ${항목.dateName}`;
+    if (!기존) 날짜별.set(날짜, { 날짜, 이름 });
+    else if (!기존.이름.split(" · ").includes(이름)) 기존.이름 += ` · ${이름}`;
   }
   return [...날짜별.values()].sort((a, b) => a.날짜.localeCompare(b.날짜));
 }
@@ -87,9 +93,8 @@ async function 메인() {
     }
     const 데이터 = 응답.value;
     const 기존 = 결과[연도] ?? [];
-    // 공휴일은 늘어나기만 하므로(임시·대체공휴일) 기존보다 적은 응답은 불완전한 것으로 보고 버린다
-    if (데이터.length < 기존.length) {
-      console.warn(`△ ${연도}년: API 응답(${데이터.length}일)이 기존(${기존.length}일)보다 적어 기존을 유지합니다`);
+    if (데이터.length < 기존.length - 허용감소) {
+      console.warn(`△ ${연도}년: API 응답(${데이터.length}일)이 기존(${기존.length}일)보다 크게 적어 불완전한 응답으로 보고 기존을 유지합니다`);
       return;
     }
     if (JSON.stringify(데이터) !== JSON.stringify(기존)) 변경 = true;

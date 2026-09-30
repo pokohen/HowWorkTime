@@ -11,7 +11,7 @@ import LeaveSettings from './LeaveSettings.vue'
 import TodayWorkInput from './TodayWorkInput.vue'
 
 const { 지난달여부, 이번달여부 } = useMonth()
-const { 고정연장시간, 입력근무시간, 입력분 } = useWorkInput()
+const { 고정연장시간, 입력근무시간, 누적갱신필요, 입력분 } = useWorkInput()
 const { 연차분 } = useLeave()
 const { 반영분, 오늘반영분 } = useWorkResult()
 </script>
@@ -25,6 +25,10 @@ const { 반영분, 오늘반영분 } = useWorkResult()
         누적 {{ 시분변환(입력분) }}<template v-if="연차분 > 0"> (연차 {{ 시분변환(연차분) }} 포함)</template><template v-if="오늘반영분 > 0"> + 오늘 {{ 시분변환(오늘반영분) }}</template>
       </span>
     </div>
+
+    <p v-if="누적갱신필요 && 이번달여부" class="stale-notice" role="status">
+      📅 날짜가 바뀌었습니다. 어제 근무시간을 ‘현재까지 근무시간’에 더해 주세요.
+    </p>
 
     <div class="input-grid">
       <TimeField
@@ -75,6 +79,15 @@ const { 반영분, 오늘반영분 } = useWorkResult()
   font-size: 0.78rem;
   color: var(--label);
   margin-left: auto;
+}
+.stale-notice {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--tint-amber-text);
+  background: var(--tint-amber-bg);
+  border: 1px solid var(--tint-amber-border);
+  border-radius: 10px;
 }
 .input-grid {
   display: grid;

@@ -21,6 +21,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
     if (선택연도.value === 이전연도 && 선택월.value === 이전월) {
       선택연도.value = 연도
       선택월.value = 월
+      입사한달여부.value = false // 입사는 지난 달의 일
       월넘김횟수.value++
     }
   })

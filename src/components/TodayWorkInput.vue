@@ -48,10 +48,10 @@ const 휴게선택지 = [
     <div v-if="오늘재택적용" class="wfh-active-card">
       <span class="wfh-active-icon">🏠</span>
       <div class="wfh-active-body">
-        <p class="wfh-active-title">오늘 재택근무 적용됨 · <strong>{{ 시분변환(하루근무분) }}</strong></p>
+        <p class="wfh-active-title">오늘 재택근무 · <strong>{{ 시분변환(하루근무분) }}</strong> 인정</p>
         <p class="wfh-active-sub">
-          오늘 근무시간은 <strong>{{ 시분변환(하루근무분) }}</strong>으로 계산됩니다.
-          재택 근무시간은 위 ‘현재까지 근무시간’에 포함해 주세요.
+          재택 {{ 시분변환(하루근무분) }}은 위 ‘현재까지 근무시간’에 포함해 입력해 주세요.
+          여기서는 오늘 시간을 따로 더하지 않습니다.
         </p>
       </div>
     </div>

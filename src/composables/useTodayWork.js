@@ -1,5 +1,6 @@
 import { ref, computed, watch } from 'vue'
 import { 시분파싱, 시각파싱 } from '../utils/timeFormat'
+import { 근무일여부 } from '../utils/workDays'
 import { 모듈상태 } from './moduleState'
 import { useToday } from './useToday'
 
@@ -14,8 +15,13 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   // 재택은 금요일에만 유효하다. 저장값을 고치는 대신 유효 여부를 파생시킨다
   const 오늘재택적용 = computed(() => 오늘재택근무.value && 오늘금요일여부.value)
   // 재택은 '오늘' 하루에 대한 선택이므로 날짜가 바뀌면 초기화 (다음 금요일에 저절로 켜지지 않도록)
-  watch(오늘, () => { 오늘재택근무.value = false })
-  const 오늘입력모드 = ref('출퇴근')
+  watch(오늘, () => {
+    오늘재택근무.value = false
+    오늘입력모드.value = 기본모드()
+  })
+  // 주말·공휴일에는 출퇴근 기본값(09–18)이 8시간을 더해 버리므로 직접 입력(0:00)으로 시작한다
+  const 기본모드 = () => (근무일여부(오늘.value) ? '출퇴근' : '직접')
+  const 오늘입력모드 = ref(기본모드())
   const 출근시각 = ref('09:00')
   const 퇴근시각 = ref('18:00')
   const 휴게자동 = ref(true)

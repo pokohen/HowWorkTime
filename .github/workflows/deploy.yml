@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # 갱신된 공휴일 데이터를 저장소에 되커밋하기 위해 필요
   pages: write
   id-token: write
 
@@ -24,32 +24,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4 # 버전은 package.json 의 packageManager 를 따른다
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
-
-      # 실패하면 이 단계에 경고 표시만 남기고, 커밋된 데이터로 계속 진행한다
+      # Node 내장 기능만 쓰는 스크립트라 의존성 설치 전에 실행한다.
+      # 실패하면 이 단계에 경고 표시만 남기고, 커밋된 데이터로 계속 진행한다.
       - name: 공휴일 데이터 가져오기
         continue-on-error: true
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
-        run: pnpm prefetch:holidays
+        run: node scripts/fetchHolidays.js
 
       # 예약 실행은 공휴일 데이터가 커밋된 것과 달라졌을 때만 배포한다 (매일 같은 내용을 재배포하지 않도록)
       - name: 배포 여부 결정
         id: decide
         run: |
-          if [ "${{ github.event_name }}" != "schedule" ] || ! git diff --quiet -- src/data/holidays.json; then
+          changed=false
+          git diff --quiet -- src/data/holidays.json || changed=true
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$changed" = "true" ]; then
             echo "deploy=true" >> "$GITHUB_OUTPUT"
           else
             echo "deploy=false" >> "$GITHUB_OUTPUT"
             echo "공휴일 데이터 변경 없음 — 배포를 건너뜁니다"
           fi
+
+      # 갱신분을 저장소에 남겨, 다음 실행의 비교 기준과 로컬·폴백 데이터가 배포본과 어긋나지 않게 한다.
+      # GITHUB_TOKEN 으로 한 푸시는 워크플로우를 다시 트리거하지 않는다.
+      - name: 갱신된 공휴일 데이터 커밋
+        if: steps.decide.outputs.changed == 'true' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/holidays.json
+          git commit -m "chore: 공휴일 데이터 갱신"
+          git push
+
+      - if: steps.decide.outputs.deploy == 'true'
+        uses: pnpm/action-setup@v4 # 버전은 package.json 의 packageManager 를 따른다
+
+      - if: steps.decide.outputs.deploy == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - if: steps.decide.outputs.deploy == 'true'
+        run: pnpm install --frozen-lockfile
 
       - if: steps.decide.outputs.deploy == 'true'
         run: pnpm test
