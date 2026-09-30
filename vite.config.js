@@ -10,7 +10,7 @@ const THEME_BG_LIGHT = '#f7f8fa'
 const THEME_BG_DARK = '#0d1117'
 
 /**
- * 모듈상태() 로 싱글턴 상태를 만드는 모듈(src/composables/use*.js)에 HMR 자체 수용 코드를 붙인다.
+ * 모듈상태(import.meta.hot, …) 를 호출하는 모듈에 HMR 자체 수용 코드를 붙인다.
  * Vite 는 모듈 소스에 `import.meta.hot.accept(` 가 있어야 그 모듈의 dispose 를 실행하므로,
  * 파일마다 같은 줄을 적는 대신 여기서 한 번에 주입한다. (개발 서버 전용)
  */
@@ -19,7 +19,8 @@ function 모듈상태HMR() {
     name: 'module-state-hmr',
     apply: 'serve',
     transform(code, id) {
-      if (!/\/src\/composables\/use[^/]*\.js$/.test(id.split('?')[0])) return null
+      // 파일 위치·이름이 아니라 실제 호출 구문으로 고른다 (줄바꿈 허용). 헬퍼 정의 파일의 주석은 대상이 아니다
+      if (id.includes('/moduleState.js') || !/모듈상태\(\s*import\.meta\.hot/.test(code)) return null
       return {
         code: `${code}\nif (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())\n`,
         map: null,

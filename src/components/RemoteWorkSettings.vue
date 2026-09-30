@@ -2,7 +2,8 @@
 import { useMonth } from '../composables/useMonth'
 import { useRemoteWork } from '../composables/useRemoteWork'
 import ToggleSection from './common/ToggleSection.vue'
-import { 재택요일명 } from '../constants'
+import { 재택요일명, 하루근무분 } from '../constants'
+import { 시분변환 } from '../utils/timeFormat'
 
 const { 남은재택가능일 } = useMonth()
 const { 재택근무여부, 재택선택일수, 재택일수 } = useRemoteWork()
@@ -20,7 +21,7 @@ const { 재택근무여부, 재택선택일수, 재택일수 } = useRemoteWork()
       <option v-for="n in 남은재택가능일 + 1" :key="n - 1" :value="n - 1">{{ n - 1 }}일</option>
     </select>
     <span class="setting-hint">
-      남은 {{ 재택요일명 }} <strong>{{ 남은재택가능일 }}일</strong> 중 <strong>{{ 재택일수 }}일</strong> 반영 · 하루 8시간 인정분은 위 ‘현재까지 근무시간’에 포함해 입력
+      남은 {{ 재택요일명 }} <strong>{{ 남은재택가능일 }}일</strong> 중 <strong>{{ 재택일수 }}일</strong> 반영 · 하루 {{ 시분변환(하루근무분) }} 인정분은 위 ‘현재까지 근무시간’에 포함해 입력
     </span>
 
     <template v-if="남은재택가능일 === 0" #힌트>

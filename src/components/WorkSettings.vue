@@ -14,6 +14,11 @@ const { 지난달여부, 이번달여부, 오늘포함여부 } = useMonth()
 const { 고정연장시간, 입력근무시간, 누적갱신필요, 입력분 } = useWorkInput()
 const { 연차분 } = useLeave()
 const { 반영분, 오늘반영분 } = useWorkResult()
+
+/** 날짜 변경 안내는 이번 달의 누적 시간을 고쳤을 때만 내린다 (다른 달을 고치는 것은 무관) */
+function 누적수정됨() {
+  if (이번달여부.value) 누적갱신필요.value = false
+}
 </script>
 
 <template>
@@ -43,7 +48,7 @@ const { 반영분, 오늘반영분 } = useWorkResult()
       <TimeField
         id="근무입력"
         v-model="입력근무시간"
-        @update:model-value="누적갱신필요 = false"
+        @update:model-value="누적수정됨"
         라벨="현재까지 근무시간 (시:분)"
         :예시="['23:30', '137:30']"
       />

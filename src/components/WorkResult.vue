@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { 시분변환 } from '../utils/timeFormat'
+import { 하루근무분 } from '../constants'
 import { useMonth } from '../composables/useMonth'
 import { useWorkInput } from '../composables/useWorkInput'
 import { useWorkResult } from '../composables/useWorkResult'
@@ -82,7 +83,7 @@ const 부호시분 = (n) => (n >= 0 ? `+${시분변환(n)}` : 시분변환(n))
       <div v-if="출근남은일 > 0 && 반영분 > 0" class="avg-section">
         <h3 class="avg-title">일평균 목표 근무시간</h3>
         <p v-if="출근조정있음" class="avg-note">
-          {{ 출근조정내역 }}을 제외한 <strong>출근 {{ 출근남은일 }}일</strong> 기준입니다. 재택·연차의 하루 8시간은 ‘현재까지 근무시간’에 포함해 입력한 것으로 봅니다.
+          {{ 출근조정내역 }}을 제외한 <strong>출근 {{ 출근남은일 }}일</strong> 기준입니다. 재택·연차의 하루 {{ 시분변환(하루근무분) }}은 ‘현재까지 근무시간’에 포함해 입력한 것으로 봅니다.
         </p>
         <div class="result-grid">
           <StatCard
@@ -104,7 +105,7 @@ const 부호시분 = (n) => (n >= 0 ? `+${시분변환(n)}` : 시분변환(n))
           </StatCard>
         </div>
         <div class="mileage-calc">
-          <div>출근 {{ 출근남은일 }}일 × 8h = <b>정규 {{ 시분변환(남은정규분) }}</b></div>
+          <div>출근 {{ 출근남은일 }}일 × {{ 시분변환(하루근무분) }} = <b>정규 {{ 시분변환(남은정규분) }}</b></div>
           <div>
             정규 {{ 시분변환(남은정규분) }}
             <template v-if="의무대비분 <= 0">− 남은 의무 {{ 시분변환(남은의무분) }}</template>

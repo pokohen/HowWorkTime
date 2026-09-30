@@ -3,8 +3,9 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // 공공데이터포털 특일 정보 API 에서 공휴일을 받아 src/data/holidays.json 을 갱신한다.
-// 커밋된 파일을 항상 기준으로 삼고, API 가 실패했거나 기존보다 적게 준 연도는 기존 데이터를 유지한다.
-// 키가 없거나 모든 연도가 실패하면 exit 1 로 알리되, 파일은 건드리지 않으므로
+// 조회 범위는 현재−1 ~ 현재+2 년이고, 저장 파일에는 그 범위만 남긴다.
+// 커밋된 파일을 기준으로, 조회에 실패했거나 응답이 불완전해 보이는 연도는 기존 데이터를 유지한다.
+// 그런 연도가 하나라도 있거나 키가 없으면 exit 1 로 알린다 (성공한 연도는 저장한 뒤).
 // CI 에서는 continue-on-error 로 커밋된 데이터로 배포를 계속한다.
 
 const 현재파일경로 = fileURLToPath(import.meta.url);
@@ -21,7 +22,10 @@ const 이름정규화 = { "1월1일": "신정" };
 // 일시적인 네트워크·서버 오류에 대비한 재시도 횟수와 간격(ms)
 const 재시도횟수 = 3;
 const 재시도간격 = 2000;
-// 기존보다 이만큼까지 줄어든 응답은 정정(임시공휴일 취소 등)으로 보고 받아들인다. 그보다 크게 줄면 불완전한 응답으로 본다
+// 응답 없는 연결에 오래 붙잡히지 않도록 요청마다 두는 제한 시간(ms)
+const 요청제한시간 = 10_000;
+// 기존보다 이만큼까지 줄어든 응답은 정정(임시공휴일 취소 등)으로 보고 받아들인다. 그보다 크게 줄면 불완전한 응답으로 본다.
+// 건수만으로는 '정정'과 '일부 누락'을 구분할 수 없어 택한 절충값이다. 더 크게 줄어드는 실제 정정은 holidays.json 을 직접 고쳐 커밋한다.
 const 허용감소 = 2;
 
 /** 실패하면 간격을 늘려 가며 다시 시도한다 */
@@ -45,7 +49,7 @@ async function 공휴일가져오기(연도) {
     numOfRows: "100",
     _type: "json",
   });
-  const 응답 = await fetch(`${엔드포인트}?${쿼리}`);
+  const 응답 = await fetch(`${엔드포인트}?${쿼리}`, { signal: AbortSignal.timeout(요청제한시간) });
   if (!응답.ok) {
     throw new Error(`HTTP ${응답.status} (${연도}년)`);
   }
@@ -90,7 +94,7 @@ async function 기존데이터() {
 }
 
 async function 메인() {
-  const 결과 = await 기존데이터();
+  const 기존전체 = await 기존데이터();
 
   if (!서비스키) {
     console.error("환경변수 DATA_GO_KR_KEY 가 없어 공휴일을 갱신하지 못했습니다. 기존 데이터는 그대로입니다.");
@@ -101,11 +105,13 @@ async function 메인() {
 
   const 현재연도 = new Date().getFullYear();
   const 연도범위 = [현재연도 - 1, 현재연도, 현재연도 + 1, 현재연도 + 2];
+  // 범위 안의 연도만 남긴다 (지나간 연도는 화면에서 고를 수 없으므로 번들에서도 뺀다)
+  const 결과 = Object.fromEntries(연도범위.filter((연도) => 기존전체[연도]).map((연도) => [연도, 기존전체[연도]]));
 
   // 연도별 조회는 서로 독립이므로 동시에 보낸다
   const 응답들 = await Promise.allSettled(연도범위.map((연도) => 재시도(() => 공휴일가져오기(연도))));
 
-  let 변경 = false;
+  let 변경 = Object.keys(결과).length !== Object.keys(기존전체).length;
   let 실패수 = 0;
   연도범위.forEach((연도, i) => {
     const 응답 = 응답들[i];
@@ -116,7 +122,7 @@ async function 메인() {
     }
     const 데이터 = 응답.value;
     const 기존 = 결과[연도] ?? [];
-    if (데이터.length < 기존.length - 허용감소) {
+    if ((데이터.length === 0 && 기존.length > 0) || 데이터.length < 기존.length - 허용감소) {
       실패수++;
       console.warn(`△ ${연도}년: API 응답(${데이터.length}일)이 기존(${기존.length}일)보다 크게 적어 불완전한 응답으로 보고 기존을 유지합니다`);
       return;
