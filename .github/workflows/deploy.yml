@@ -94,7 +94,20 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # 실행이 겹치면 배포 job 은 도착 순서로 처리되므로, 더 새 커밋이 이미 main 에 있으면 이 실행은 배포하지 않는다
+      # (오래된 커밋이 새 커밋 위에 덮어 배포되는 것을 막는다. 새 커밋의 실행이 배포를 맡는다)
+      - name: main 최신 커밋 확인
+        id: tip
+        if: github.ref == 'refs/heads/main'
+        run: |
+          tip=$(git ls-remote "https://github.com/${{ github.repository }}" refs/heads/main | cut -f1)
+          if [ -n "$tip" ] && [ "$tip" != "${{ github.sha }}" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "main 이 $tip 로 앞서 있어 이 실행(${{ github.sha }})의 배포를 건너뜁니다"
+          fi
+
       - id: deployment
+        if: steps.tip.outputs.stale != 'true'
         uses: actions/deploy-pages@v4
 
   # 배포까지 성공한 뒤에만 갱신된 공휴일 데이터를 저장소에 남긴다.
