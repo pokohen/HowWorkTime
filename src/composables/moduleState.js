@@ -8,7 +8,7 @@ import { effectScope } from 'vue'
  *
  * 주의: Vite 는 모듈이 스스로 HMR 을 수용해야 그 모듈의 dispose 를 호출하고, 수용 여부는
  * 모듈 소스의 텍스트로 판단한다. 그래서 수용 코드는 여기서 호출하지 않고, vite.config.js 의
- * 모듈상태HMR 플러그인이 `모듈상태(import.meta.hot` 를 쓰는 모든 모듈에 주입한다.
+ * 모듈상태HMR 플러그인이 src/composables/use*.js 에 주입한다.
  *
  * @param {ImportMeta['hot']} hot - import.meta.hot
  * @param {(정리등록: (fn: () => void) => void) => T} 정의

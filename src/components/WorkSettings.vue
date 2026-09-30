@@ -26,7 +26,7 @@ const { 반영분, 오늘반영분 } = useWorkResult()
       </span>
     </div>
 
-    <p v-if="누적갱신필요 && 이번달여부" class="stale-notice" role="status">
+    <p v-if="누적갱신필요 && 이번달여부 && 입력분 > 0" class="stale-notice" role="status">
       <span>📅 날짜가 바뀌었습니다. ‘현재까지 근무시간’이 어제까지 반영됐는지 확인해 주세요.</span>
       <button type="button" class="stale-close" aria-label="안내 닫기" @click="누적갱신필요 = false">✕</button>
     </p>
@@ -43,6 +43,7 @@ const { 반영분, 오늘반영분 } = useWorkResult()
       <TimeField
         id="근무입력"
         v-model="입력근무시간"
+        @update:model-value="누적갱신필요 = false"
         라벨="현재까지 근무시간 (시:분)"
         :예시="['23:30', '137:30']"
       />

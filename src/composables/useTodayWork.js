@@ -56,8 +56,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 오늘예상분 = computed(() => {
     if (오늘재택적용.value) return 0
     if (오늘입력모드.value === '출퇴근') return 출퇴근근무분.value
-    const 분 = 시분파싱(오늘예상시간.value).분
-    return 분 > 하루최대분 ? 0 : 분 // 하루를 넘는 값은 입력 오류로 보고 반영하지 않는다
+    return 시분파싱(오늘예상시간.value, { 최대분: 하루최대분 }).분 // 무효·초과는 0
   })
 
   // UI용: 재택 / 출퇴근 / 직접 을 하나의 세그먼트 값으로

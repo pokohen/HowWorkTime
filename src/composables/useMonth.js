@@ -47,6 +47,11 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 입사한달여부 = 월별상태(월키, false)
   // 기본값: 이번 달이면 오늘, 아니면 1일
   const 입사일 = 월별상태(월키, () => (이번달여부.value ? 오늘.value.getDate() : 1))
+  // 체크를 켜는 순간의 기본값을 그 달의 값으로 확정한다.
+  // (저장하지 않으면 기본값 함수가 매번 다시 계산돼 자정·월 변경에 따라 입사일이 움직인다)
+  watch(입사한달여부, (켜짐) => {
+    if (켜짐) 입사일.value = 입사일.value
+  })
   const 유효입사일 = computed(() => {
     if (!입사한달여부.value) return 1
     return Math.max(1, Math.min(월말일.value, Number(입사일.value) || 1))

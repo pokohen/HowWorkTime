@@ -19,7 +19,14 @@ defineProps({
     >
       <span class="setting-title">{{ 제목 }}</span>
       <span class="switch">
-        <input type="checkbox" class="switch-input" v-model="켜짐" :disabled="비활성" />
+        <!-- 비활성이면 저장된 값과 무관하게 꺼진 모습으로 보인다 (실제로 반영되지 않으므로) -->
+        <input
+          type="checkbox"
+          class="switch-input"
+          :checked="켜짐 && !비활성"
+          :disabled="비활성"
+          @change="켜짐 = $event.target.checked"
+        />
         <span class="switch-track"><span class="switch-thumb" /></span>
       </span>
     </label>

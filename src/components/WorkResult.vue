@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { 시분변환 } from '../utils/timeFormat'
 import { useMonth } from '../composables/useMonth'
 import { useWorkInput } from '../composables/useWorkInput'
@@ -6,13 +7,20 @@ import { useWorkResult } from '../composables/useWorkResult'
 import CardSection from './common/CardSection.vue'
 import StatCard from './common/StatCard.vue'
 
-const { 지난달여부, 의무근로분, 남은근무일 } = useMonth()
+const { 지난달여부, 이번달여부, 오늘포함여부, 입사한달여부, 유효입사일, 의무근로분, 남은근무일 } = useMonth()
 const { 입력분, 최대근로분 } = useWorkInput()
 const {
   반영분, 오늘반영분, 달성률, 의무달성여부, 의무대비분, 최대대비분,
   출근남은일, 출근조정있음, 출근조정내역, 차감내역, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
   남은정규분, 마일리지분,
 } = useWorkResult()
+
+/** 남은 근무일을 어디서부터 세는지 */
+const 집계범위 = computed(() => {
+  if (오늘포함여부.value) return '오늘 제외 · 내일부터'
+  if (입사한달여부.value) return `${유효입사일.value}일부터`
+  return '이 달 전체'
+})
 
 /** 항상 부호를 붙인 시:분 (예: +5:00, −3:30). 음수 글리프는 시분변환이 붙인다 */
 const 부호시분 = (n) => (n >= 0 ? `+${시분변환(n)}` : 시분변환(n))
@@ -48,7 +56,7 @@ const 부호시분 = (n) => (n >= 0 ? `+${시분변환(n)}` : 시분변환(n))
 
     <!-- ── 이번 달 이후 ── -->
     <template v-else>
-      <div v-if="입력분 === 0" class="empty-banner">
+      <div v-if="이번달여부 && 입력분 === 0" class="empty-banner">
         💡 위에서 <strong>현재까지 근무시간</strong>을 입력하면 더 정확한 남은 시간과 일평균 목표가 계산됩니다.
       </div>
 
@@ -56,8 +64,7 @@ const 부호시분 = (n) => (n >= 0 ? `+${시분변환(n)}` : 시분변환(n))
         <StatCard 라벨="남은 근무일" 강조="blue">
           {{ 남은근무일 }}<span class="unit">일</span>
           <template #부제>
-            <template v-if="출근조정있음">출근 {{ 출근남은일 }}일 · {{ 출근조정내역 }} · 오늘 제외</template>
-            <template v-else>오늘 제외 · 내일부터</template>
+            <template v-if="출근조정있음">출근 {{ 출근남은일 }}일 · {{ 출근조정내역 }} · </template>{{ 집계범위 }}
           </template>
         </StatCard>
         <StatCard 라벨="남은 의무 근무시간" 강조="green">

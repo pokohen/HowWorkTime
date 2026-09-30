@@ -11,9 +11,16 @@ const 무효 = Object.freeze({ 분: 0, 유효: false, 비어있음: false })
  *  - "230"   → 150  (2:30)
  *  - "2330"  → 1410 (23:30)
  *  - "13730" → 8250 (137:30, 3자리 시간 + 2자리 분)
- * 잘못된 형식(음수 포함)은 { 분: 0, 유효: false }
+ * 잘못된 형식(음수 포함)은 { 분: 0, 유효: false }.
+ * 최대분을 주면 그보다 큰 값도 무효로 보고 { 초과: true } 를 함께 돌려준다.
  */
-export function 시분파싱(문자열) {
+export function 시분파싱(문자열, { 최대분 = Infinity } = {}) {
+  const 결과 = 형식파싱(문자열)
+  if (결과.유효 && 결과.분 > 최대분) return { ...무효, 초과: true }
+  return 결과
+}
+
+function 형식파싱(문자열) {
   if (문자열 == null) return { 분: 0, 유효: true, 비어있음: true }
   const 정리 = String(문자열).trim()
   if (!정리) return { 분: 0, 유효: true, 비어있음: true }

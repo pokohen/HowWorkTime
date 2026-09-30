@@ -100,6 +100,7 @@ async function 메인() {
     const 데이터 = 응답.value;
     const 기존 = 결과[연도] ?? [];
     if (데이터.length < 기존.length - 허용감소) {
+      실패수++;
       console.warn(`△ ${연도}년: API 응답(${데이터.length}일)이 기존(${기존.length}일)보다 크게 적어 불완전한 응답으로 보고 기존을 유지합니다`);
       return;
     }
@@ -108,10 +109,10 @@ async function 메인() {
     console.log(`✓ ${연도}년: ${데이터.length}일`);
   });
 
-  if (실패수 === 연도범위.length) {
-    console.error("\n모든 연도 조회에 실패했습니다. 기존 데이터는 그대로입니다.");
+  // 갱신하지 못한 연도가 하나라도 있으면 exit 1 로 알린다 (성공한 연도는 아래에서 그대로 저장)
+  if (실패수 > 0) {
+    console.error(`\n${연도범위.length}개 연도 중 ${실패수}개를 갱신하지 못했습니다. 해당 연도는 기존 데이터를 유지합니다.`);
     process.exitCode = 1;
-    return;
   }
   if (!변경) {
     console.log("\n변경 없음");
