@@ -135,11 +135,11 @@ jobs:
           git commit -m "chore: 공휴일 데이터 갱신"
           git push || { git pull --rebase && git push; }
 
-  # 공휴일 갱신이 실패하면 배포는 계속하되, 이 job 을 실패시켜 실행 결과에 드러나게 한다
-  # (키 만료 등으로 데이터가 조용히 낡는 것을 막기 위함)
+  # 예약 실행(공휴일 갱신이 목적)에서 갱신이 실패하면 이 job 을 실패시켜 실행 결과에 드러나게 한다.
+  # (키 만료 등으로 데이터가 조용히 낡는 것을 막기 위함. 푸시 실행의 일시적 API 오류로는 실패 처리하지 않는다)
   data-health:
     needs: build
-    if: needs.build.outputs.fetched != 'true'
+    if: github.event_name == 'schedule' && needs.build.outputs.fetched != 'true'
     runs-on: ubuntu-latest
     steps:
       - run: |

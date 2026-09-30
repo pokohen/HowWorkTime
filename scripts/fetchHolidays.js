@@ -18,8 +18,25 @@ const 서비스키 = process.env.DATA_GO_KR_KEY;
 
 // API 의 dateName 표기를 화면에 쓰는 이름으로 통일
 const 이름정규화 = { "1월1일": "신정" };
+// 일시적인 네트워크·서버 오류에 대비한 재시도 횟수와 간격(ms)
+const 재시도횟수 = 3;
+const 재시도간격 = 2000;
 // 기존보다 이만큼까지 줄어든 응답은 정정(임시공휴일 취소 등)으로 보고 받아들인다. 그보다 크게 줄면 불완전한 응답으로 본다
 const 허용감소 = 2;
+
+/** 실패하면 간격을 늘려 가며 다시 시도한다 */
+async function 재시도(작업) {
+  let 마지막오류;
+  for (let 시도 = 0; 시도 < 재시도횟수; 시도++) {
+    try {
+      return await 작업();
+    } catch (오류) {
+      마지막오류 = 오류;
+      if (시도 < 재시도횟수 - 1) await new Promise((r) => setTimeout(r, 재시도간격 * (시도 + 1)));
+    }
+  }
+  throw 마지막오류;
+}
 
 async function 공휴일가져오기(연도) {
   const 쿼리 = new URLSearchParams({
@@ -86,7 +103,7 @@ async function 메인() {
   const 연도범위 = [현재연도 - 1, 현재연도, 현재연도 + 1, 현재연도 + 2];
 
   // 연도별 조회는 서로 독립이므로 동시에 보낸다
-  const 응답들 = await Promise.allSettled(연도범위.map(공휴일가져오기));
+  const 응답들 = await Promise.allSettled(연도범위.map((연도) => 재시도(() => 공휴일가져오기(연도))));
 
   let 변경 = false;
   let 실패수 = 0;
