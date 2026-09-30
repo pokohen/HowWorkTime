@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { 급여일조회, 재택가능일여부 } from '../utils/workDays'
+import { 급여일조회, 재택가능일여부, 내일날짜 } from '../utils/workDays'
 import { 요일이름 } from '../constants'
 import { 모듈상태 } from './moduleState'
 
@@ -34,11 +34,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const 오늘요일 = computed(() => 오늘.value.getDay())
   // 재택 대상일: 재택 요일이면서 공휴일이 아닌 날 (남은금요일수 와 같은 기준)
   const 오늘금요일여부 = computed(() => 재택가능일여부(오늘.value))
-  const 내일금요일여부 = computed(() => {
-    const 내일 = new Date(오늘.value)
-    내일.setDate(내일.getDate() + 1)
-    return 재택가능일여부(내일)
-  })
+  const 내일금요일여부 = computed(() => 재택가능일여부(내일날짜(오늘.value)))
 
   const 오늘표시 = computed(
     () => `${현재연도.value}년 ${현재월.value}월 ${오늘.value.getDate()}일 ${요일이름[오늘요일.value]}요일`,
@@ -63,3 +59,6 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
 export function useToday() {
   return 상태
 }
+
+// HMR: 스스로 수용해야 위 모듈상태의 dispose 가 실행되고, invalidate 로 사용하는 컴포넌트까지 갱신한다
+if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())

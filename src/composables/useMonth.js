@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, watchEffect } from 'vue'
 import { 월말일수, 소정근로일수, 남은근무일수, 남은금요일수 } from '../utils/workDays'
 import { 월공휴일, 공휴일데이터여부 } from '../utils/holidays'
 import { 하루근무분 } from '../constants'
@@ -38,17 +38,20 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   })
 
   const 선택월표시 = computed(() => `${선택연도.value}년 ${선택월.value}월`)
-  const 이번달여부 = computed(() => 선택연도.value === 현재연도.value && 선택월.value === 현재월.value)
-  const 지난달여부 = computed(() => {
-    const 선택 = new Date(선택연도.value, 선택월.value - 1, 1)
-    const 이번달 = new Date(현재연도.value, 현재월.value - 1, 1)
-    return 선택 < 이번달
-  })
+  // 선택 월이 이번 달에서 몇 달 떨어졌는지 (음수 = 과거)
+  const 월차이 = computed(
+    () => (선택연도.value * 12 + 선택월.value) - (현재연도.value * 12 + 현재월.value),
+  )
+  const 이번달여부 = computed(() => 월차이.value === 0)
+  const 지난달여부 = computed(() => 월차이.value < 0)
 
-  // 입사 체크를 켜거나 월을 바꾸면 입사일을 그 달의 기본값으로: 이번 달이면 오늘, 아니면 1일
-  watch([입사한달여부, 선택연도, 선택월], ([켜짐]) => {
-    if (!켜짐) return
-    입사일.value = 이번달여부.value ? 오늘.value.getDate() : 1
+  // 입사 체크를 켤 때 그 달의 기본값으로 시작: 이번 달이면 오늘, 아니면 1일
+  watch(입사한달여부, (켜짐) => {
+    if (켜짐) 입사일.value = 이번달여부.value ? 오늘.value.getDate() : 1
+  })
+  // 월을 바꿔 사용자가 고른 입사일이 말일을 넘기면 말일로만 보정 (그 외에는 유지)
+  watchEffect(() => {
+    if (입사한달여부.value && 입사일.value > 월말일.value) 입사일.value = 월말일.value
   })
 
   // ── 근무일 계산 ────────────────────────────────────────────
@@ -89,3 +92,6 @@ const 상태 = 모듈상태(import.meta.hot, () => {
 export function useMonth() {
   return 상태
 }
+
+// HMR: 스스로 수용해야 위 모듈상태의 dispose 가 실행되고, invalidate 로 사용하는 컴포넌트까지 갱신한다
+if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())

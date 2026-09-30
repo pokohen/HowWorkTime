@@ -24,9 +24,11 @@ pnpm test
 ```
 
 공휴일 데이터는 공공데이터포털 특일 정보 API에서 가져옵니다.
-`DATA_GO_KR_KEY` 환경변수를 설정한 뒤 실행하면 `src/data/holidays.json`이 갱신됩니다.
+`.env.local`에 `DATA_GO_KR_KEY`를 넣거나 환경변수로 주고 실행하면 `src/data/holidays.json`이 갱신됩니다.
+API가 비거나 실패한 연도는 기존 데이터를 유지하므로 배포를 막지 않습니다.
 
 ```sh
+pnpm prefetch:holidays            # .env.local 을 자동으로 읽음
 DATA_GO_KR_KEY=... pnpm prefetch:holidays
 ```
 

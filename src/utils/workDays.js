@@ -46,7 +46,7 @@ function 날짜세기(시작날, 끝날, 조건) {
 }
 
 /** 오늘 다음 날 00:00 */
-function 내일날짜(오늘) {
+export function 내일날짜(오늘) {
   const 내일 = new Date(오늘)
   내일.setHours(0, 0, 0, 0)
   내일.setDate(내일.getDate() + 1)

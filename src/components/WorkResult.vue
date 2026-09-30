@@ -10,7 +10,7 @@ const { 지난달여부, 의무근로분, 남은근무일 } = useMonth()
 const { 입력분, 최대근로분 } = useWorkInput()
 const {
   반영분, 오늘반영분, 달성률, 의무달성여부, 의무대비분, 최대대비분,
-  출근남은일, 출근조정있음, 출근조정내역, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
+  출근남은일, 출근조정있음, 출근조정내역, 차감내역, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
   남은정규분, 남은의무원값, 마일리지분,
 } = useWorkResult()
 
@@ -64,16 +64,12 @@ const 부호시분 = (n) => `${부호(n)}${시분변환(Math.abs(n))}`
         <StatCard 라벨="남은 의무 근무시간" 강조="green">
           <template v-if="반영분 > 0">{{ 시분변환(남은의무분) }}</template>
           <span v-else class="placeholder-dash">—</span>
-          <template #부제>
-            의무 {{ 시분변환(의무근로분) }}<template v-if="반영분 > 0"> − 누적 {{ 시분변환(입력분) }}<template v-if="오늘반영분 > 0"> − 오늘 {{ 시분변환(오늘반영분) }}</template></template>
-          </template>
+          <template #부제>의무 {{ 시분변환(의무근로분) }}{{ 차감내역 }}</template>
         </StatCard>
         <StatCard 라벨="남은 최대 근무시간" 강조="purple">
           <template v-if="반영분 > 0">{{ 시분변환(남은최대분) }}</template>
           <span v-else class="placeholder-dash">—</span>
-          <template #부제>
-            최대 {{ 시분변환(최대근로분) }}<template v-if="반영분 > 0"> − 누적 {{ 시분변환(입력분) }}<template v-if="오늘반영분 > 0"> − 오늘 {{ 시분변환(오늘반영분) }}</template></template>
-          </template>
+          <template #부제>최대 {{ 시분변환(최대근로분) }}{{ 차감내역 }}</template>
         </StatCard>
       </div>
 

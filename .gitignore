@@ -25,3 +25,7 @@ dist-ssr
 
 # claude file
 .claude
+
+# pnpm 만 사용
+package-lock.json
+yarn.lock

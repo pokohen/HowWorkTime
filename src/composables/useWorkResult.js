@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import { 하루근무분 } from '../constants'
+import { 시분변환 } from '../utils/timeFormat'
 import { 모듈상태 } from './moduleState'
 import { useMonth } from './useMonth'
 import { useWorkInput } from './useWorkInput'
@@ -51,6 +52,13 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   )
   const 남은의무원값 = computed(() => 의무근로분.value - 반영분.value) // 음수 허용
   const 남은의무분 = computed(() => Math.max(0, 남은의무원값.value))
+  // 카드 부제의 ' − 누적 X − 오늘 Y' 부분. 반영된 것이 없으면 빈 문자열
+  const 차감내역 = computed(() =>
+    [
+      입력분.value > 0 && `누적 ${시분변환(입력분.value)}`,
+      오늘반영분.value > 0 && `오늘 ${시분변환(오늘반영분.value)}`,
+    ].filter(Boolean).map((항목) => ` − ${항목}`).join(''),
+  )
   const 남은최대분 = computed(() => Math.max(0, 최대근로분.value - 반영분.value))
 
   const 일평균 = (남은분) => (출근남은일.value === 0 ? 0 : Math.round(남은분 / 출근남은일.value))
@@ -64,7 +72,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   return {
     반영분, 오늘반영분,
     달성률, 의무달성여부, 초과분, 의무대비분, 최대대비분, 진행바색상,
-    출근남은일, 출근조정있음, 출근조정내역, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
+    출근남은일, 출근조정있음, 출근조정내역, 차감내역, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
     남은정규분, 남은의무원값, 마일리지분,
   }
 })
@@ -72,3 +80,6 @@ const 상태 = 모듈상태(import.meta.hot, () => {
 export function useWorkResult() {
   return 상태
 }
+
+// HMR: 스스로 수용해야 위 모듈상태의 dispose 가 실행되고, invalidate 로 사용하는 컴포넌트까지 갱신한다
+if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())
