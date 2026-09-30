@@ -19,8 +19,8 @@ const { 다크모드 } = useTheme()
 // VueDatePicker 는 { hours, minutes } 객체를 쓰므로 문자열과 상호 변환
 const 시각객체 = computed({
   get: () => {
-    if (!시각.value) return null
-    const 분합 = 시각파싱(시각.value) ?? 9 * 60
+    const 분합 = 시각파싱(시각.value)
+    if (분합 === null) return null
     return { hours: Math.floor(분합 / 60), minutes: 분합 % 60, seconds: 0 }
   },
   set: (값) => {
@@ -35,14 +35,11 @@ const 시각객체 = computed({
     <div class="clock-row">
       <VueDatePicker
         v-model="시각객체"
-        :input-attrs="{ id }"
+        :input-attrs="{ id, clearable: false }"
         :aria-labels="{ input: 라벨 }"
+        :time-config="{ is24: true, minutesIncrement: 5, minutesGridIncrement: 5 }"
         time-picker
-        :is-24="true"
         auto-apply
-        :clearable="false"
-        :minutes-increment="5"
-        :minutes-grid-increment="5"
         :dark="다크모드"
         :placeholder="placeholder"
         class="dp-wrap"

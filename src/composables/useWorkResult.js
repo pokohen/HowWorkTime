@@ -22,7 +22,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   // ── 달성 현황 ──────────────────────────────────────────────
   const 달성률 = computed(() => {
     if (의무근로분.value === 0) return 0
-    return Math.min(100, Math.floor((반영분.value / 의무근로분.value) * 100))
+    // 곱셈을 먼저 해서 부동소수 오차로 1% 낮게 나오는 것을 막는다 (예: 2784/9600)
+    return Math.min(100, Math.floor((반영분.value * 100) / 의무근로분.value))
   })
   // 반영분 − 의무. 양수면 초과, 음수면 미달. 아래 파생값들은 모두 이 하나에서 나온다
   const 의무대비분 = computed(() => 반영분.value - 의무근로분.value)
@@ -61,7 +62,9 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   )
   const 남은최대분 = computed(() => Math.max(0, 최대근로분.value - 반영분.value))
 
-  const 일평균 = (남은분) => (출근남은일.value === 0 ? 0 : Math.round(남은분 / 출근남은일.value))
+  // 반차 등으로 남은 출근일이 하루 미만(예: 0.25일)이면 하루로 나눠, 남은 시간보다 큰 '일평균'이 나오지 않게 한다
+  const 일평균 = (남은분) =>
+    출근남은일.value === 0 ? 0 : Math.round(남은분 / Math.max(1, 출근남은일.value))
   const 의무일평균분 = computed(() => 일평균(남은의무분.value))
   const 최대일평균분 = computed(() => 일평균(남은최대분.value))
 

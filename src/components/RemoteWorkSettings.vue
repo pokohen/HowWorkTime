@@ -19,7 +19,7 @@ const { 재택근무여부, 재택선택일수, 재택일수 } = useRemoteWork()
       <option v-for="n in 남은금요일 + 1" :key="n - 1" :value="n - 1">{{ n - 1 }}일</option>
     </select>
     <span class="setting-hint">
-      남은 금요일 <strong>{{ 남은금요일 }}일</strong> 중 <strong>{{ 재택일수 }}일</strong> 반영 · 8시간 자동 인정
+      남은 금요일 <strong>{{ 남은금요일 }}일</strong> 중 <strong>{{ 재택일수 }}일</strong> 반영 · 하루 8시간 인정분은 위 ‘현재까지 근무시간’에 포함해 입력
     </span>
 
     <template v-if="남은금요일 === 0" #힌트>

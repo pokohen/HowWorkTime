@@ -1,6 +1,7 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { 연차단위 } from '../constants'
 import { 모듈상태 } from './moduleState'
+import { useMonth } from './useMonth'
 import { useWorkInput } from './useWorkInput'
 
 // 연차(8h)·반차(4h)·반반차(2h)는 '현재까지 근무시간'에 이미 포함된 시간이다.
@@ -14,6 +15,11 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 반차수 = ref(0)
   const 반반차수 = ref(0)
   const 대상ref = { 연차: 연차일수, 반차: 반차수, 반반차: 반반차수 }
+  // 달이 자동으로 넘어가면 지난 달의 연차 지정을 초기화
+  watch(useMonth().월넘김횟수, () => {
+    연차여부.value = false
+    Object.values(대상ref).forEach((r) => { r.value = 0 })
+  })
 
   const 개수 = (r) => Number(r.value) || 0
   const 연차분요청 = computed(() =>

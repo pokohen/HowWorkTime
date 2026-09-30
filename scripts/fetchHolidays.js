@@ -3,8 +3,9 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // 공공데이터포털 특일 정보 API 에서 공휴일을 받아 src/data/holidays.json 을 갱신한다.
-// 커밋된 파일을 항상 기준으로 삼고, API 가 비었거나 실패한 연도는 기존 데이터를 유지한다.
-// 따라서 이 스크립트는 배포를 막지 않는다 (실패해도 exit 0).
+// 커밋된 파일을 항상 기준으로 삼고, API 가 실패했거나 기존보다 적게 준 연도는 기존 데이터를 유지한다.
+// 키가 없거나 모든 연도가 실패하면 exit 1 로 알리되, 파일은 건드리지 않으므로
+// CI 에서는 continue-on-error 로 커밋된 데이터로 배포를 계속한다.
 
 const 현재파일경로 = fileURLToPath(import.meta.url);
 const 프로젝트루트 = resolve(dirname(현재파일경로), "..");
@@ -63,8 +64,9 @@ async function 메인() {
   const 결과 = await 기존데이터();
 
   if (!서비스키) {
-    console.warn("환경변수 DATA_GO_KR_KEY 가 없어 공휴일 갱신을 건너뜁니다. 기존 데이터를 그대로 씁니다.");
-    console.warn("로컬: .env.local 또는 export DATA_GO_KR_KEY=... / CI: GitHub Secrets 에 등록");
+    console.error("환경변수 DATA_GO_KR_KEY 가 없어 공휴일을 갱신하지 못했습니다. 기존 데이터는 그대로입니다.");
+    console.error("로컬: .env.local 또는 export DATA_GO_KR_KEY=... / CI: GitHub Secrets 에 등록");
+    process.exitCode = 1;
     return;
   }
 
@@ -75,16 +77,19 @@ async function 메인() {
   const 응답들 = await Promise.allSettled(연도범위.map(공휴일가져오기));
 
   let 변경 = false;
+  let 실패수 = 0;
   연도범위.forEach((연도, i) => {
     const 응답 = 응답들[i];
     if (응답.status === "rejected") {
+      실패수++;
       console.warn(`✗ ${연도}년 갱신 실패, 기존 데이터 유지: ${응답.reason?.message ?? 응답.reason}`);
       return;
     }
     const 데이터 = 응답.value;
     const 기존 = 결과[연도] ?? [];
-    if (데이터.length === 0 && 기존.length > 0) {
-      console.warn(`△ ${연도}년: API 응답이 비어 있어 기존 ${기존.length}일을 유지합니다`);
+    // 공휴일은 늘어나기만 하므로(임시·대체공휴일) 기존보다 적은 응답은 불완전한 것으로 보고 버린다
+    if (데이터.length < 기존.length) {
+      console.warn(`△ ${연도}년: API 응답(${데이터.length}일)이 기존(${기존.length}일)보다 적어 기존을 유지합니다`);
       return;
     }
     if (JSON.stringify(데이터) !== JSON.stringify(기존)) 변경 = true;
@@ -92,6 +97,11 @@ async function 메인() {
     console.log(`✓ ${연도}년: ${데이터.length}일`);
   });
 
+  if (실패수 === 연도범위.length) {
+    console.error("\n모든 연도 조회에 실패했습니다. 기존 데이터는 그대로입니다.");
+    process.exitCode = 1;
+    return;
+  }
   if (!변경) {
     console.log("\n변경 없음");
     return;
@@ -102,6 +112,6 @@ async function 메인() {
 }
 
 메인().catch((오류) => {
-  // 예기치 못한 오류도 배포를 막지 않는다. 기존 데이터로 빌드한다.
-  console.warn(`공휴일 갱신 중 오류, 기존 데이터 유지: ${오류.message}`);
+  console.error(`공휴일 갱신 중 오류, 기존 데이터 유지: ${오류.message}`);
+  process.exitCode = 1;
 });

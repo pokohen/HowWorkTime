@@ -27,15 +27,15 @@ pnpm test
 
 공휴일 데이터는 공공데이터포털 특일 정보 API에서 가져옵니다.
 `.env.local`에 `DATA_GO_KR_KEY`를 넣거나 환경변수로 주고 실행하면 `src/data/holidays.json`이 갱신됩니다.
-API가 비거나 실패한 연도는 기존 데이터를 유지하므로 배포를 막지 않습니다.
+API가 실패했거나 기존보다 적게 응답한 연도는 기존 데이터를 유지합니다.
 
 ```sh
 pnpm prefetch:holidays            # .env.local 을 자동으로 읽음
 DATA_GO_KR_KEY=... pnpm prefetch:holidays
 ```
 
-GitHub Actions(`.github/workflows/deploy.yml`)가 main 푸시와 매일 새벽 스케줄로
-공휴일 데이터를 갱신하고 GitHub Pages에 배포합니다.
+GitHub Actions(`.github/workflows/deploy.yml`)가 main 푸시 때마다 배포하고, 매일 새벽 스케줄로 공휴일 데이터를 확인해
+커밋된 데이터와 달라졌을 때만 다시 배포합니다. 갱신에 실패하면 커밋된 데이터로 배포합니다.
 
 ## 구조
 
