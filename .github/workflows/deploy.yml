@@ -11,10 +11,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -89,6 +85,11 @@ jobs:
     permissions:
       pages: write
       id-token: write
+    # 동시성은 배포 job 에만 건다. 워크플로우 전체에 걸면 배포를 건너뛰는 예약 실행이
+    # 대기 중인 푸시 실행을 밀어내고(그룹당 대기 1개) 그 푸시가 배포되지 않을 수 있다.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -104,6 +105,9 @@ jobs:
     needs: [build, deploy]
     if: needs.build.outputs.changed == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    concurrency:
+      group: commit-data
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
