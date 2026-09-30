@@ -48,8 +48,8 @@ const 부호시분 = (n) => (n >= 0 ? `+${시분변환(n)}` : 시분변환(n))
 
     <!-- ── 이번 달 이후 ── -->
     <template v-else>
-      <div v-if="반영분 === 0" class="empty-banner">
-        💡 위에서 <strong>현재까지 근무시간</strong>을 입력하면 남은 시간과 일평균 목표가 계산됩니다.
+      <div v-if="입력분 === 0" class="empty-banner">
+        💡 위에서 <strong>현재까지 근무시간</strong>을 입력하면 더 정확한 남은 시간과 일평균 목표가 계산됩니다.
       </div>
 
       <div class="result-grid">
@@ -75,7 +75,7 @@ const 부호시분 = (n) => (n >= 0 ? `+${시분변환(n)}` : 시분변환(n))
       <div v-if="출근남은일 > 0 && 반영분 > 0" class="avg-section">
         <h3 class="avg-title">일평균 목표 근무시간</h3>
         <p v-if="출근조정있음" class="avg-note">
-          {{ 출근조정내역 }}(8시간 자동 인정)을 제외한 <strong>출근 {{ 출근남은일 }}일</strong> 기준입니다.
+          {{ 출근조정내역 }}을 제외한 <strong>출근 {{ 출근남은일 }}일</strong> 기준입니다. 재택·연차의 하루 8시간은 ‘현재까지 근무시간’에 포함해 입력한 것으로 봅니다.
         </p>
         <div class="result-grid">
           <StatCard

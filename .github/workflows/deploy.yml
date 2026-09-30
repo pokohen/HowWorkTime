@@ -7,10 +7,9 @@ on:
     - cron: '0 18 * * *'  # 매일 KST 03:00 (UTC 18:00) — 공휴일 데이터 갱신
   workflow_dispatch:
 
+# 기본은 읽기 전용. 쓰기 권한은 필요한 job 에만 준다.
 permissions:
-  contents: write # 갱신된 공휴일 데이터를 저장소에 되커밋하기 위해 필요
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: pages
@@ -21,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       deploy: ${{ steps.decide.outputs.deploy }}
+      changed: ${{ steps.decide.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -50,17 +50,12 @@ jobs:
             echo "공휴일 데이터 변경 없음 — 배포를 건너뜁니다"
           fi
 
-      # 갱신분을 저장소에 남겨, 다음 실행의 비교 기준과 로컬·폴백 데이터가 배포본과 어긋나지 않게 한다.
-      # GITHUB_TOKEN 으로 한 푸시는 워크플로우를 다시 트리거하지 않는다.
-      - name: 갱신된 공휴일 데이터 커밋
-        if: steps.decide.outputs.changed == 'true' && github.ref == 'refs/heads/main'
-        continue-on-error: true
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/holidays.json
-          git commit -m "chore: 공휴일 데이터 갱신"
-          git push
+      # 배포가 끝난 뒤 commit-data job 이 저장소에 반영할 수 있도록 넘겨준다
+      - if: steps.decide.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: holidays-data
+          path: src/data/holidays.json
 
       - if: steps.decide.outputs.deploy == 'true'
         uses: pnpm/action-setup@v4 # 버전은 package.json 의 packageManager 를 따른다
@@ -89,9 +84,42 @@ jobs:
     needs: build
     if: needs.build.outputs.deploy == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # 배포까지 성공한 뒤에만 갱신된 공휴일 데이터를 저장소에 남긴다.
+  # 빌드·배포가 실패하면 커밋되지 않으므로 다음 예약 실행이 다시 차이를 감지해 재시도한다.
+  # 쓰기 권한은 이 job 에만 있고, 의존성 설치나 빌드 코드는 여기서 실행되지 않는다.
+  # GITHUB_TOKEN 으로 한 푸시는 워크플로우를 다시 트리거하지 않는다.
+  commit-data:
+    needs: [build, deploy]
+    if: needs.build.outputs.changed == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: holidays-data
+          path: src/data
+
+      - name: 갱신된 공휴일 데이터 커밋
+        run: |
+          if git diff --quiet -- src/data/holidays.json; then
+            echo "이미 반영되어 있습니다"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/holidays.json
+          git commit -m "chore: 공휴일 데이터 갱신"
+          git push

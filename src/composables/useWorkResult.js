@@ -7,16 +7,21 @@ import { useWorkInput } from './useWorkInput'
 import { useTodayWork } from './useTodayWork'
 import { useRemoteWork } from './useRemoteWork'
 import { useLeave } from './useLeave'
+import { useToday } from './useToday'
 
 const 상태 = 모듈상태(import.meta.hot, () => {
-  const { 의무근로분, 남은근무일, 이번달여부 } = useMonth()
+  const { 의무근로분, 남은근무일, 이번달여부, 유효입사일 } = useMonth()
+  const { 오늘 } = useToday()
   const { 입력분, 최대근로분 } = useWorkInput()
   const { 오늘예상분 } = useTodayWork()
   const { 재택일수 } = useRemoteWork()
   const { 연차일수환산 } = useLeave()
 
-  // 계산에 반영되는 총 근무시간 = 누적 입력 + 오늘 예상 (오늘은 이번 달에만 속한다)
-  const 오늘반영분 = computed(() => (이번달여부.value ? 오늘예상분.value : 0))
+  // 계산에 반영되는 총 근무시간 = 누적 입력 + 오늘 예상.
+  // 오늘은 이번 달에만 속하고, 입사일 전이면 아직 근무가 시작되지 않았으므로 더하지 않는다
+  const 오늘반영분 = computed(() =>
+    이번달여부.value && 오늘.value.getDate() >= 유효입사일.value ? 오늘예상분.value : 0,
+  )
   const 반영분 = computed(() => 입력분.value + 오늘반영분.value)
 
   // ── 달성 현황 ──────────────────────────────────────────────

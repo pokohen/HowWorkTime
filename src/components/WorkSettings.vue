@@ -27,7 +27,8 @@ const { 반영분, 오늘반영분 } = useWorkResult()
     </div>
 
     <p v-if="누적갱신필요 && 이번달여부" class="stale-notice" role="status">
-      📅 날짜가 바뀌었습니다. 어제 근무시간을 ‘현재까지 근무시간’에 더해 주세요.
+      <span>📅 날짜가 바뀌었습니다. ‘현재까지 근무시간’이 어제까지 반영됐는지 확인해 주세요.</span>
+      <button type="button" class="stale-close" aria-label="안내 닫기" @click="누적갱신필요 = false">✕</button>
     </p>
 
     <div class="input-grid">
@@ -81,6 +82,10 @@ const { 반영분, 오늘반영분 } = useWorkResult()
   margin-left: auto;
 }
 .stale-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 16px;
   padding: 10px 14px;
   font-size: 0.85rem;
@@ -88,6 +93,19 @@ const { 반영분, 오늘반영분 } = useWorkResult()
   background: var(--tint-amber-bg);
   border: 1px solid var(--tint-amber-border);
   border-radius: 10px;
+}
+.stale-close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.stale-close:hover {
+  background: var(--tint-amber-border);
 }
 .input-grid {
   display: grid;

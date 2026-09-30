@@ -40,9 +40,15 @@ async function 공휴일가져오기(연도) {
     throw new Error(`API 오류 ${결과코드}: ${메시지} (${연도}년)`);
   }
 
-  const 항목들 = 본문?.response?.body?.items?.item;
-  if (!항목들) return [];
-  const 배열 = Array.isArray(항목들) ? 항목들 : [항목들];
+  const 본체 = 본문?.response?.body;
+  if (!본체) throw new Error(`응답 형식이 예상과 다릅니다 (${연도}년)`);
+  const 전체수 = Number(본체.totalCount ?? 0);
+  const 항목들 = 본체.items?.item;
+  const 배열 = !항목들 ? [] : Array.isArray(항목들) ? 항목들 : [항목들];
+  // 응답이 잘렸는지 API 가 알려주는 전체 건수와 대조한다
+  if (배열.length !== 전체수) {
+    throw new Error(`불완전한 응답: ${전체수}건 중 ${배열.length}건만 수신 (${연도}년)`);
+  }
 
   const 날짜별 = new Map();
   for (const 항목 of 배열) {

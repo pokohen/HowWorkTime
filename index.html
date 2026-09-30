@@ -16,8 +16,9 @@
     <!-- 첫 렌더 전에 테마 클래스를 붙여 깜빡임을 막는다. 저장 키 플레이스홀더는 vite.config.js 의 define(THEME_KEY) 값으로 치환된다. -->
     <script>
       (function () {
+        var saved = null;
+        try { saved = localStorage.getItem('%THEME_KEY%'); } catch (e) { /* 저장소가 막힌 환경: 시스템 테마로 */ }
         try {
-          var saved = localStorage.getItem('%THEME_KEY%');
           var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
           var theme = saved === 'light' || saved === 'dark' ? saved : (prefersDark ? 'dark' : 'light');
           document.documentElement.classList.add('theme-' + theme);
