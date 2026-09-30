@@ -1,12 +1,12 @@
 <script setup>
 import { 시분변환 } from '../utils/timeFormat'
-import { 하루근무분 } from '../constants'
+import { 하루근무분, 하루최대분 } from '../constants'
 import { useToday } from '../composables/useToday'
 import { useTodayWork } from '../composables/useTodayWork'
 import TimeField from './common/TimeField.vue'
 import ClockField from './common/ClockField.vue'
 
-const { 오늘금요일여부 } = useToday()
+const { 오늘재택가능여부 } = useToday()
 const {
   오늘재택적용, 출근시각, 퇴근시각, 휴게자동, 휴게수동분, 오늘예상시간,
   자정넘김여부, 총체류분, 휴게분, 오늘예상분,
@@ -14,7 +14,7 @@ const {
 } = useTodayWork()
 
 const 입력모드들 = [
-  { 키: '재택', 이름: '🏠 재택', 금요일만: true },
+  { 키: '재택', 이름: '🏠 재택', 재택가능일만: true },
   { 키: '출퇴근', 이름: '출·퇴근으로 계산' },
   { 키: '직접', 이름: '직접 입력' },
 ]
@@ -35,7 +35,7 @@ const 휴게선택지 = [
       <div class="mode-switch" role="group" aria-label="입력 방식">
         <template v-for="모드 in 입력모드들" :key="모드.키">
           <button
-            v-if="!모드.금요일만 || 오늘금요일여부"
+            v-if="!모드.재택가능일만 || 오늘재택가능여부"
             type="button"
             :aria-pressed="오늘모드 === 모드.키"
             :class="{ active: 오늘모드 === 모드.키 }"
@@ -98,6 +98,7 @@ const 휴게선택지 = [
       v-model="오늘예상시간"
       :예시="['8:00']"
       빈값="0:00"
+      :최대분="하루최대분"
     >
       <template #힌트>
         오늘 추가로 일할 시간 · <strong>현재까지에 더해</strong> 합산

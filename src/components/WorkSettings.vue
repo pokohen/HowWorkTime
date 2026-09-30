@@ -10,7 +10,7 @@ import RemoteWorkSettings from './RemoteWorkSettings.vue'
 import LeaveSettings from './LeaveSettings.vue'
 import TodayWorkInput from './TodayWorkInput.vue'
 
-const { 지난달여부, 이번달여부 } = useMonth()
+const { 지난달여부, 이번달여부, 오늘포함여부 } = useMonth()
 const { 고정연장시간, 입력근무시간, 누적갱신필요, 입력분 } = useWorkInput()
 const { 연차분 } = useLeave()
 const { 반영분, 오늘반영분 } = useWorkResult()
@@ -49,7 +49,7 @@ const { 반영분, 오늘반영분 } = useWorkResult()
 
       <RemoteWorkSettings v-if="!지난달여부" class="full-row" />
       <LeaveSettings v-if="!지난달여부" class="full-row" />
-      <TodayWorkInput v-if="이번달여부" class="full-row" />
+      <TodayWorkInput v-if="오늘포함여부" class="full-row" />
     </div>
   </CardSection>
 </template>

@@ -13,14 +13,16 @@ const props = defineProps({
   예시: { type: Array, default: () => ['0:00'] },
   /** 비어 있을 때 정규화 결과 */
   빈값: { type: String, default: '' },
+  /** 허용하는 최대 분. 넘으면 형식 오류로 표시한다 (예: 하루 입력은 24시간) */
+  최대분: { type: Number, default: Infinity },
 })
 
 const 결과 = computed(() => 시분파싱(값.value))
-const 유효 = computed(() => 결과.value.유효)
+const 유효 = computed(() => 결과.value.유효 && 결과.value.분 <= props.최대분)
 const 콜론없는예시 = computed(() => props.예시[0].replace(':', ''))
 
 function 정규화() {
-  if (!결과.value.유효) return
+  if (!유효.value) return
   값.value = 결과.value.비어있음 ? props.빈값 : 시분변환(결과.value.분)
 }
 </script>
@@ -42,7 +44,9 @@ function 정규화() {
       />
     </div>
     <p v-if="!유효" class="input-error">
-      ⚠ 형식이 올바르지 않습니다. 예: <code>{{ 예시[0] }}</code> 또는 <code>{{ 콜론없는예시 }}</code>
+      <template v-if="결과.유효">⚠ 입력할 수 있는 범위를 넘었습니다.</template>
+      <template v-else>⚠ 형식이 올바르지 않습니다.</template>
+      예: <code>{{ 예시[0] }}</code> 또는 <code>{{ 콜론없는예시 }}</code>
     </p>
     <p v-else class="input-hint">
       <slot name="힌트">

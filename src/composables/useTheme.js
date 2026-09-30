@@ -55,6 +55,3 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
 export function useTheme() {
   return 상태
 }
-
-// HMR: 스스로 수용해야 위 모듈상태의 dispose 가 실행되고, invalidate 로 사용하는 컴포넌트까지 갱신한다
-if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())

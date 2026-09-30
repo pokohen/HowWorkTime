@@ -11,6 +11,11 @@ export const 요일이름 = ['일', '월', '화', '수', '목', '금', '토']
 
 /** 재택근무 요일 (getDay 기준, 5 = 금요일) */
 export const 재택요일 = 5
+/** 화면에 쓰는 재택 요일 이름 (예: '금요일') */
+export const 재택요일명 = `${요일이름[재택요일]}요일`
+
+/** 하루에 입력할 수 있는 최대 근무시간(분) */
+export const 하루최대분 = 24 * 60
 
 /** 테마 localStorage 키. 값은 vite.config.js 의 define 에서 오며 index.html 의 %THEME_KEY% 에도 같은 값이 들어간다. */
 export const 테마저장키 = import.meta.env.THEME_KEY

@@ -6,9 +6,9 @@ import { effectScope } from 'vue'
  * Vite HMR 로 모듈이 다시 평가될 때 이전 스코프와 등록한 정리 함수가 함께 해제된다.
  * (그렇지 않으면 리스너·타이머·watcher 가 갱신마다 쌓인다)
  *
- * 주의: Vite 는 모듈 소스에 `import.meta.hot.accept(` 가 문자 그대로 있어야 자체 수용 모듈로
- * 보고 dispose 를 호출한다. 그래서 accept 는 여기서 호출하지 않고 각 composable 파일이
- * `if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())` 를 직접 적는다.
+ * 주의: Vite 는 모듈이 스스로 HMR 을 수용해야 그 모듈의 dispose 를 호출하고, 수용 여부는
+ * 모듈 소스의 텍스트로 판단한다. 그래서 수용 코드는 여기서 호출하지 않고, vite.config.js 의
+ * 모듈상태HMR 플러그인이 `모듈상태(import.meta.hot` 를 쓰는 모든 모듈에 주입한다.
  *
  * @param {ImportMeta['hot']} hot - import.meta.hot
  * @param {(정리등록: (fn: () => void) => void) => T} 정의

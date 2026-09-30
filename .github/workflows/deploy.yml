@@ -21,6 +21,7 @@ jobs:
     outputs:
       deploy: ${{ steps.decide.outputs.deploy }}
       changed: ${{ steps.decide.outputs.changed }}
+      fetched: ${{ steps.fetch.outcome == 'success' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +32,7 @@ jobs:
       # Node 내장 기능만 쓰는 스크립트라 의존성 설치 전에 실행한다.
       # 실패하면 이 단계에 경고 표시만 남기고, 커밋된 데이터로 계속 진행한다.
       - name: 공휴일 데이터 가져오기
+        id: fetch
         continue-on-error: true
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
@@ -105,7 +107,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      # 빌드·배포 사이에 main 이 앞서갔을 수 있으므로 트리거 SHA 가 아니라 브랜치 끝에서 커밋한다
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/download-artifact@v4
         with:
@@ -122,4 +127,15 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/data/holidays.json
           git commit -m "chore: 공휴일 데이터 갱신"
-          git push
+          git push || { git pull --rebase && git push; }
+
+  # 공휴일 갱신이 실패하면 배포는 계속하되, 이 job 을 실패시켜 실행 결과에 드러나게 한다
+  # (키 만료 등으로 데이터가 조용히 낡는 것을 막기 위함)
+  data-health:
+    needs: build
+    if: needs.build.outputs.fetched != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::error::공휴일 데이터 갱신에 실패했습니다. DATA_GO_KR_KEY 와 API 상태를 확인하세요. 배포는 커밋된 데이터로 진행됩니다."
+          exit 1

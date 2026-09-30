@@ -1,6 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { 시분파싱, 시각파싱 } from '../utils/timeFormat'
 import { 근무일여부 } from '../utils/workDays'
+import { 하루최대분 } from '../constants'
 import { 모듈상태 } from './moduleState'
 import { useToday } from './useToday'
 
@@ -9,14 +10,14 @@ import { useToday } from './useToday'
 //  - 출퇴근: 출근·퇴근 시각과 휴게시간으로 계산
 //  - 직접: "h:mm" 문자열 입력
 const 상태 = 모듈상태(import.meta.hot, () => {
-  const { 오늘, 오늘금요일여부 } = useToday()
+  const { 오늘, 오늘재택가능여부 } = useToday()
 
   const 오늘재택근무 = ref(false)
-  // 재택은 금요일에만 유효하다. 저장값을 고치는 대신 유효 여부를 파생시킨다
-  const 오늘재택적용 = computed(() => 오늘재택근무.value && 오늘금요일여부.value)
-  // 재택은 '오늘' 하루에 대한 선택이므로 날짜가 바뀌면 초기화 (다음 금요일에 저절로 켜지지 않도록)
+  // 재택은 재택 가능일에만 유효하다. 저장값을 고치는 대신 유효 여부를 파생시킨다
+  const 오늘재택적용 = computed(() => 오늘재택근무.value && 오늘재택가능여부.value)
   const 오늘예상시간 = ref('0:00')
-  // '오늘'에 대한 입력은 날짜가 바뀌면 의미가 없으므로 모두 기본값으로 되돌린다 (출퇴근 시각은 매일 비슷하므로 유지)
+  // '오늘'에 대한 입력은 날짜가 바뀌면 의미가 없으므로 기본값으로 되돌린다.
+  // (재택이 다음 재택 요일에 저절로 켜지지 않게 하고, 출퇴근 시각은 매일 비슷하므로 유지)
   watch(오늘, () => {
     오늘재택근무.value = false
     오늘입력모드.value = 기본모드()
@@ -55,7 +56,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 오늘예상분 = computed(() => {
     if (오늘재택적용.value) return 0
     if (오늘입력모드.value === '출퇴근') return 출퇴근근무분.value
-    return 시분파싱(오늘예상시간.value).분
+    const 분 = 시분파싱(오늘예상시간.value).분
+    return 분 > 하루최대분 ? 0 : 분 // 하루를 넘는 값은 입력 오류로 보고 반영하지 않는다
   })
 
   // UI용: 재택 / 출퇴근 / 직접 을 하나의 세그먼트 값으로
@@ -79,6 +81,3 @@ const 상태 = 모듈상태(import.meta.hot, () => {
 export function useTodayWork() {
   return 상태
 }
-
-// HMR: 스스로 수용해야 위 모듈상태의 dispose 가 실행되고, invalidate 로 사용하는 컴포넌트까지 갱신한다
-if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())

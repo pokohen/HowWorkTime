@@ -7,11 +7,9 @@ import { useWorkInput } from './useWorkInput'
 import { useTodayWork } from './useTodayWork'
 import { useRemoteWork } from './useRemoteWork'
 import { useLeave } from './useLeave'
-import { useToday } from './useToday'
 
 const 상태 = 모듈상태(import.meta.hot, () => {
-  const { 의무근로분, 남은근무일, 이번달여부, 유효입사일 } = useMonth()
-  const { 오늘 } = useToday()
+  const { 의무근로분, 남은근무일, 오늘포함여부 } = useMonth()
   const { 입력분, 최대근로분 } = useWorkInput()
   const { 오늘예상분 } = useTodayWork()
   const { 재택일수 } = useRemoteWork()
@@ -19,9 +17,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
 
   // 계산에 반영되는 총 근무시간 = 누적 입력 + 오늘 예상.
   // 오늘은 이번 달에만 속하고, 입사일 전이면 아직 근무가 시작되지 않았으므로 더하지 않는다
-  const 오늘반영분 = computed(() =>
-    이번달여부.value && 오늘.value.getDate() >= 유효입사일.value ? 오늘예상분.value : 0,
-  )
+  const 오늘반영분 = computed(() => (오늘포함여부.value ? 오늘예상분.value : 0))
   const 반영분 = computed(() => 입력분.value + 오늘반영분.value)
 
   // ── 달성 현황 ──────────────────────────────────────────────
@@ -38,7 +34,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   // 인라인 style 에 그대로 쓰는 CSS 토큰. 테마에 따라 값이 바뀐다.
   const 진행바색상 = computed(() => {
     if (달성률.value >= 100) return 'var(--accent-green)'
-    if (달성률.value >= 70) return 'var(--tint-amber-text)'
+    if (달성률.value >= 70) return 'var(--accent-amber)'
     return 'var(--accent-blue)'
   })
 
@@ -88,6 +84,3 @@ const 상태 = 모듈상태(import.meta.hot, () => {
 export function useWorkResult() {
   return 상태
 }
-
-// HMR: 스스로 수용해야 위 모듈상태의 dispose 가 실행되고, invalidate 로 사용하는 컴포넌트까지 갱신한다
-if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())

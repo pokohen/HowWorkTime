@@ -48,6 +48,8 @@ src/
     workDays.js           소정근로일·남은근무일·급여일 계산
     timeFormat.js         "h:mm" 파싱/포맷, 시각 파싱
   composables/            도메인별 상태 (모듈 단위 싱글턴)
+    moduleState.js        effectScope 로 묶은 싱글턴 + HMR 정리
+    monthScoped.js        선택 월마다 따로 보관되는 상태 (누적 시간·연차·재택·입사일)
     useToday.js           오늘 날짜, 급여주 여부
     useMonth.js           선택 월, 근로일, 공휴일, 다음 달
     useWorkInput.js       고정 연장, 누적 근무시간
