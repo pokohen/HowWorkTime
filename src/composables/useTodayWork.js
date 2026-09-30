@@ -47,7 +47,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 오늘예상분 = computed(() => {
     if (오늘재택적용.value) return 0
     if (오늘입력모드.value === '출퇴근') return 출퇴근근무분.value
-    return Math.max(0, 시분파싱(오늘예상시간.value).분)
+    return 시분파싱(오늘예상시간.value).분
   })
 
   // UI용: 재택 / 출퇴근 / 직접 을 하나의 세그먼트 값으로

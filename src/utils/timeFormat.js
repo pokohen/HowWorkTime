@@ -3,35 +3,33 @@ import { 요일이름 } from '../constants'
 export const 두자리 = (n) => String(n).padStart(2, '0')
 
 /**
- * 근무시간 문자열을 분 단위로 파싱
+ * 근무시간 문자열을 분 단위로 파싱 (0 이상만 허용)
  *  - "23:30" → 1410
  *  - "23"    → 1380 (23:00)
  *  - "230"   → 150  (2:30)
  *  - "2330"  → 1410 (23:30)
  *  - "13730" → 8250 (137:30, 3자리 시간 + 2자리 분)
- * 잘못된 형식은 { 분: 0, 유효: false }
+ * 잘못된 형식(음수 포함)은 { 분: 0, 유효: false }
  */
 export function 시분파싱(문자열) {
   if (문자열 == null) return { 분: 0, 유효: true, 비어있음: true }
   const 정리 = String(문자열).trim()
   if (!정리) return { 분: 0, 유효: true, 비어있음: true }
 
-  const 콜론매칭 = 정리.match(/^(-?)(\d+):(\d{1,2})$/)
+  const 콜론매칭 = 정리.match(/^(\d+):(\d{1,2})$/)
   if (콜론매칭) {
-    const 부호 = 콜론매칭[1] === '-' ? -1 : 1
-    const 시 = parseInt(콜론매칭[2], 10)
-    const 분 = parseInt(콜론매칭[3], 10)
+    const 시 = parseInt(콜론매칭[1], 10)
+    const 분 = parseInt(콜론매칭[2], 10)
     if (분 >= 60) return 무효
-    return { 분: 부호 * (시 * 60 + 분), 유효: true, 비어있음: false }
+    return { 분: 시 * 60 + 분, 유효: true, 비어있음: false }
   }
 
-  const 숫자매칭 = 정리.match(/^(-?)(\d+)$/)
+  const 숫자매칭 = 정리.match(/^(\d+)$/)
   if (!숫자매칭) return 무효
 
-  const 부호 = 숫자매칭[1] === '-' ? -1 : 1
-  const 숫자 = 숫자매칭[2]
+  const 숫자 = 숫자매칭[1]
   if (숫자.length <= 2) {
-    return { 분: 부호 * parseInt(숫자, 10) * 60, 유효: true, 비어있음: false }
+    return { 분: parseInt(숫자, 10) * 60, 유효: true, 비어있음: false }
   }
   if (숫자.length > 5) return 무효
 
@@ -39,7 +37,7 @@ export function 시분파싱(문자열) {
   const 시 = parseInt(숫자.slice(0, -2), 10)
   const 분 = parseInt(숫자.slice(-2), 10)
   if (분 >= 60) return 무효
-  return { 분: 부호 * (시 * 60 + 분), 유효: true, 비어있음: false }
+  return { 분: 시 * 60 + 분, 유효: true, 비어있음: false }
 }
 const 무효 = Object.freeze({ 분: 0, 유효: false, 비어있음: false })
 

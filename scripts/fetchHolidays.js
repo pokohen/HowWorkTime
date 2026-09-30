@@ -38,14 +38,16 @@ async function 공휴일가져오기(연도) {
   if (!항목들) return [];
   const 배열 = Array.isArray(항목들) ? 항목들 : [항목들];
 
-  return 배열
-    .filter((항목) => 항목.isHoliday === "Y")
-    .map((항목) => {
-      const locdate = String(항목.locdate);
-      const 날짜 = `${locdate.slice(0, 4)}-${locdate.slice(4, 6)}-${locdate.slice(6, 8)}`;
-      return { 날짜, 이름: 항목.dateName };
-    })
-    .sort((a, b) => a.날짜.localeCompare(b.날짜));
+  const 날짜별 = new Map();
+  for (const 항목 of 배열) {
+    if (항목.isHoliday !== "Y") continue;
+    const locdate = String(항목.locdate);
+    const 날짜 = `${locdate.slice(0, 4)}-${locdate.slice(4, 6)}-${locdate.slice(6, 8)}`;
+    // 같은 날짜에 공휴일이 겹치면(예: 어린이날·부처님오신날) 이름을 합쳐 한 항목으로
+    const 기존 = 날짜별.get(날짜);
+    날짜별.set(날짜, { 날짜, 이름: 기존 ? `${기존.이름} · ${항목.dateName}` : 항목.dateName });
+  }
+  return [...날짜별.values()].sort((a, b) => a.날짜.localeCompare(b.날짜));
 }
 
 async function 기존데이터() {

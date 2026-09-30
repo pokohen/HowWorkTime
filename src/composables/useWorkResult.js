@@ -24,10 +24,11 @@ const 상태 = 모듈상태(import.meta.hot, () => {
     if (의무근로분.value === 0) return 0
     return Math.min(100, Math.floor((반영분.value / 의무근로분.value) * 100))
   })
-  const 의무달성여부 = computed(() => 반영분.value >= 의무근로분.value)
-  const 초과분 = computed(() => Math.max(0, 반영분.value - 의무근로분.value))
-  const 의무대비분 = computed(() => 반영분.value - 의무근로분.value) // +: 초과, −: 미달
+  // 반영분 − 의무. 양수면 초과, 음수면 미달. 아래 파생값들은 모두 이 하나에서 나온다
+  const 의무대비분 = computed(() => 반영분.value - 의무근로분.value)
   const 최대대비분 = computed(() => 반영분.value - 최대근로분.value)
+  const 의무달성여부 = computed(() => 의무대비분.value >= 0)
+  const 초과분 = computed(() => Math.max(0, 의무대비분.value))
   // 인라인 style 에 그대로 쓰는 CSS 토큰. 테마에 따라 값이 바뀐다.
   const 진행바색상 = computed(() => {
     if (달성률.value >= 100) return 'var(--accent-green)'
@@ -50,8 +51,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
       연차일수환산.value > 0 && `연차 ${연차일수환산.value}일`,
     ].filter(Boolean).join(' · '),
   )
-  const 남은의무원값 = computed(() => 의무근로분.value - 반영분.value) // 음수 허용
-  const 남은의무분 = computed(() => Math.max(0, 남은의무원값.value))
+  const 남은의무분 = computed(() => Math.max(0, -의무대비분.value))
   // 카드 부제의 ' − 누적 X − 오늘 Y' 부분. 반영된 것이 없으면 빈 문자열
   const 차감내역 = computed(() =>
     [
@@ -67,13 +67,13 @@ const 상태 = 모듈상태(import.meta.hot, () => {
 
   // 근무 마일리지: 남은 출근일을 매일 8시간씩 채웠을 때 의무 대비 초과(+)/부족(−)
   const 남은정규분 = computed(() => 출근남은일.value * 하루근무분)
-  const 마일리지분 = computed(() => 남은정규분.value - 남은의무원값.value)
+  const 마일리지분 = computed(() => 남은정규분.value + 의무대비분.value)
 
   return {
     반영분, 오늘반영분,
     달성률, 의무달성여부, 초과분, 의무대비분, 최대대비분, 진행바색상,
     출근남은일, 출근조정있음, 출근조정내역, 차감내역, 남은의무분, 남은최대분, 의무일평균분, 최대일평균분,
-    남은정규분, 남은의무원값, 마일리지분,
+    남은정규분, 마일리지분,
   }
 })
 

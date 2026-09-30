@@ -10,8 +10,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 고정연장시간 = ref('10:00')
   const 입력근무시간 = ref('')
 
-  const 고정연장분 = computed(() => Math.max(0, 시분파싱(고정연장시간.value).분))
-  const 입력분 = computed(() => Math.max(0, 시분파싱(입력근무시간.value).분))
+  const 고정연장분 = computed(() => 시분파싱(고정연장시간.value).분)
+  const 입력분 = computed(() => 시분파싱(입력근무시간.value).분)
 
   const 최대근로분 = computed(() => 의무근로분.value + 고정연장분.value)
   const 다음달최대분 = computed(() => 다음달의무분.value + 고정연장분.value)

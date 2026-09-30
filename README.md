@@ -16,6 +16,8 @@
 
 ## 개발
 
+Node 22.9 이상이 필요합니다 (`--env-file-if-exists` 사용). Volta 를 쓰면 자동으로 맞춰집니다.
+
 ```sh
 pnpm install
 pnpm dev

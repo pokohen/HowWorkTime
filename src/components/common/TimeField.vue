@@ -21,7 +21,7 @@ const 콜론없는예시 = computed(() => props.예시[0].replace(':', ''))
 
 function 정규화() {
   if (!결과.value.유효) return
-  값.value = 결과.value.비어있음 ? props.빈값 : 시분변환(Math.max(0, 결과.value.분))
+  값.value = 결과.value.비어있음 ? props.빈값 : 시분변환(결과.value.분)
 }
 </script>
 
