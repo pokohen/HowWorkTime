@@ -83,6 +83,7 @@ jobs:
     if: needs.build.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     permissions:
+      contents: read # 위 compare API 조회용
       pages: write
       id-token: write
     # 동시성은 배포 job 에만 건다. 워크플로우 전체에 걸면 배포를 건너뛰는 예약 실행이
@@ -94,16 +95,20 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # 실행이 겹치면 배포 job 은 도착 순서로 처리되므로, 더 새 커밋이 이미 main 에 있으면 이 실행은 배포하지 않는다
+      # 실행이 겹치면 배포 job 은 도착 순서로 처리되므로, main 에 사람이 올린 더 새 커밋이 있으면 이 실행은 배포하지 않는다
       # (오래된 커밋이 새 커밋 위에 덮어 배포되는 것을 막는다. 새 커밋의 실행이 배포를 맡는다)
-      - name: main 최신 커밋 확인
+      # 봇의 공휴일 데이터 커밋은 워크플로우를 트리거하지 않으므로 '더 새 커밋'으로 치지 않는다.
+      # 확인에 실패하면 건너뛰지 않고 배포한다.
+      - name: main 에 더 새 커밋이 있는지 확인
         id: tip
         if: github.ref == 'refs/heads/main'
         run: |
-          tip=$(git ls-remote "https://github.com/${{ github.repository }}" refs/heads/main | cut -f1)
-          if [ -n "$tip" ] && [ "$tip" != "${{ github.sha }}" ]; then
+          newer=$(curl -fsS -H "Authorization: Bearer ${{ github.token }}" \
+            "https://api.github.com/repos/${{ github.repository }}/compare/${{ github.sha }}...main" \
+            | jq '[.commits[] | select(.commit.message != "chore: 공휴일 데이터 갱신")] | length' || echo 0)
+          if [ "${newer:-0}" -gt 0 ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
-            echo "main 이 $tip 로 앞서 있어 이 실행(${{ github.sha }})의 배포를 건너뜁니다"
+            echo "main 에 더 새 커밋 ${newer}개가 있어 이 실행(${{ github.sha }})의 배포를 건너뜁니다"
           fi
 
       - id: deployment
