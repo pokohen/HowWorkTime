@@ -37,7 +37,7 @@ const 시각객체 = computed({
         v-model="시각객체"
         :input-attrs="{ id, clearable: false }"
         :aria-labels="{ input: 라벨 }"
-        :time-config="{ is24: true, minutesIncrement: 5, minutesGridIncrement: 5 }"
+        :time-config="{ is24: true, minutesIncrement: 1, minutesGridIncrement: 5 }"
         time-picker
         auto-apply
         :dark="다크모드"
