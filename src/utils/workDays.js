@@ -1,6 +1,6 @@
 import { 연도공휴일 } from './holidays'
 import { 두자리 } from './timeFormat'
-import { 급여기준일, 재택요일 } from '../constants'
+import { 급여기준일, 재택요일, 업무일시작시 } from '../constants'
 
 /** 해당 월의 마지막 날짜 (28~31) */
 export function 월말일수(연도, 월) {
@@ -43,6 +43,13 @@ function 날짜세기(시작날, 끝날, 조건) {
     현재.setDate(현재.getDate() + 1)
   }
   return 개수
+}
+
+/** 시각이 속한 업무일. 업무일시작시 전(새벽)이면 전날로 본다 */
+export function 업무일날짜(시각 = new Date(), 시작시 = 업무일시작시) {
+  const 날짜 = new Date(시각)
+  if (날짜.getHours() < 시작시) 날짜.setDate(날짜.getDate() - 1)
+  return 날짜
 }
 
 /** 오늘 다음 날 00:00 */

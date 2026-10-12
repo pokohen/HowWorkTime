@@ -42,7 +42,7 @@ GitHub Actions(`.github/workflows/deploy.yml`)가 main 푸시 때마다 배포�
 
 ```
 src/
-  constants.js            하루근무분, 연차단위, 급여기준일
+  constants.js            하루근무분, 연차단위, 급여기준일, 업무일시작시
   utils/
     holidays.js           공휴일 조회
     workDays.js           소정근로일·남은근무일·급여일 계산
@@ -50,7 +50,7 @@ src/
   composables/            도메인별 상태 (모듈 단위 싱글턴)
     moduleState.js        effectScope 로 묶은 싱글턴 + HMR 정리
     monthScoped.js        선택 월마다 따로 보관되는 상태 (누적 시간·연차·재택·입사일)
-    useToday.js           오늘 날짜, 급여주 여부
+    useToday.js           오늘(업무일, 새벽 6시 기준) 날짜, 급여주 여부
     useMonth.js           선택 월, 근로일, 공휴일, 다음 달
     useWorkInput.js       고정 연장, 누적 근무시간
     useTodayWork.js       오늘 예상 근무시간 (출퇴근/직접/재택)

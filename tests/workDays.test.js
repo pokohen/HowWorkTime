@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { 소정근로일수, 남은근무일수, 남은재택가능일수, 급여일조회, 근무일여부, 재택가능일여부 } from '../src/utils/workDays'
+import { 소정근로일수, 남은근무일수, 남은재택가능일수, 급여일조회, 근무일여부, 재택가능일여부, 업무일날짜 } from '../src/utils/workDays'
 
 // 2026년 9월: 30일, 추석 연휴 24(목)~26(토). 평일 22일 − 공휴일 평일 2일 = 20일
 // 2026년 10월: 개천절 3(토)→대체 5(월), 한글날 9(금). 평일 22일 − 2일 = 20일
@@ -71,5 +71,16 @@ describe('근무일여부 / 재택가능일여부', () => {
     expect(근무일여부(new Date(2026, 8, 28))).toBe(true)
     expect(근무일여부(new Date(2026, 8, 26))).toBe(false) // 토
     expect(근무일여부(new Date(2026, 8, 24))).toBe(false) // 추석
+  })
+})
+
+describe('업무일날짜', () => {
+  it('새벽 6시 전은 전날 업무일로 본다', () => {
+    expect(업무일날짜(new Date(2026, 9, 13, 5, 59)).getDate()).toBe(12)
+    expect(업무일날짜(new Date(2026, 9, 13, 6, 0)).getDate()).toBe(13)
+  })
+  it('월·연 경계도 넘긴다', () => {
+    const 날짜 = 업무일날짜(new Date(2027, 0, 1, 2, 0))
+    expect([날짜.getFullYear(), 날짜.getMonth(), 날짜.getDate()]).toEqual([2026, 11, 31])
   })
 })

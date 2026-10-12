@@ -1,18 +1,18 @@
 import { ref, computed } from 'vue'
-import { 급여일조회, 재택가능일여부, 내일날짜 } from '../utils/workDays'
+import { 급여일조회, 재택가능일여부, 내일날짜, 업무일날짜 } from '../utils/workDays'
 import { 요일이름 } from '../constants'
 import { 모듈상태 } from './moduleState'
 
-// 오늘 날짜. 자정이 지나거나 탭이 다시 보일 때 갱신되어 하루 넘겨 켜둬도 어긋나지 않는다.
+// 오늘(업무일) 날짜. 새벽 업무일시작시(6시)가 지나거나 탭이 다시 보일 때 갱신되어 하루 넘겨 켜둬도 어긋나지 않는다.
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
-  const 오늘 = ref(new Date())
+  const 오늘 = ref(업무일날짜())
 
   function 갱신() {
-    const 지금 = new Date()
+    const 지금 = 업무일날짜()
     if (지금.toDateString() !== 오늘.value.toDateString()) 오늘.value = 지금
   }
 
-  // 자정 하나만 예약하면 절전에서 깨어났을 때 늦게 울릴 수 있어, 1분마다 확인하고 화면 복귀 시에도 확인한다
+  // 경계 시각 하나만 예약하면 절전에서 깨어났을 때 늦게 울릴 수 있어, 1분마다 확인하고 화면 복귀 시에도 확인한다
   if (typeof window !== 'undefined') {
     const 타이머 = setInterval(갱신, 60_000)
     정리등록(() => clearInterval(타이머))
