@@ -206,3 +206,8 @@ body {
 .theme-dark .select-field {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
 }
+
+/* 쉬는 날 플래너 모달이 열려 있는 동안 뒤 페이지 스크롤을 막는다 (dialog 는 자동으로 막지 않는다) */
+body:has(dialog.assistant-dialog[open]) {
+  overflow: hidden;
+}

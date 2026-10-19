@@ -22,3 +22,7 @@ export const 하루최대분 = 24 * 60
 
 /** 테마 localStorage 키. 값은 vite.config.js 의 define 에서 오며 index.html 의 %THEME_KEY% 에도 같은 값이 들어간다. */
 export const 테마저장키 = import.meta.env.THEME_KEY
+
+/** 쉬는 날 플래너(AI 대화) 저장 키. 대화 기록과 제공자 설정(모델·API 키)을 따로 둔다 */
+export const 어시스턴트저장키 = 'how-work-time:assistant'
+export const 어시스턴트설정키 = 'how-work-time:assistant-settings'

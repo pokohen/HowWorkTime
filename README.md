@@ -13,6 +13,16 @@
 - 금요일 재택근무, 연차·반차·반반차를 반영한 남은 출근일과 일평균 목표
 - 근무 마일리지 (남은 출근일을 8h씩 채웠을 때 의무 대비 초과/부족)
 - 다음 달 미리보기, 급여일 주간 표시, 다크 모드
+- 쉬는 날 플래너 (별 버튼): 휴가·주말·여행 계획을 AI와 탭별로 대화. 이번 달 공휴일·연휴·남은 출근일을 알고 답한다
+
+## 쉬는 날 플래너 (AI)
+
+서버 없이 동작하는 정적 사이트라 **API 키는 사용자가 직접 발급받아 앱 안 ⚙ 설정에 넣습니다.**
+키와 대화 기록은 그 브라우저의 localStorage 에만 저장되고, 요청은 브라우저에서 제공자 API 로 바로 갑니다.
+제공자는 Anthropic(Claude) · OpenAI(GPT) · Google(Gemini) 중 고르고, 모델 ID 는 자유 입력입니다.
+
+- 로컬 개발 중에만 `.env.local` 의 `VITE_*_API_KEY` 를 기본 키로 씁니다 (`import.meta.env.DEV` 분기, 빌드에는 안 들어감).
+- **GitHub Secrets 에 AI 키를 넣지 마세요.** 정적 번들에 키가 박혀 사이트 방문자 누구나 꺼내 쓸 수 있습니다.
 
 ## 개발
 
@@ -47,6 +57,15 @@ src/
     holidays.js           공휴일 조회
     workDays.js           소정근로일·남은근무일·급여일 계산
     timeFormat.js         "h:mm" 파싱/포맷, 시각 파싱
+    assistantContext.js   연휴·징검다리 탐지, AI 시스템 프롬프트 (순수 함수)
+    assistantStorage.js   대화·설정 직렬화/복원, localStorage 보호
+    miniMarkdown.js       응답용 가벼운 마크다운 → HTML (이스케이프 우선)
+  ai/
+    providers.js          제공자 목록 (기본 모델, 키 발급 주소)
+    client.js             제공자별 구현을 동적 로드해 대화 요청, 오류 정리
+    anthropic.js          Claude (공식 SDK, 브라우저 직접 호출)
+    openai.js / gemini.js fetch + SSE 스트리밍
+    sse.js / errors.js    SSE 파서, 어시스턴트오류
   composables/            도메인별 상태 (모듈 단위 싱글턴)
     moduleState.js        effectScope 로 묶은 싱글턴 + HMR 정리
     monthScoped.js        선택 월마다 따로 보관되는 상태 (누적 시간·연차·재택·입사일)
@@ -58,14 +77,16 @@ src/
     useLeave.js           연차·반차·반반차
     useWorkResult.js      반영분, 달성률, 남은 시간, 일평균, 마일리지
     useTheme.js           다크 모드
+    useAssistant.js       쉬는 날 플래너: 모달·탭·메시지·전송·제공자 설정
   components/
     common/               CardSection, StatCard, ToggleSection, TimeField, ClockField, HolidayItems
     WorkTimeCalculator    레이아웃 루트
     AppHeader, ThemeToggle, MonthSelector, MonthSummary, WorkSettings,
     RemoteWorkSettings, LeaveSettings, TodayWorkInput,
-    ProgressStatus, WorkResult, HolidayList, NextMonthPreview
+    ProgressStatus, WorkResult, HolidayList, NextMonthPreview,
+    AssistantFab, AssistantModal, AssistantSettings
 ```
 
-테스트는 `tests/`에 있으며 순수 함수인 `utils/`를 대상으로 합니다. 공휴일은 `tests/fixtures/holidays.json`(2026년 스냅샷)에 고정되어 실데이터 갱신과 무관합니다. CI에서 빌드 전에 실행됩니다.
+테스트는 `tests/`에 있으며 순수 함수인 `utils/`(연휴 탐지·저장 직렬화·마크다운 포함)를 대상으로 합니다. 공휴일은 `tests/fixtures/holidays.json`(2026년 스냅샷)에 고정되어 실데이터 갱신과 무관합니다. CI에서 빌드 전에 실행됩니다.
 
 네이밍 규칙: 파일·컴포넌트·composable 이름은 영어, 변수·함수·prop 이름은 한글.

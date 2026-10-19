@@ -13,6 +13,7 @@ describe('composable 초기화', () => {
     const { useLeave } = await import('../src/composables/useLeave')
     const { useWorkResult } = await import('../src/composables/useWorkResult')
     const { useTheme } = await import('../src/composables/useTheme')
+    const { useAssistant } = await import('../src/composables/useAssistant')
 
     expect(useToday().오늘.value).toBeInstanceOf(Date)
     expect(useMonth().소정근로일.value).toBeGreaterThanOrEqual(0)
@@ -20,6 +21,8 @@ describe('composable 초기화', () => {
     expect(useRemoteWork().재택일수.value).toBe(0)
     expect(useLeave().연차분.value).toBe(0)
     expect(['light', 'dark']).toContain(useTheme().테마.value)
+    expect(useAssistant().탭목록.value).toHaveLength(1)
+    expect(useAssistant().키있음.value).toBe(false)
 
     // 입력 → 결과까지 한 번 흘려 본다
     useWorkInput().입력근무시간.value = '40:00'

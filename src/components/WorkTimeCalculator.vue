@@ -3,6 +3,9 @@ import { watchEffect } from 'vue'
 import { useMonth } from '../composables/useMonth'
 import AppHeader from './AppHeader.vue'
 import ThemeToggle from './ThemeToggle.vue'
+import AssistantFab from './AssistantFab.vue'
+import AssistantModal from './AssistantModal.vue'
+import AssistantToast from './AssistantToast.vue'
 import MonthSelector from './MonthSelector.vue'
 import MonthSummary from './MonthSummary.vue'
 import WorkSettings from './WorkSettings.vue'
@@ -22,6 +25,9 @@ watchEffect(() => {
   <div class="calculator">
     <AppHeader />
     <ThemeToggle />
+    <AssistantFab />
+    <AssistantModal />
+    <AssistantToast />
     <MonthSelector />
     <MonthSummary />
     <WorkSettings />
