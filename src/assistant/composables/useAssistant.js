@@ -2,7 +2,7 @@ import { ref, computed, watch } from 'vue'
 import { 어시스턴트저장키 } from '../../shared/constants'
 import { 대화요청 } from '../ai/client'
 import { 연휴찾기, 시스템프롬프트, 이력만들기 } from '../utils/assistantContext'
-import { 날짜키 } from '../../worktime/utils/workDays'
+import { 날짜키, 다음달 as 다음달계산, 월표시 } from '../../worktime/utils/workDays'
 import { 월공휴일 } from '../../worktime/utils/holidays'
 import { 남은연차문장 } from '../../worktime/utils/leaveBalance'
 import { 새탭, 새ID, 제목추출, 탭이름, 직렬화, 복원, 탭최대 } from '../utils/assistantStorage'
@@ -23,7 +23,7 @@ const 알림표시시간 = 12_000
 
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const { 오늘, 오늘표시, 재택안내, 급여주여부, 현재연도, 현재월 } = useToday()
-  const { 선택월표시, 남은근무일, 선택연도, 선택월, 월차이 } = useMonth()
+  const { 선택월표시, 남은근무일, 선택연도, 선택월, 월차이, 이번달여부 } = useMonth()
   const { 출근남은일 } = useWorkResult()
   const { 연차일수환산, 남은연차조회 } = useLeave()
   const 설정상태 = useAssistantSettings()
@@ -143,9 +143,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     const 지난달보는중 = 월차이.value < 0
     const 기준연도 = 지난달보는중 ? 현재연도.value : 선택연도.value
     const 기준월 = 지난달보는중 ? 현재월.value : 선택월.value
-    const 다음 = new Date(기준연도, 기준월, 1)
-    const 다음연도 = 다음.getFullYear()
-    const 다음월 = 다음.getMonth() + 1
+    const { 연도: 다음연도, 월: 다음월 } = 다음달계산(기준연도, 기준월)
     // 기준 달과 다음 달을 한 번에 찾는다 (따로 찾아 합치면 경계에 걸친 구간이 잘리거나 겹친다). 이미 끝난 연휴는 뺀다
     const 오늘키 = 날짜키(오늘.value)
     const 연휴 = 연휴찾기(기준연도, 기준월, undefined, 2).filter((구간) => 구간.끝 >= 오늘키)
@@ -156,17 +154,18 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       .filter((항목) => 항목.남은)
     return {
       오늘표시: 오늘표시.value,
-      이번달표시: `${기준연도}년 ${기준월}월`,
-      보는달이오늘달: 월차이.value === 0,
+      이번달표시: 월표시(기준연도, 기준월),
+      보는달이오늘달: 이번달여부.value,
       지난달보는중,
       보는달표시: 선택월표시.value,
-      다음달표시: `${다음연도}년 ${다음월}월`,
+      다음달표시: 월표시(다음연도, 다음월),
       이번달공휴일: 월공휴일(기준연도, 기준월),
       다음달공휴일: 월공휴일(다음연도, 다음월),
       연휴,
-      남은근무일: 남은근무일.value,
-      출근남은일: 출근남은일.value,
-      연차일수: 연차일수환산.value,
+      // 근무일·연차 숫자는 보고 있는 달의 것이라, 지난 달을 보는 중에는 오늘 달과 섞이지 않게 뺀다
+      남은근무일: 지난달보는중 ? null : 남은근무일.value,
+      출근남은일: 지난달보는중 ? null : 출근남은일.value,
+      연차일수: 지난달보는중 ? 0 : 연차일수환산.value,
       남은연차목록,
       재택안내: 재택안내.value,
       급여주여부: 급여주여부.value,

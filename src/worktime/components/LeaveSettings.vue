@@ -4,7 +4,7 @@ import { 시분변환 } from '../../shared/utils/timeFormat'
 import { 연차단위 } from '../../shared/constants'
 import { useLeave } from '../composables/useLeave'
 import { useMonth } from '../composables/useMonth'
-import { 남은연차분만들기, 남은연차분해, 남은연차문장 } from '../utils/leaveBalance'
+import { 남은연차분만들기, 남은연차분해, 남은연차문장, 입력숫자 } from '../utils/leaveBalance'
 import ToggleSection from '../../shared/components/ToggleSection.vue'
 
 const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차초과여부, 연차항목, 연차증감, 남은연차분 } = useLeave()
@@ -25,9 +25,15 @@ watch(남은연차, ({ 일, 시간 }) => {
   일칸.value = 일 ? String(일) : ''
   시간칸.value = 시간 ? String(시간) : ''
 }, { immediate: true })
+/** 칸의 값. 비우면 null, 잘못 적었으면(음수·글자) 지우지 않고 그 칸의 이전 값을 지킨다 */
+function 칸값(글, 이전) {
+  if (String(글).trim() === '') return null
+  return 입력숫자(글) ?? 이전
+}
 /** 두 칸 중 하나가 바뀌면 둘을 합쳐 다시 저장한다. 둘 다 비우면 '모름' */
 function 남은연차입력() {
-  남은연차분.value = 남은연차분만들기(일칸.value, 시간칸.value)
+  const 이전 = 남은연차.value
+  남은연차분.value = 남은연차분만들기(칸값(일칸.value, 이전.일), 칸값(시간칸.value, 이전.시간))
   // 저장값이 전과 같으면 watch 가 안 돌므로 칸을 직접 정리한다
   const { 일, 시간 } = 남은연차.value
   일칸.value = 일 ? String(일) : ''

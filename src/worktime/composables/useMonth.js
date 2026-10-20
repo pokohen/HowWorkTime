@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue'
-import { 월말일수, 소정근로일수, 남은근무일수, 남은재택가능일수 } from '../utils/workDays'
+import { 월말일수, 소정근로일수, 남은근무일수, 남은재택가능일수, 다음달 as 다음달계산, 월표시 } from '../utils/workDays'
 import { 월공휴일, 공휴일데이터여부 } from '../utils/holidays'
 import { 두자리 } from '../../shared/utils/timeFormat'
 import { 하루근무분 } from '../../shared/constants'
@@ -33,7 +33,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   })
   const 월목록 = Array.from({ length: 12 }, (_, i) => i + 1)
 
-  const 선택월표시 = computed(() => `${선택연도.value}년 ${선택월.value}월`)
+  const 선택월표시 = computed(() => 월표시(선택연도.value, 선택월.value))
   // 선택 월이 이번 달에서 몇 달 떨어졌는지 (음수 = 과거)
   const 월차이 = computed(
     () => (선택연도.value * 12 + 선택월.value) - (현재연도.value * 12 + 현재월.value),
@@ -72,11 +72,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 이달공휴일 = computed(() => 월공휴일(선택연도.value, 선택월.value))
 
   // ── 다음 달 ────────────────────────────────────────────────
-  const 다음달 = computed(() => {
-    const d = new Date(선택연도.value, 선택월.value, 1) // 월은 0 기준이라 그대로 넣으면 다음 달 1일 (12월→다음 해 1월도 알아서)
-    return { 연도: d.getFullYear(), 월: d.getMonth() + 1 }
-  })
-  const 다음달표시 = computed(() => `${다음달.value.연도}년 ${다음달.value.월}월`)
+  const 다음달 = computed(() => 다음달계산(선택연도.value, 선택월.value))
+  const 다음달표시 = computed(() => 월표시(다음달.value.연도, 다음달.value.월))
   const 다음달근로일 = computed(() => 소정근로일수(다음달.value.연도, 다음달.value.월))
   const 다음달의무분 = computed(() => 다음달근로일.value * 하루근무분)
   const 다음달공휴일 = computed(() => 월공휴일(다음달.value.연도, 다음달.value.월))

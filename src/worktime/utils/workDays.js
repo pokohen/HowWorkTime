@@ -52,6 +52,17 @@ export function 업무일날짜(시각 = new Date(), 시작시 = 업무일시작
   return 날짜
 }
 
+/** (연도, 월) 의 다음 달. 12월이면 다음 해 1월 */
+export function 다음달(연도, 월) {
+  const d = new Date(연도, 월, 1) // 월은 0 기준이라 그대로 넣으면 다음 달 1일
+  return { 연도: d.getFullYear(), 월: d.getMonth() + 1 }
+}
+
+/** (연도, 월) → "YYYY년 M월" */
+export function 월표시(연도, 월) {
+  return `${연도}년 ${월}월`
+}
+
 /** 날짜를 복사해 n일 더한다 (원본은 그대로). 시각은 유지한다 */
 export function 날짜더하기(날짜, n) {
   const 결과 = new Date(날짜)

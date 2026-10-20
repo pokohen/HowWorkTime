@@ -29,6 +29,10 @@ function 분정리(분) {
 }
 
 /** 입력 칸의 값 → 0 이상의 수. 비었거나 숫자가 아니거나 음수면 null (음수를 다른 칸에서 빼 주듯 조용히 섞지 않는다) */
+export function 입력숫자(값) {
+  return 숫자(값)
+}
+
 function 숫자(값) {
   if (값 === '' || 값 == null) return null
   const 수 = Number(String(값).replace(/[,\s]/g, ''))

@@ -17,6 +17,9 @@ describe('마크다운HTML', () => {
     // 빈 줄로 띄운 번호 항목은 이어지는 목록으로, 번호가 다시 1 부터 매겨지지 않게 start 를 붙인다
     expect(마크다운HTML('1. 강릉\n\n2. 속초\n\n3. 여수')).toBe('<ol><li>강릉</li></ol><ol start="2"><li>속초</li></ol><ol start="3"><li>여수</li></ol>')
     expect(마크다운HTML('1. 하나\n\n문단\n\n2. 둘')).toBe('<ol><li>하나</li></ol><p>문단</p><p>2. 둘</p>')
+    // 모델이 번호를 1 로만 써도 마크다운처럼 이어서 센다
+    expect(마크다운HTML('1. 강릉\n\n1. 속초\n\n1. 여수')).toBe('<ol><li>강릉</li></ol><ol start="2"><li>속초</li></ol><ol start="3"><li>여수</li></ol>')
+    expect(마크다운HTML('1. 하나\n2. 둘\n\n3. 셋')).toBe('<ol><li>하나</li><li>둘</li></ol><ol start="3"><li>셋</li></ol>')
   })
 
   it('입력에 NUL 이 섞여 있어도 코드 자리표시와 충돌하지 않는다', () => {
