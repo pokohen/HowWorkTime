@@ -22,7 +22,7 @@ const 남은연차요약 = computed(() => {
 const 일칸 = ref('')
 const 시간칸 = ref('')
 function 칸채우기({ 일, 시간 }) {
-  일칸.value = 일 ? String(일) : ''
+  일칸.value = 일 == null ? '' : String(일) // 적어 둔 0일은 0 으로 보여야 '모름'과 구분된다
   시간칸.value = 시간 ? String(시간) : ''
 }
 watch(남은연차, 칸채우기, { immediate: true })

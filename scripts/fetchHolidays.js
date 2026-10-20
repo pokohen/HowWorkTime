@@ -54,11 +54,30 @@ async function 재시도(작업) {
   throw 마지막오류;
 }
 
+// 한 번에 받는 건수와 최대 쪽수. 한 해의 특일은 수십 건이라 보통 한 쪽이면 끝난다
+const 쪽크기 = 100;
+const 최대쪽수 = 10;
+
+/** 연도의 특일 항목을 쪽을 넘겨 가며 모두 받는다 */
 async function 공휴일가져오기(연도) {
+  const 항목들 = [];
+  for (let 쪽 = 1; 쪽 <= 최대쪽수; 쪽++) {
+    const { 배열, 전체수 } = await 쪽가져오기(연도, 쪽);
+    항목들.push(...배열);
+    if (항목들.length >= 전체수 || 배열.length === 0) {
+      if (항목들.length < 전체수) throw new Error(`불완전한 응답: ${전체수}건 중 ${항목들.length}건만 수신 (${연도}년)`);
+      return 항목정리(항목들);
+    }
+  }
+  throw new Error(`쪽이 너무 많습니다 (${연도}년, ${최대쪽수}쪽 초과)`);
+}
+
+async function 쪽가져오기(연도, 쪽) {
   const 쿼리 = new URLSearchParams({
     serviceKey: 서비스키,
     solYear: String(연도),
-    numOfRows: "100",
+    numOfRows: String(쪽크기),
+    pageNo: String(쪽),
     _type: "json",
   });
   const 응답 = await fetch(`${엔드포인트}?${쿼리}`, { signal: AbortSignal.timeout(요청제한시간) });
@@ -84,14 +103,13 @@ async function 공휴일가져오기(연도) {
 
   const 본체 = 본문?.response?.body;
   if (!본체) throw new Error(`응답 형식이 예상과 다릅니다 (${연도}년)`);
-  const 전체수 = Number(본체.totalCount ?? 0);
   const 항목들 = 본체.items?.item;
   const 배열 = !항목들 ? [] : Array.isArray(항목들) ? 항목들 : [항목들];
-  // 응답이 잘렸는지 API 가 알려주는 전체 건수와 대조한다
-  if (배열.length !== 전체수) {
-    throw new Error(`불완전한 응답: ${전체수}건 중 ${배열.length}건만 수신 (${연도}년)`);
-  }
+  return { 배열, 전체수: Number(본체.totalCount ?? 0) };
+}
 
+/** API 항목 → { 날짜, 이름 } 목록. 같은 날 겹치는 공휴일은 이름을 합친다 */
+function 항목정리(배열) {
   const 날짜별 = new Map();
   for (const 항목 of 배열) {
     if (항목.isHoliday !== "Y") continue;

@@ -41,8 +41,9 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const 급여주여부 = computed(() => {
     const 주시작 = new Date(현재연도.value, 오늘.value.getMonth(), 오늘.value.getDate() - 오늘요일.value)
     const 주끝 = 날짜더하기(주시작, 6)
-    // 주가 월 경계에 걸치면 양쪽 달의 급여일을 모두 본다
-    return [주시작, 주끝].some((날짜) => {
+    // 주가 월 경계에 걸치면 양쪽 달의 급여일을 모두 본다 (같은 달이면 한 번만 조회)
+    const 달들 = new Map([주시작, 주끝].map((날짜) => [`${날짜.getFullYear()}-${날짜.getMonth()}`, 날짜]))
+    return [...달들.values()].some((날짜) => {
       const 급여일 = 급여일조회(날짜.getFullYear(), 날짜.getMonth() + 1)
       return 급여일 >= 주시작 && 급여일 <= 주끝
     })
@@ -54,3 +55,6 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
 export function useToday() {
   return 상태
 }
+
+// 이 모듈을 고치면 Vite 가 통째로 다시 불러오게 한다. 모듈상태가 등록한 정리 함수(타이머·리스너)가 그때 실행된다
+if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())

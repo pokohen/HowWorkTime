@@ -89,3 +89,6 @@ const 상태 = 모듈상태(import.meta.hot, () => {
 export function useTodayWork() {
   return 상태
 }
+
+// 이 모듈을 고치면 Vite 가 통째로 다시 불러오게 한다. 모듈상태가 등록한 정리 함수(타이머·리스너)가 그때 실행된다
+if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())

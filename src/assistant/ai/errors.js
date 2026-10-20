@@ -93,8 +93,9 @@ export async function 응답오류(응답) {
   let 코드
   let 유형
   let 이유
+  let 본문
   try {
-    const 본문 = await 응답.json()
+    본문 = await 응답.json()
     상세 = 본문?.error?.message ?? 본문?.message ?? ''
     코드 = 본문?.error?.code
     유형 = 본문?.error?.type
@@ -102,7 +103,7 @@ export async function 응답오류(응답) {
   } catch { /* 본문이 JSON 이 아니면 상태 코드만으로 안내 */ }
   const 종류 = 종류추정({ status: 응답.status, code: 코드, type: 유형, reason: 이유, 상세 })
   const 메시지 = 종류메시지(종류, 상세 || `HTTP ${응답.status}`)
-  return new 어시스턴트오류(종류, 메시지, 상세 || undefined)
+  return new 어시스턴트오류(종류, 메시지, 본문 ?? 응답) // cause 는 다른 입구처럼 원래 객체
 }
 
 /**

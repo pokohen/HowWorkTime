@@ -31,8 +31,11 @@ function 분정리(분) {
 /** 입력 칸의 값 → 0 이상의 수. 비었거나 숫자가 아니거나 음수면 null (음수를 다른 칸에서 빼 주듯 조용히 섞지 않는다) */
 export function 입력숫자(값) {
   if (값 === '' || 값 == null) return null
-  const 수 = Number(String(값).replace(/[,\s]/g, ''))
-  return Number.isFinite(수) && 수 >= 0 ? 수 : null
+  if (typeof 값 === 'number') return Number.isFinite(값) && 값 >= 0 ? 값 : null
+  // 자릿수 쉼표만 허용하고 그 외는 십진수 꼴이어야 한다 ("1e1", "0x10", "1 0" 은 Number() 가 받아들이지만 입력 실수다)
+  const 정리 = String(값).trim().replace(/,/g, '')
+  if (!/^\d+(\.\d+)?$/.test(정리)) return null
+  return Number(정리)
 }
 
 /**
@@ -75,7 +78,7 @@ export function 남은연차복원(문자열) {
     if (!/^\d{4}$/.test(연도)) continue
     let 분 = null
     if (값 && typeof 값 === 'object') 분 = typeof 값.분 === 'number' && Number.isFinite(값.분) ? 분정리(값.분) : null
-    else if (typeof 값 === 'number' && Number.isFinite(값)) 분 = 남은연차분만들기(값, 0)
+    else if (입력숫자(값) != null) 분 = 남은연차분만들기(값, 0) // 초기 형식(일수). 음수·쓰레기는 '모름'
     if (분 != null) 결과[연도] = 분
   }
   return 결과

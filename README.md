@@ -64,7 +64,7 @@ src/
       timeFormat.js         "h:mm" 파싱/포맷, 시각 파싱
       clipboard.js          클립보드 복사 (구형 환경 대체 경로)
     composables/
-      moduleState.js        effectScope 로 묶은 싱글턴 + HMR 정리
+      moduleState.js        effectScope 로 묶은 싱글턴 + HMR 정리 (쓰는 모듈은 끝에 import.meta.hot.accept 한 줄)
       monthScoped.js        선택 월마다 따로 보관되는 상태
       useTheme.js           다크 모드
     components/             CardSection, StatCard, ToggleSection, CheckBox, TimeField, ClockField, ThemeToggle

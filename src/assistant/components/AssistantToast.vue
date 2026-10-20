@@ -11,12 +11,12 @@ const 제목 = (알림) => (알림.종류 === 'error' ? '답변을 받지 못했
 // live region 은 내용이 바뀌기 전에 이미 있어야 읽힌다. 토스트 요소는 v-if 로 생겼다 사라지므로
 // 항상 떠 있는 sr-only 영역에 문구를 따로 넣는다
 const { 문구: 읽기안내, 알리기 } = useLiveAnnounce()
-watch(알림, (값) => { if (값) 알리기(`${제목(값)}. ${값.제목}`) })
 
 // 모달이 showModal() 로 열려 있으면 보통 요소는 그 뒤(top layer 아래)에 깔려 보이지도 눌리지도 않는다.
 // popover 로 띄우면 같은 top layer 에 올라가 모달 위에 보인다. (미지원 브라우저는 기존처럼 일반 레이어)
 const 겉 = ref(null)
 watch(알림, async (값) => {
+  if (값) 알리기(`${제목(값)}. ${값.제목}`)
   await nextTick()
   const el = 겉.value
   if (!el || typeof el.showPopover !== 'function') return

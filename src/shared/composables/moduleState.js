@@ -7,8 +7,8 @@ import { effectScope } from 'vue'
  * (그렇지 않으면 리스너·타이머·watcher 가 갱신마다 쌓인다)
  *
  * 주의: Vite 는 모듈이 스스로 HMR 을 수용해야 그 모듈의 dispose 를 호출하고, 수용 여부는
- * 모듈 소스의 텍스트로 판단한다. 그래서 수용 코드는 여기서 호출하지 않고, vite.config.js 의
- * 모듈상태HMR 플러그인이 이 헬퍼를 호출하는 모든 모듈에 주입한다.
+ * 모듈 소스의 텍스트로 판단한다. 그래서 이 헬퍼를 쓰는 모듈은 파일 끝에 직접 한 줄을 둔다:
+ *   if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())
  *
  * @param {ImportMeta['hot']} hot - import.meta.hot
  * @param {(정리등록: (fn: () => void) => void) => T} 정의
