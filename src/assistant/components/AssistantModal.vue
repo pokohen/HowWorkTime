@@ -7,6 +7,7 @@ import AssistantEmptyState from './AssistantEmptyState.vue'
 import AssistantMessage from './AssistantMessage.vue'
 import AssistantComposer from './AssistantComposer.vue'
 import StarIcon from './StarIcon.vue'
+import { useLiveAnnounce } from '../../shared/composables/useLiveAnnounce'
 
 // 쉬는 날 플래너 모달. 열고 닫기·머리·스크롤만 맡고, 탭·말풍선·입력은 각 컴포넌트가 맡는다
 const { 열림, 설정열림, 닫기, 활성탭, 활성탭ID, 새탭추가, 키있음, 제공자정보, 모델 } = useAssistant()
@@ -70,14 +71,11 @@ function 새탭열기() {
 }
 
 // 스크린리더 안내. 메시지 목록 전체를 live region 으로 두면 조각마다 다시 읽으므로, 응답이 끝났을 때 한 줄만 알린다
-const 읽기안내 = ref('')
+const { 문구: 읽기안내, 알리기 } = useLiveAnnounce()
 watch(() => 활성탭.value.메시지.at(-1)?.진행중, (지금, 이전) => {
   if (이전 !== true || 지금 !== false) return
   const 마지막 = 활성탭.value.메시지.at(-1)
-  const 문구 = 마지막?.오류 ? '응답을 받지 못했어요.' : 마지막?.중단됨 ? '응답을 중단했어요.' : '응답이 도착했어요.'
-  // 같은 문구가 연달아 오면 DOM 이 안 바뀌어 읽히지 않는다. 비웠다가 다음 틱에 넣는다
-  읽기안내.value = ''
-  nextTick(() => { 읽기안내.value = 문구 })
+  알리기(마지막?.오류 ? '응답을 받지 못했어요.' : 마지막?.중단됨 ? '응답을 중단했어요.' : '응답이 도착했어요.')
 })
 </script>
 

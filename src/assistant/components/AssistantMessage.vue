@@ -29,6 +29,7 @@ function 파싱() {
   렌더HTML.value = 마크다운HTML(props.메시지.내용)
 }
 watch(() => [props.메시지.내용, props.메시지.진행중], ([, 진행중]) => {
+  if (!응답.value) return // 사용자 말풍선은 그대로 보여 주므로 파싱하지 않는다
   if (!진행중) return 파싱()
   if (!파싱타이머) 파싱타이머 = setTimeout(파싱, 파싱간격)
 }, { immediate: true })

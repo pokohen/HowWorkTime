@@ -21,7 +21,7 @@ const 알림표시시간 = 12_000
 
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const { 오늘표시, 재택안내, 급여주여부 } = useToday()
-  const { 선택월표시, 다음달, 다음달표시, 이달공휴일, 다음달공휴일, 남은근무일, 선택연도, 선택월 } = useMonth()
+  const { 선택월표시, 다음달, 다음달표시, 이달공휴일, 다음달공휴일, 남은근무일, 선택연도, 선택월, 이번달여부 } = useMonth()
   const { 출근남은일 } = useWorkResult()
   const { 연차일수환산, 남은연차분 } = useLeave()
   const 설정상태 = useAssistantSettings()
@@ -96,9 +96,10 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     저장타이머 = setTimeout(저장, 저장지연)
   }
   watch(활성탭ID, 저장예약)
-  watch(열림, (값) => { if (!값 && 저장타이머) 저장() })
+  // 받는 중에는 조각마다 저장하지 않으므로, 닫거나 떠날 때는 예약 여부와 무관하게 바로 쓴다
+  watch(열림, (값) => { if (!값 && (저장타이머 || 전송중.value)) 저장() })
   if (typeof window !== 'undefined') {
-    const 즉시저장 = () => { if (저장타이머) 저장() }
+    const 즉시저장 = () => { if (저장타이머 || 전송중.value) 저장() }
     window.addEventListener('pagehide', 즉시저장)
     정리등록(() => window.removeEventListener('pagehide', 즉시저장))
   }
@@ -143,6 +144,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     return {
       오늘표시: 오늘표시.value,
       이번달표시: 선택월표시.value,
+      보는달이오늘달: 이번달여부.value,
       다음달표시: 다음달표시.value,
       이번달공휴일: 이달공휴일.value,
       다음달공휴일: 다음달공휴일.value,
@@ -185,7 +187,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
         시스템: 시스템프롬프트(컨텍스트수집()),
         메시지: 이력,
         신호: 컨트롤러.signal,
-        조각: (조각) => { 응답.내용 += 조각; 저장예약() },
+        조각: (조각) => { 응답.내용 += 조각 }, // 조각마다 전체를 직렬화하지 않는다. 끝·닫기·pagehide 때 저장
       })
       if (잘림) 응답.잘림 = true
       // 오류 없이 끝났는데 글자가 하나도 없으면(빈 end_turn, parts 없는 STOP) 빈 말풍선으로 두지 않고 다시 시도할 수 있게 한다

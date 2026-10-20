@@ -72,7 +72,8 @@ describe('시스템프롬프트', () => {
     expect(글).toContain('2026년 2월 10일 화요일')
     expect(글).toContain('2월 16일(월) 설날')
     expect(글).toContain('2026년 3월 공휴일: 없음')
-    expect(글).toContain('남은 근무일 10일')
+    expect(글).toContain('2026년 2월 남은 근무일 10일')
+    expect(글).not.toContain('보고 있는 달')
     expect(글).toContain('출근 예정 8일')
     expect(글).toContain('연차 1일')
     expect(글).toContain('내일은 재택근무')
@@ -84,6 +85,11 @@ describe('시스템프롬프트', () => {
     expect(글).toContain('- 없음')
     expect(글).toContain('(이번 주 급여일)')
     expect(글).not.toContain('이미 지정한 연차')
+  })
+
+  it('다른 달을 보고 있으면 숫자가 그 달 기준임을 밝힌다', () => {
+    const 글 = 시스템프롬프트({ ...기본, 보는달이오늘달: false })
+    expect(글).toContain('보고 있는 달: 2026년 2월')
   })
 
   it('남은 연차를 적어 두면 알려 주고, 모르면 물어보라는 예시에 남겨 둔다', () => {

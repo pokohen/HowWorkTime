@@ -18,8 +18,14 @@ export async function 대화요청({ 제공자, 키, 모델, ...나머지 }) {
   if (!제공자여부(제공자)) throw new 어시스턴트오류('request', '지원하지 않는 제공자예요.')
   if (!키) throw new 어시스턴트오류('auth', 'API 키를 먼저 설정해 주세요.')
   if (!모델) throw new 어시스턴트오류('request', '모델을 먼저 설정해 주세요.')
+  let 구현
   try {
-    const 구현 = await 구현불러오기[제공자]()
+    구현 = await 구현불러오기[제공자]()
+  } catch (예외) {
+    // 새 버전이 배포되면 옛 번들의 청크 주소가 사라져 import 가 실패한다. 네트워크·키 문제가 아니라 새로고침이 답이다
+    throw new 어시스턴트오류('stale', '앱이 새 버전으로 바뀌었어요. 페이지를 새로고침한 뒤 다시 시도해 주세요.', 예외)
+  }
+  try {
     return await 구현.대화요청({ 키, 모델, ...나머지 })
   } catch (예외) {
     throw 오류정리(예외)

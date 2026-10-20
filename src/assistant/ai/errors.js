@@ -1,6 +1,6 @@
 /**
  * 제공자별로 다른 오류를 화면에 보여줄 한 가지 모양으로 정리한다.
- * 종류: abort(사용자 중단) · auth(키 문제) · rate(한도) · request(요청 거부) · network(연결/CORS) · server · unknown
+ * 종류: abort(사용자 중단) · auth(키 문제) · rate(한도) · request(요청 거부) · network(연결/CORS) · server · stale(새 버전 배포) · unknown
  */
 export class 어시스턴트오류 extends Error {
   constructor(종류, 메시지, 원인) {
@@ -38,6 +38,13 @@ const 문자코드종류 = {
   invalid_request_error: 'request',
   server_error: 'server',
   overloaded_error: 'server',
+  // Gemini 의 status 문자열
+  unauthenticated: 'auth',
+  permission_denied: 'auth',
+  resource_exhausted: 'rate',
+  unavailable: 'server',
+  internal: 'server',
+  invalid_argument: 'request',
 }
 
 /**
@@ -45,8 +52,10 @@ const 문자코드종류 = {
  * @param {{ status?: unknown, code?: unknown, 상세?: string }} 단서
  */
 function 종류추정({ status, code, 상세 = '' }) {
-  const 숫자 = Number(status ?? code)
-  let 종류 = Number.isFinite(숫자) && 숫자 > 0 ? 상태코드종류(숫자) : (문자코드종류[String(code ?? '').toLowerCase()] ?? 'unknown')
+  // Gemini 는 { code: 429, status: 'RESOURCE_EXHAUSTED' }, OpenAI 는 { code: 'rate_limit_exceeded' } 꼴. 숫자가 있으면 숫자부터
+  const 숫자 = [status, code].map(Number).find((n) => Number.isFinite(n) && n > 0)
+  const 문자 = [code, status].map((v) => 문자코드종류[String(v ?? '').toLowerCase()]).find(Boolean)
+  let 종류 = 숫자 ? 상태코드종류(숫자) : (문자 ?? 'unknown')
   // Gemini 는 잘못된 키를 400 으로 돌려준다 ("API key not valid"). 키 문제로 안내하는 편이 낫다
   if ((종류 === 'request' || 종류 === 'unknown') && /api key/i.test(상세)) 종류 = 'auth'
   return 종류

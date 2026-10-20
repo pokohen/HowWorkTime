@@ -69,7 +69,7 @@ export function 남은연차복원(문자열) {
   for (const [연도, 값] of Object.entries(데이터)) {
     if (!/^\d{4}$/.test(연도)) continue
     let 분 = null
-    if (값 && typeof 값 === 'object') 분 = Number.isFinite(Number(값.분)) ? 남은연차분만들기(0, Number(값.분) / 60) : null
+    if (값 && typeof 값 === 'object') 분 = typeof 값.분 === 'number' && Number.isFinite(값.분) ? 남은연차분만들기(0, 값.분 / 60) : null
     else if (typeof 값 === 'number' && Number.isFinite(값)) 분 = 남은연차분만들기(값, 0)
     if (분 != null) 결과[연도] = 분
   }

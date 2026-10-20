@@ -7,13 +7,24 @@ import { 어시스턴트오류 } from './errors'
  * @param {{ 키: string, 모델: string, 시스템: string, 메시지: Array<{ 역할: 'user'|'assistant', 내용: string }>, 신호?: AbortSignal, 조각: (텍스트: string) => void }} 옵션
  * @returns {Promise<{ 텍스트: string, 잘림: boolean }>} 전체 응답 텍스트와 출력 상한에 걸렸는지
  */
-/** 기본 출력 상한. 모델 ID 가 자유 입력이라 상한이 더 낮은 모델이면 API 가 알려 준 상한으로 한 번 다시 시도한다 */
-const 기본최대토큰 = 8192
+/**
+ * 기본 출력 상한. 생각(thinking)이 켜진 모델은 생각 토큰도 여기에 포함되므로 넉넉히 잡는다 (스트리밍이라 커도 괜찮다).
+ * 모델 ID 가 자유 입력이라 상한이 더 낮은 모델이면 Models API 가 알려 주는 값으로 줄인다.
+ */
+const 기본최대토큰 = 32_000
+/** 모델별 출력 상한 캐시. 조회 실패는 null 로 기억해 매번 다시 묻지 않는다 */
+const 상한캐시 = new Map()
 
-/** 400 "max_tokens: 8192 > 4096, which is the maximum allowed …" 에서 모델의 상한을 읽는다. 없으면 null */
-export function 최대토큰상한(메시지) {
-  const 짝 = /max_tokens[^0-9]*\d+\s*>\s*(\d+)/i.exec(메시지 ?? '')
-  return 짝 ? Number(짝[1]) : null
+async function 모델상한(client, 모델) {
+  if (!상한캐시.has(모델)) {
+    try {
+      const 정보 = await client.models.retrieve(모델)
+      상한캐시.set(모델, typeof 정보?.max_tokens === 'number' ? 정보.max_tokens : null)
+    } catch {
+      상한캐시.set(모델, null) // 모르는 모델이거나 조회 실패. 기본값으로 보내고 API 의 판단에 맡긴다
+    }
+  }
+  return 상한캐시.get(모델)
 }
 
 export async function 대화요청({ 키, 모델, 시스템, 메시지, 신호, 조각 }) {
@@ -23,30 +34,22 @@ export async function 대화요청({ 키, 모델, 시스템, 메시지, 신호, 
     dangerouslyAllowBrowser: true, // 사용자 본인의 키를 본인 브라우저에서만 쓰는 구조 (서버 없음)
     maxRetries: 1,
   })
-  const 요청 = (maxTokens) => client.messages.stream(
-    {
-      model: 모델,
-      max_tokens: maxTokens,
-      system: 시스템,
-      messages: 메시지.map((m) => ({ role: m.역할, content: m.내용 })),
-    },
-    { signal: 신호 },
-  )
+  const 상한 = await 모델상한(client, 모델)
+  const maxTokens = 상한 ? Math.min(기본최대토큰, 상한) : 기본최대토큰
 
   let 최종
   try {
-    try {
-      const stream = 요청(기본최대토큰)
-      stream.on('text', 조각)
-      최종 = await stream.finalMessage()
-    } catch (예외) {
-      // 400 "max_tokens: N > M …": 아직 글자가 나가기 전이라 API 가 말한 상한 M 으로 다시 보낼 수 있다
-      const 상한 = 예외?.status === 400 ? 최대토큰상한(예외?.message) : null
-      if (!상한 || 상한 >= 기본최대토큰) throw 예외
-      const stream = 요청(상한)
-      stream.on('text', 조각)
-      최종 = await stream.finalMessage()
-    }
+    const stream = client.messages.stream(
+      {
+        model: 모델,
+        max_tokens: maxTokens,
+        system: 시스템,
+        messages: 메시지.map((m) => ({ role: m.역할, content: m.내용 })),
+      },
+      { signal: 신호 },
+    )
+    stream.on('text', 조각)
+    최종 = await stream.finalMessage()
   } catch (예외) {
     // SDK 오류 클래스는 name 이 'Error' 라 이름으로는 구분할 수 없다. 클래스로 가려 종류를 붙인다
     if (예외 instanceof Anthropic.APIUserAbortError) throw new 어시스턴트오류('abort', '응답을 중단했어요.', 예외)
