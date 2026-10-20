@@ -13,7 +13,7 @@ const 쉬는날여부 = (날짜) => !근무일여부(날짜)
  *
  * @returns {Array<{ 시작: string, 끝: string, 일수: number, 공휴일: string[], 징검다리: string[] }>}
  */
-export function 연휴찾기(연도, 월) {
+export function 연휴찾기(연도, 월, 쉬는날 = 쉬는날여부) {
   const 공휴일이름 = new Map(
     [월 - 1, 월, 월 + 1].flatMap((m) => {
       const d = new Date(연도, m - 1, 1)
@@ -25,22 +25,24 @@ export function 연휴찾기(연도, 월) {
   const 시작 = new Date(연도, 월 - 1, 1 - 7)
   const 끝 = new Date(연도, 월 - 1, 월말일수(연도, 월) + 7)
 
-  // 쉬는날 구간을 모은다. 평일 하루만 끼어 있고 양옆이 모두 쉬는날이면 징검다리로 이어 붙인다
+  // 쉬는날 구간을 모은다. 평일 하루만 끼어 있고 양옆이 모두 쉬는날이면 징검다리로 이어 붙인다.
+  // 징검다리는 구간당 하루만 허용한다. 그렇지 않으면 쉬는날·평일이 번갈아 오는 패턴이 연차 여러 날짜리 긴 '연휴'로 뭉친다
   const 구간들 = []
   let 현재 = null
+  const 닫기 = () => { 구간들.push(현재); 현재 = null }
   for (let d = new Date(시작); d <= 끝; d.setDate(d.getDate() + 1)) {
     const 오늘 = new Date(d)
-    if (쉬는날여부(오늘)) {
-      if (!현재) 현재 = { 시작: 오늘, 끝: 오늘, 날들: [] }
+    if (쉬는날(오늘)) {
+      if (!현재) 현재 = { 시작: 오늘, 끝: 오늘, 날들: [], 징검다리있음: false }
       현재.끝 = 오늘
       현재.날들.push({ 날짜: 오늘, 징검다리: false })
     } else if (현재) {
       const 내일 = new Date(오늘); 내일.setDate(내일.getDate() + 1)
-      if (쉬는날여부(내일) && 내일 <= 끝) {
+      if (!현재.징검다리있음 && 내일 <= 끝 && 쉬는날(내일)) {
         현재.날들.push({ 날짜: 오늘, 징검다리: true }) // 하루 연차로 이어지는 평일
+        현재.징검다리있음 = true
       } else {
-        구간들.push(현재)
-        현재 = null
+        닫기()
       }
     }
   }

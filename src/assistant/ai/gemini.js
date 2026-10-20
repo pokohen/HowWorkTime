@@ -6,7 +6,7 @@ import { 응답오류, 어시스턴트오류 } from './errors'
  * 역할 이름이 다르다: assistant → model.
  *
  * @param {{ 키: string, 모델: string, 시스템: string, 메시지: Array<{ 역할: 'user'|'assistant', 내용: string }>, 신호?: AbortSignal, 조각: (텍스트: string) => void }} 옵션
- * @returns {Promise<string>}
+ * @returns {Promise<{ 텍스트: string, 잘림: boolean }>}
  */
 export async function 대화요청({ 키, 모델, 시스템, 메시지, 신호, 조각 }) {
   const 주소 = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(모델)}:streamGenerateContent?alt=sse`
@@ -28,6 +28,7 @@ export async function 대화요청({ 키, 모델, 시스템, 메시지, 신호, 
   if (!응답.ok) throw await 응답오류(응답)
 
   let 전체 = ''
+  let 잘림 = false
   for await (const { data } of SSE이벤트(응답)) {
     let 본문
     try { 본문 = JSON.parse(data) } catch { continue }
@@ -36,17 +37,18 @@ export async function 대화요청({ 키, 모델, 시스템, 메시지, 신호, 
     const 차단이유 = 본문?.promptFeedback?.blockReason
     if (차단이유) throw new 어시스턴트오류('request', `모델이 이 요청을 거부했어요 (${차단이유}). 질문을 바꿔서 다시 시도해 주세요.`)
     const 후보 = 본문?.candidates?.[0]
-    const 종료이유 = 후보?.finishReason
-    if (종료이유 && !['STOP', 'MAX_TOKENS'].includes(종료이유) && !후보?.content?.parts?.length) {
-      throw new 어시스턴트오류('request', `모델이 답을 끝내지 못했어요 (${종료이유}). 질문을 바꿔서 다시 시도해 주세요.`)
-    }
-    const 조각들 = 후보?.content?.parts ?? []
-    for (const 부분 of 조각들) {
+    for (const 부분 of 후보?.content?.parts ?? []) {
       if (typeof 부분.text === 'string' && 부분.text) {
         전체 += 부분.text
         조각(부분.text)
       }
     }
+    // 마지막 조각에 글과 종료 이유가 같이 올 수 있어, 글을 먼저 흘린 뒤 이유를 본다
+    const 종료이유 = 후보?.finishReason
+    if (종료이유 === 'MAX_TOKENS') 잘림 = true
+    else if (종료이유 && 종료이유 !== 'STOP') {
+      throw new 어시스턴트오류('request', `모델이 답을 끝내지 못했어요 (${종료이유}). 질문을 바꿔서 다시 시도해 주세요.`)
+    }
   }
-  return 전체
+  return { 텍스트: 전체, 잘림 }
 }

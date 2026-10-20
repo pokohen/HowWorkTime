@@ -28,20 +28,23 @@ describe('직렬화 → 복원', () => {
     expect(복구.탭목록[0].메시지.map((m) => [m.역할, m.내용])).toEqual([['user', '안녕'], ['assistant', '반가워요']])
   })
 
-  it('진행 중 표시는 중단됨으로 저장하고, 내용도 오류도 없는 빈 응답은 버린다', () => {
+  it('진행 중 표시는 중단됨으로 저장하고, 아무 표시도 없는 빈 응답만 버린다', () => {
     const 탭 = { ...새탭(), 메시지: [
       메시지('user', '질문'),
-      메시지('assistant', '', { 진행중: true }),
+      메시지('assistant', '', { 진행중: true }), // 첫 글자 전에 새로고침 → 중단됨으로 남겨 다시 시도할 수 있게
+      메시지('assistant', ''),
       메시지('assistant', '', { 오류: '키 오류' }),
       메시지('assistant', '일부만', { 중단됨: true, 진행중: false }),
-      메시지('assistant', '받는 중', { 진행중: true }),
+      메시지('assistant', '받는 중', { 진행중: true, 잘림: true }),
     ] }
     const 저장 = JSON.parse(직렬화({ 탭목록: [탭], 활성탭ID: 탭.id }))
-    expect(저장.탭목록[0].메시지).toHaveLength(4)
+    expect(저장.탭목록[0].메시지).toHaveLength(5)
     expect(저장.탭목록[0].메시지.some((m) => '진행중' in m)).toBe(false)
-    expect(저장.탭목록[0].메시지[1]).toMatchObject({ 오류: '키 오류' })
-    expect(저장.탭목록[0].메시지[2]).toMatchObject({ 중단됨: true, 내용: '일부만' })
-    expect(저장.탭목록[0].메시지[3]).toMatchObject({ 중단됨: true, 내용: '받는 중' })
+    expect(저장.탭목록[0].메시지[1]).toMatchObject({ 중단됨: true, 내용: '' })
+    expect(저장.탭목록[0].메시지[2]).toMatchObject({ 오류: '키 오류' })
+    expect(저장.탭목록[0].메시지[3]).toMatchObject({ 중단됨: true, 내용: '일부만' })
+    expect(저장.탭목록[0].메시지[4]).toMatchObject({ 중단됨: true, 잘림: true, 내용: '받는 중' })
+    expect(복원(JSON.stringify(저장)).탭목록[0].메시지[4].잘림).toBe(true)
   })
 
   it('상한을 넘는 오래된 메시지·탭은 잘라낸다', () => {

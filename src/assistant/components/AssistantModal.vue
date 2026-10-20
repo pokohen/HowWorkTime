@@ -35,9 +35,15 @@ onMounted(() => {
 function 다이얼로그닫힘() {
   if (열림.value) 닫기()
 }
-// 바깥(backdrop) 클릭. 내용 영역 클릭은 target 이 dialog 자신이 아니다
+// 바깥(backdrop) 클릭. 내용 영역 클릭은 target 이 dialog 자신이 아니다.
+// 글을 드래그해 고르다 backdrop 위에서 손을 떼면 click 의 target 도 dialog 가 되므로, 누르기 시작한 곳도 바깥이어야 닫는다
+let 바깥에서누름 = false
+function 바깥누름(e) {
+  바깥에서누름 = e.target === 다이얼로그.value
+}
 function 바깥클릭(e) {
-  if (e.target === 다이얼로그.value) 닫기()
+  if (바깥에서누름 && e.target === 다이얼로그.value) 닫기()
+  바깥에서누름 = false
 }
 
 // ── 메시지 스크롤 ──────────────────────────────────────────
@@ -69,6 +75,7 @@ function 새탭열기() {
     class="assistant-dialog"
     aria-labelledby="assistant-title"
     @close="다이얼로그닫힘"
+    @pointerdown="바깥누름"
     @click="바깥클릭"
   >
     <div class="assistant-panel">

@@ -26,8 +26,9 @@ async function 보내기() {
   await 전송(내용)
 }
 function 키입력(e) {
-  // Enter 는 전송, Shift+Enter 는 줄바꿈. 한글 조합 중(isComposing)에는 보내지 않는다
-  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+  // Enter 는 전송, Shift+Enter 는 줄바꿈. 한글 조합 중에는 보내지 않는다.
+  // Safari 는 조합을 확정하는 Enter 를 isComposing=false 로 보내므로 keyCode 229 도 함께 거른다
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
     e.preventDefault()
     보내기()
   }

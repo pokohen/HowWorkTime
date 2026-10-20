@@ -41,6 +41,7 @@ const 복사문구 = computed(() => ({ done: '복사됨', fail: '복사 실패' 
       <span v-if="메시지.진행중" class="typing" aria-label="응답 작성 중"><i /><i /><i /></span>
       <p v-if="메시지.오류" class="msg-error">{{ 메시지.오류 }}</p>
       <p v-else-if="메시지.중단됨" class="msg-note">응답을 중단했어요.</p>
+      <p v-else-if="메시지.잘림" class="msg-note">답변이 길어서 여기서 잘렸어요. 이어서 써 달라고 요청해 보세요.</p>
       <button
         v-if="재시도가능"
         type="button"

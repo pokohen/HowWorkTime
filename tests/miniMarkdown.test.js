@@ -10,6 +10,11 @@ describe('마크다운HTML', () => {
     expect(html).toContain('<strong>굵게</strong>')
   })
 
+  it('코드 스팬 안의 별표는 굵게로 바꾸지 않는다', () => {
+    expect(마크다운HTML('`**/*.log` 패턴과 **강조**')).toBe('<p><code>**/*.log</code> 패턴과 <strong>강조</strong></p>')
+    expect(마크다운텍스트('`**/*.log` 패턴과 **강조**')).toBe('**/*.log 패턴과 강조')
+  })
+
   it('문단·줄바꿈·굵게·코드를 바꾼다', () => {
     expect(마크다운HTML('첫 줄\n둘째 줄\n\n새 문단')).toBe('<p>첫 줄<br>둘째 줄</p><p>새 문단</p>')
     expect(마크다운HTML('`코드` 와 **강조**')).toBe('<p><code>코드</code> 와 <strong>강조</strong></p>')

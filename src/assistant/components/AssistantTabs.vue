@@ -13,28 +13,32 @@ function 탭이름(탭) {
 <template>
   <div class="tabs" role="tablist" aria-label="대화 목록">
     <div class="tabs-scroll">
-      <button
+      <!-- 버튼 안에 버튼을 넣을 수 없어(Firefox 는 포커스도 막는다) 이름과 닫기를 나란한 버튼 둘로 둔다 -->
+      <div
         v-for="탭 in 탭목록"
         :key="탭.id"
-        type="button"
-        role="tab"
         class="tab"
         :class="{ active: 탭.id === 활성탭ID }"
-        :aria-selected="탭.id === 활성탭ID"
-        :title="탭이름(탭)"
-        @click="탭선택(탭.id)"
       >
-        <span class="tab-name">{{ 탭이름(탭) }}</span>
-        <span
+        <button
+          type="button"
+          role="tab"
+          class="tab-name"
+          :aria-selected="탭.id === 활성탭ID"
+          :title="탭이름(탭)"
+          @click="탭선택(탭.id)"
+        >{{ 탭이름(탭) }}</button>
+        <button
           v-if="탭.id === 활성탭ID"
+          type="button"
           class="tab-close"
-          role="button"
-          tabindex="0"
           aria-label="이 대화 닫기"
-          @click.stop="탭삭제(탭.id)"
-          @keydown.enter.space.prevent.stop="탭삭제(탭.id)"
-        >×</span>
-      </button>
+          title="이 대화 닫기"
+          @click="탭삭제(탭.id)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" /></svg>
+        </button>
+      </div>
     </div>
     <button type="button" class="tab-add" aria-label="새 대화" title="새 대화" @click="emit('새대화')">＋</button>
   </div>
@@ -60,18 +64,12 @@ function 탭이름(탭) {
 .tab {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   flex: none;
   max-width: 180px;
-  padding: 10px 10px 11px;
-  border: 0;
+  padding: 0 4px 0 0;
   border-bottom: 2px solid transparent;
-  background: transparent;
   color: var(--label);
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 600;
-  cursor: pointer;
   margin-bottom: -1px;
   transition: color 0.15s, border-color 0.15s;
 }
@@ -80,25 +78,39 @@ function 탭이름(탭) {
   color: var(--text);
   border-bottom-color: var(--accent-amber);
 }
-.tab:focus-visible { outline: none; border-radius: 8px; box-shadow: 0 0 0 3px var(--focus-ring); }
 .tab-name {
+  min-width: 0;
+  padding: 10px 6px 11px 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.tab-name:focus-visible { outline: none; border-radius: 8px; box-shadow: 0 0 0 3px var(--focus-ring); }
 .tab-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  font-size: 0.95rem;
-  line-height: 1;
+  background: transparent;
   color: var(--label);
+  cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
+.tab-close svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
 .tab-close:hover { background: var(--surface-muted); color: var(--accent-red); }
+.tab-close:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
 .tab-add {
   flex: none;
   align-self: center;

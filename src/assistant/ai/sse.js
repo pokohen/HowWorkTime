@@ -31,7 +31,8 @@ export async function* SSE이벤트(응답) {
     const 마지막 = 블록파싱(버퍼)
     if (마지막) yield 마지막
   } finally {
-    리더.releaseLock()
+    // 소비자가 중간에 끊어도(break · throw) 연결을 닫는다. cancel 은 lock 도 함께 푼다
+    await 리더.cancel().catch(() => {})
   }
 }
 

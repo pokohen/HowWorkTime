@@ -46,7 +46,10 @@ export async function 응답오류(응답) {
 
 /** 아무 예외든 어시스턴트오류로 바꾼다 (이미 어시스턴트오류면 그대로) */
 export function 오류정리(예외) {
-  if (예외 instanceof 어시스턴트오류) return 예외
+  if (예외 instanceof 어시스턴트오류) {
+    if (!예외.message && 상태별메시지[예외.종류]) return new 어시스턴트오류(예외.종류, 상태별메시지[예외.종류], 예외.cause)
+    return 예외
+  }
   if (예외?.name === 'AbortError' || 예외?.name === 'APIUserAbortError') {
     return new 어시스턴트오류('abort', '응답을 중단했어요.', 예외)
   }

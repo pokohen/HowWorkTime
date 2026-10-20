@@ -9,10 +9,27 @@ export function HTML이스케이프(텍스트) {
   return String(텍스트).replace(/[&<>"']/g, (c) => 이스케이프표[c])
 }
 
+/**
+ * 코드 스팬 안의 기호(예: `**` 나 `*`)가 굵게 규칙에 걸리지 않도록, 코드를 먼저 떼어 두고 나머지만 바꾼 뒤 되돌린다.
+ * @param {string} 텍스트
+ * @param {(코드: string) => string} 코드변환
+ * @param {(나머지: string) => string} 나머지변환
+ */
+function 코드보호(텍스트, 코드변환, 나머지변환) {
+  const 코드들 = []
+  const 자리 = 텍스트.replace(/`([^`\n]+)`/g, (_, 코드) => {
+    코드들.push(코드변환(코드))
+    return `\u0000${코드들.length - 1}\u0000`
+  })
+  return 나머지변환(자리).replace(/\u0000(\d+)\u0000/g, (_, i) => 코드들[Number(i)])
+}
+
 function 인라인(텍스트) {
-  return HTML이스케이프(텍스트)
-    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+  return 코드보호(
+    HTML이스케이프(텍스트),
+    (코드) => `<code>${코드}</code>`,
+    (나머지) => 나머지.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>'),
+  )
 }
 
 /**
@@ -83,9 +100,7 @@ export function 마크다운텍스트(텍스트) {
     if (제목) 결과 = 제목[1]
     else if (글머리) 결과 = `${글머리[1]}• ${글머리[2]}`
     else 결과 = 줄
-    return 결과
-      .replace(/`([^`\n]+)`/g, '$1')
-      .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    return 코드보호(결과, (코드) => 코드, (나머지) => 나머지.replace(/\*\*([^*\n]+)\*\*/g, '$1'))
   })
   // 연속 빈 줄은 하나로, 앞뒤 빈 줄은 제거
   return 출력.join('\n').replace(/\n{3,}/g, '\n\n').trim()
