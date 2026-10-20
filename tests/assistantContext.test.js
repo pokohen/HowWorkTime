@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { 연휴찾기, 시스템프롬프트, 이력만들기 } from '../src/assistant/utils/assistantContext'
+import { 날짜키 } from '../src/worktime/utils/workDays'
 
 // 공휴일은 tests/setup.js 가 2026년 픽스처로 고정한다
 describe('연휴찾기', () => {
@@ -37,7 +38,7 @@ describe('연휴찾기', () => {
   it('징검다리는 구간당 하루만 — 쉬는날·평일이 번갈아 와도 긴 연휴로 뭉치지 않는다', () => {
     // 토 일 [월] 화 [수] 목 [금] 토 일 꼴로 쉬는 날을 만든다 (2026-06 기준, 6/6 토 ~ 6/14 일)
     const 쉬는날집합 = new Set(['2026-06-06', '2026-06-07', '2026-06-09', '2026-06-11', '2026-06-13', '2026-06-14'])
-    const 쉬는날 = (날짜) => 쉬는날집합.has(`${날짜.getFullYear()}-${String(날짜.getMonth() + 1).padStart(2, '0')}-${String(날짜.getDate()).padStart(2, '0')}`)
+    const 쉬는날 = (날짜) => 쉬는날집합.has(날짜키(날짜))
     const 구간들 = 연휴찾기(2026, 6, 쉬는날)
     expect(구간들.map((g) => [g.시작, g.끝, g.징검다리])).toEqual([
       ['2026-06-06', '2026-06-09', ['2026-06-08']],

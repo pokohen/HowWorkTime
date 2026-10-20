@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useAssistant } from '../composables/useAssistant'
 import AssistantSettings from './AssistantSettings.vue'
 import AssistantTabs from './AssistantTabs.vue'
@@ -49,19 +49,35 @@ function 바깥클릭(e) {
 }
 
 // ── 메시지 스크롤 ──────────────────────────────────────────
+// '따라가는중'은 사용자가 바닥 근처에 있는지의 기록이다. 스크롤 이벤트에서만 갱신하므로
+// 말풍선이 한꺼번에 자라도(150ms 묶음 파싱, 두 말풍선 동시 추가) 자라기 전의 위치로 판단한다.
+let 따라가는중 = true
+const 바닥여유 = 80
+function 스크롤됨() {
+  const el = 메시지영역.value
+  if (el) 따라가는중 = el.scrollHeight - el.scrollTop - el.clientHeight < 바닥여유
+}
 function 아래로스크롤(강제 = false) {
   const el = 메시지영역.value
   if (!el) return
-  const 바닥근처 = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-  // CSS 의 smooth 스크롤을 쓰면 애니메이션 도중 들어온 다음 조각이 '바닥 근처'가 아니라고 판단해 따라가기를 멈춘다.
-  // 프로그램이 내리는 스크롤은 항상 즉시 이동한다 (사용자의 휠·터치 스크롤은 영향 없음)
-  if (강제 || 바닥근처) el.scrollTo({ top: el.scrollHeight, behavior: 'instant' })
+  if (강제) 따라가는중 = true
+  // 프로그램이 내리는 스크롤은 즉시 이동한다 (CSS smooth 애니메이션 도중의 위치로 판단이 흔들리지 않게)
+  if (따라가는중) el.scrollTo({ top: el.scrollHeight, behavior: 'instant' })
 }
-// 메시지가 새로 추가되면(내가 보낸 말 + 응답 자리) 항상 끝까지 내려간다.
-// 두 말풍선이 한 번에 붙으면 '바닥 근처' 판정을 넘겨 따라가지 못하므로 강제로 내린다
+// 내용이 실제로 커진 뒤(렌더 커밋 후)에 따라 내려간다. 조각 수신 시점이 아니라 DOM 이 자란 시점이 기준이다
+const 내용영역 = ref(null)
+let 크기관찰 = null
+onMounted(() => {
+  if (typeof ResizeObserver === 'undefined') return
+  크기관찰 = new ResizeObserver(() => 아래로스크롤())
+  watch(내용영역, (el, 이전) => {
+    if (이전) 크기관찰.unobserve(이전)
+    if (el) 크기관찰.observe(el)
+  }, { immediate: true })
+})
+onBeforeUnmount(() => 크기관찰?.disconnect())
+// 메시지가 새로 추가되면(내가 보낸 말 + 응답 자리) 항상 끝까지 내려간다
 watch(() => 활성탭.value.메시지.length, (지금, 이전) => { if (지금 > 이전) nextTick(() => 아래로스크롤(true)) })
-// 스트리밍 조각이 들어올 때마다 바닥에 붙어 있으면 따라 내려간다 (자라는 것은 마지막 메시지뿐이다)
-watch(() => 활성탭.value.메시지.at(-1)?.내용.length, () => nextTick(() => 아래로스크롤()))
 watch(활성탭ID, () => nextTick(() => 아래로스크롤(true)))
 watch(설정열림, (값) => { if (!값) nextTick(() => { 아래로스크롤(true); 입력부.value?.포커스() }) })
 
@@ -70,10 +86,11 @@ function 새탭열기() {
   nextTick(() => 입력부.value?.포커스())
 }
 
-// 스크린리더 안내. 메시지 목록 전체를 live region 으로 두면 조각마다 다시 읽으므로, 응답이 끝났을 때 한 줄만 알린다
+// 스크린리더 안내. 메시지 목록 전체를 live region 으로 두면 조각마다 다시 읽으므로, 응답이 끝났을 때 한 줄만 알린다.
+// 같은 메시지의 진행중이 true→false 로 바뀔 때만이다 (탭을 바꿔서 다른 메시지가 보이는 것은 도착이 아니다)
 const { 문구: 읽기안내, 알리기 } = useLiveAnnounce()
-watch(() => 활성탭.value.메시지.at(-1)?.진행중, (지금, 이전) => {
-  if (이전 !== true || 지금 !== false) return
+watch(() => { const m = 활성탭.value.메시지.at(-1); return m ? { id: m.id, 진행중: m.진행중 } : null }, (지금, 이전) => {
+  if (!지금 || !이전 || 지금.id !== 이전.id || 이전.진행중 !== true || 지금.진행중 !== false) return
   const 마지막 = 활성탭.value.메시지.at(-1)
   알리기(마지막?.오류 ? '응답을 받지 못했어요.' : 마지막?.중단됨 ? '응답을 중단했어요.' : '응답이 도착했어요.')
 })
@@ -133,14 +150,16 @@ watch(() => 활성탭.value.메시지.at(-1)?.진행중, (지금, 이전) => {
 
       <template v-else>
         <p class="sr-only" aria-live="polite">{{ 읽기안내 }}</p>
-        <div ref="메시지영역" class="assistant-body messages">
-          <AssistantEmptyState v-if="활성탭.메시지.length === 0" @선택="입력부?.채우기($event)" />
-          <AssistantMessage
-            v-for="(m, i) in 활성탭.메시지"
-            :key="m.id"
-            :메시지="m"
-            :마지막="i === 활성탭.메시지.length - 1"
-          />
+        <div ref="메시지영역" class="assistant-body messages" @scroll.passive="스크롤됨">
+          <div ref="내용영역" class="messages-inner">
+            <AssistantEmptyState v-if="활성탭.메시지.length === 0" @선택="입력부?.채우기($event)" />
+            <AssistantMessage
+              v-for="(m, i) in 활성탭.메시지"
+              :key="m.id"
+              :메시지="m"
+              :마지막="i === 활성탭.메시지.length - 1"
+            />
+          </div>
         </div>
         <AssistantComposer ref="입력부" @보냄="아래로스크롤(true)" @설정열기="설정열림 = true" />
       </template>
@@ -260,9 +279,15 @@ watch(() => 활성탭.value.메시지.at(-1)?.진행중, (지금, 이전) => {
 .messages {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   padding: 18px 20px;
   scroll-behavior: smooth;
+}
+.messages-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: none; /* 부모(flex 컬럼)에 맞춰 줄어들지 않고 내용 높이를 따라야 ResizeObserver 가 커지는 것을 본다 */
+  min-height: 100%; /* 빈 상태 안내가 가운데 오도록 */
 }
 
 /* ── 모바일: 바텀시트 ── */

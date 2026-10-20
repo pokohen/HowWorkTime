@@ -1,5 +1,5 @@
 <script setup>
-import { watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useAssistant } from '../composables/useAssistant'
 import { useLiveAnnounce } from '../../shared/composables/useLiveAnnounce'
 
@@ -12,10 +12,24 @@ const 제목 = (알림) => (알림.종류 === 'error' ? '답변을 받지 못했
 // 항상 떠 있는 sr-only 영역에 문구를 따로 넣는다
 const { 문구: 읽기안내, 알리기 } = useLiveAnnounce()
 watch(알림, (값) => { if (값) 알리기(`${제목(값)}. ${값.제목}`) })
+
+// 모달이 showModal() 로 열려 있으면 보통 요소는 그 뒤(top layer 아래)에 깔려 보이지도 눌리지도 않는다.
+// popover 로 띄우면 같은 top layer 에 올라가 모달 위에 보인다. (미지원 브라우저는 기존처럼 일반 레이어)
+const 겉 = ref(null)
+watch(알림, async (값) => {
+  await nextTick()
+  const el = 겉.value
+  if (!el || typeof el.showPopover !== 'function') return
+  try {
+    if (값 && !el.matches(':popover-open')) el.showPopover()
+    else if (!값 && el.matches(':popover-open')) setTimeout(() => { if (!알림.value) el.hidePopover() }, 250) // 사라지는 전환 뒤에
+  } catch { /* 이미 열림/닫힘 등 */ }
+}, { immediate: true })
 </script>
 
 <template>
   <p class="sr-only" role="status" aria-live="polite">{{ 읽기안내 }}</p>
+  <div ref="겉" class="toast-layer" popover="manual">
   <Transition name="toast">
     <div v-if="알림" class="toast" :class="`toast--${알림.종류}`">
       <button type="button" class="toast-main" @click="알림열기">
@@ -30,9 +44,23 @@ watch(알림, (값) => { if (값) 알리기(`${제목(값)}. ${값.제목}`) })
       </button>
     </div>
   </Transition>
+  </div>
 </template>
 
 <style scoped>
+/* popover 의 기본 스타일(가운데 박스·테두리·배경)을 지우고, 안쪽 .toast 가 위치를 잡게 한다 */
+.toast-layer {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  width: 0;
+  height: 0;
+}
+.toast-layer:not(:popover-open) { display: contents; } /* popover 미지원·닫힘 상태에서도 자식이 보이게 */
 .toast {
   position: fixed;
   left: 50%;

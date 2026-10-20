@@ -1,6 +1,6 @@
 /**
  * 제공자별로 다른 오류를 화면에 보여줄 한 가지 모양으로 정리한다.
- * 종류: abort(사용자 중단) · auth(키 문제) · rate(한도) · request(요청 거부) · network(연결/CORS) · server · stale(새 버전 배포) · unknown
+ * 종류: abort(사용자 중단) · auth(키 문제) · rate(한도) · quota(결제 한도) · request(요청 거부) · network(연결/CORS) · server · stale(새 버전 배포) · unknown
  */
 export class 어시스턴트오류 extends Error {
   constructor(종류, 메시지, 원인) {
@@ -13,6 +13,7 @@ export class 어시스턴트오류 extends Error {
 const 상태별메시지 = {
   auth: 'API 키가 올바르지 않거나 권한이 없어요. 설정에서 키를 확인해 주세요.',
   rate: '요청 한도에 걸렸어요. 잠시 후 다시 시도해 주세요.',
+  quota: '제공자 계정의 크레딧이나 결제 한도가 다 됐어요. 제공자 콘솔에서 결제 상태를 확인해 주세요.',
   server: '제공자 서버에 문제가 있어요. 잠시 후 다시 시도해 주세요.',
   // OpenAI 는 키가 틀리면 401 응답에 CORS 헤더가 없어 브라우저에서는 연결 실패로만 보인다. 키 확인도 같이 안내한다
   network: '연결에 실패했어요. 네트워크 상태와 API 키가 맞는지 확인해 주세요. (키가 틀려도 이렇게 보일 수 있어요)',
@@ -30,7 +31,7 @@ function 상태코드종류(status) {
 /** 제공자가 문자열로 주는 오류 코드 (OpenAI 등) → 종류 */
 const 문자코드종류 = {
   rate_limit_exceeded: 'rate',
-  insufficient_quota: 'rate',
+  insufficient_quota: 'quota', // 429 로 오지만 기다려도 풀리지 않는다 (결제 필요)
   invalid_api_key: 'auth',
   authentication_error: 'auth',
   permission_error: 'auth',
@@ -55,7 +56,8 @@ function 종류추정({ status, code, 상세 = '' }) {
   // Gemini 는 { code: 429, status: 'RESOURCE_EXHAUSTED' }, OpenAI 는 { code: 'rate_limit_exceeded' } 꼴. 숫자가 있으면 숫자부터
   const 숫자 = [status, code].map(Number).find((n) => Number.isFinite(n) && n > 0)
   const 문자 = [code, status].map((v) => 문자코드종류[String(v ?? '').toLowerCase()]).find(Boolean)
-  let 종류 = 숫자 ? 상태코드종류(숫자) : (문자 ?? 'unknown')
+  // 문자 코드가 더 구체적이다 (예: 429 + insufficient_quota 는 '잠시 후'가 아니라 결제 문제). 없으면 숫자로
+  let 종류 = 문자 ?? (숫자 ? 상태코드종류(숫자) : 'unknown')
   // Gemini 는 잘못된 키를 400 으로 돌려준다 ("API key not valid"). 키 문제로 안내하는 편이 낫다
   if ((종류 === 'request' || 종류 === 'unknown') && /api key/i.test(상세)) 종류 = 'auth'
   return 종류

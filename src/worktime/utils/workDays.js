@@ -7,7 +7,6 @@ export function 월말일수(연도, 월) {
   return new Date(연도, 월, 0).getDate()
 }
 
-/** Date → "YYYY-MM-DD" */
 /** Date → 'YYYY-MM-DD' (공휴일 데이터의 키 형식) */
 export function 날짜키(날짜) {
   return `${날짜.getFullYear()}-${두자리(날짜.getMonth() + 1)}-${두자리(날짜.getDate())}`

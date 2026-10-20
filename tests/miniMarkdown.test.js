@@ -10,6 +10,12 @@ describe('마크다운HTML', () => {
     expect(html).toContain('<strong>굵게</strong>')
   })
 
+  it('숫자로 시작하는 문장은 번호 목록이 아니다 (1 로 시작하거나 이어질 때만 목록)', () => {
+    expect(마크다운HTML('2026. 상반기에는 설 연휴가 가장 길어요')).toBe('<p>2026. 상반기에는 설 연휴가 가장 길어요</p>')
+    expect(마크다운HTML('1. 하나\n2. 둘')).toBe('<ol><li>하나</li><li>둘</li></ol>')
+    expect(마크다운HTML('3. 셋')).toBe('<p>3. 셋</p>')
+  })
+
   it('코드 스팬 안의 별표는 굵게로 바꾸지 않는다', () => {
     expect(마크다운HTML('`**/*.log` 패턴과 **강조**')).toBe('<p><code>**/*.log</code> 패턴과 <strong>강조</strong></p>')
     expect(마크다운텍스트('`**/*.log` 패턴과 **강조**')).toBe('**/*.log 패턴과 강조')

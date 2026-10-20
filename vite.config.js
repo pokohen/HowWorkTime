@@ -20,7 +20,7 @@ function 모듈상태HMR() {
     apply: 'serve',
     transform(code, id) {
       // 파일 위치·이름이 아니라 실제 호출 구문으로 고른다 (줄바꿈 허용). 헬퍼 정의 파일의 주석은 대상이 아니다
-      if (id.includes('/moduleState.js') || !/모듈상태\(\s*import\.meta\.hot/.test(code)) return null
+      if (id.includes('node_modules') || id.includes('/moduleState.js') || !/모듈상태\(\s*import\.meta\.hot/.test(code)) return null
       return {
         code: `${code}\nif (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())\n`,
         map: null,
