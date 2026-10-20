@@ -7,6 +7,7 @@ defineProps({
   비활성: Boolean,
   비활성안내: String,
   인라인: Boolean, // 본문을 한 줄(가로) 배치
+  // 슬롯: default(켜졌을 때 본문), 힌트(항상), 추가(항상 · 토글과 무관한 보조 입력)
 })
 </script>
 
@@ -38,6 +39,7 @@ defineProps({
       <slot />
     </div>
     <p v-if="$slots.힌트" class="setting-hint"><slot name="힌트" /></p>
+    <div v-if="$slots.추가" class="setting-extra"><slot name="추가" /></div>
   </div>
 </template>
 
@@ -81,6 +83,11 @@ defineProps({
 }
 .setting-body--inline :deep(.setting-hint) {
   flex: 1 1 auto;
+}
+.setting-extra {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--hairline);
 }
 .setting-hint,
 :deep(.setting-hint) {

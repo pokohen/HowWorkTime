@@ -74,4 +74,13 @@ describe('시스템프롬프트', () => {
     expect(글).toContain('(이번 주 급여일)')
     expect(글).not.toContain('이미 지정한 연차')
   })
+
+  it('남은 연차를 적어 두면 알려 주고, 모르면 물어보라는 예시에 남겨 둔다', () => {
+    const 모름 = 시스템프롬프트({ ...기본, 남은연차: null })
+    expect(모름).not.toContain('올해 남은 연차')
+    expect(모름).toContain('남은 연차 총량')
+    const 앎 = 시스템프롬프트({ ...기본, 남은연차: 7.5 })
+    expect(앎).toContain('올해 남은 연차: 7.5일')
+    expect(앎).not.toContain('남은 연차 총량')
+  })
 })

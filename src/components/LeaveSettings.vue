@@ -1,9 +1,16 @@
 <script setup>
 import { 시분변환 } from '../utils/timeFormat'
 import { useLeave } from '../composables/useLeave'
+import { useMonth } from '../composables/useMonth'
 import ToggleSection from './common/ToggleSection.vue'
 
-const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차초과여부, 연차항목, 연차증감 } = useLeave()
+const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차초과여부, 연차항목, 연차증감, 남은연차 } = useLeave()
+const { 선택연도 } = useMonth()
+
+/** 입력 중 쉼표·공백이 섞여도 받아 주고, 빈칸은 '모름'으로 돌린다 */
+function 남은연차입력(e) {
+  남은연차.value = e.target.value.replace(/[,\s]/g, '')
+}
 </script>
 
 <template>
@@ -51,6 +58,31 @@ const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수�
         <template v-if="연차분 > 0">지정 <strong>{{ 시분변환(연차분) }}</strong> · 출근일 −{{ 연차일수환산 }}일 · </template>남은 한도 {{ 시분변환(연차잔여분) }} / {{ 시분변환(연차예산분) }}
       </template>
       <template v-else>연차·반차를 지정하면 그만큼 출근일이 줄어요 <span class="hint-extra">· 연차 −1일 · 반차 −0.5일 · 반반차 −0.25일</span></template>
+    </template>
+
+    <template #추가>
+      <div class="remaining-row">
+        <label class="remaining-label" for="remaining-leave">{{ 선택연도 }}년 남은 연차</label>
+        <div class="remaining-field">
+          <input
+            id="remaining-leave"
+            class="remaining-input"
+            type="number"
+            inputmode="decimal"
+            min="0"
+            max="365"
+            step="0.5"
+            placeholder="예: 12"
+            :value="남은연차 ?? ''"
+            @change="남은연차입력"
+          />
+          <span class="remaining-unit">일</span>
+        </div>
+        <span class="remaining-hint">
+          <template v-if="남은연차 == null">적어 두면 쉬는 날 플래너가 남은 연차를 알고 제안해요</template>
+          <template v-else>쉬는 날 플래너가 이 숫자를 참고해요 · 이 브라우저에 저장</template>
+        </span>
+      </div>
     </template>
   </ToggleSection>
 </template>
@@ -135,5 +167,58 @@ const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수�
 }
 .hint-extra {
   color: var(--hint);
+}
+
+.remaining-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.remaining-label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.remaining-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.remaining-input {
+  width: 76px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1.5px solid var(--input-border);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--input-text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.remaining-input::placeholder { color: var(--hint); font-weight: 500; }
+.remaining-input:hover { border-color: var(--input-border-hover); }
+.remaining-input:focus-visible {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.remaining-unit {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.remaining-hint {
+  flex: 1 1 100%;
+  font-size: 0.78rem;
+  color: var(--label);
+  line-height: 1.5;
+}
+@media (min-width: 560px) {
+  .remaining-hint { flex: 1 1 auto; }
 }
 </style>

@@ -1,5 +1,6 @@
-import { computed } from 'vue'
-import { 연차단위 } from '../constants'
+import { computed, reactive } from 'vue'
+import { 연차단위, 남은연차저장키 } from '../constants'
+import { 저장소읽기, 저장소쓰기 } from '../utils/assistantStorage'
 import { 모듈상태 } from './moduleState'
 import { 월별상태 } from './monthScoped'
 import { useMonth } from './useMonth'
@@ -9,7 +10,7 @@ import { useWorkInput } from './useWorkInput'
 // 따라서 반영분에 다시 더하지 않고, '현재까지 근무시간'을 지정 가능한 한도로 둔다.
 // 대신 사용한 만큼 환산 일수(연차 1d·반차 0.5d·반반차 0.25d)를 출근 남은일에서 뺀다.
 const 상태 = 모듈상태(import.meta.hot, () => {
-  const { 월키 } = useMonth()
+  const { 월키, 선택연도 } = useMonth()
   const { 입력분 } = useWorkInput()
 
   const 연차여부 = 월별상태(월키, false)
@@ -47,11 +48,47 @@ const 상태 = 모듈상태(import.meta.hot, () => {
     개수ref[키].value = Math.max(0, 개수(키) + 델타)
   }
 
+  // ── 남은 연차 (연도별, 브라우저에 저장) ─────────────────────
+  // 근무시간 입력과 달리 해마다 한 번 정해지는 값이라 새로고침해도 남아 있어야 한다.
+  const 남은연차표 = reactive(남은연차복원(저장소읽기(남은연차저장키)))
+  /** 선택 연도의 남은 연차 일수. 입력한 적이 없으면 null */
+  const 남은연차 = computed({
+    get: () => 남은연차표[선택연도.value] ?? null,
+    set: (값) => {
+      const 정리 = 남은연차정리(값)
+      if (정리 == null) delete 남은연차표[선택연도.value]
+      else 남은연차표[선택연도.value] = 정리
+      저장소쓰기(남은연차저장키, JSON.stringify(남은연차표))
+    },
+  })
+
   return {
     연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차초과여부, 연차항목,
-    연차증감,
+    연차증감, 남은연차,
   }
 })
+
+/** 입력값을 0~365 사이, 반반차(0.25일) 단위로 다듬는다. 비었거나 숫자가 아니면 null */
+export function 남은연차정리(값) {
+  if (값 === '' || 값 == null) return null
+  const 수 = Number(값)
+  if (!Number.isFinite(수)) return null
+  return Math.min(365, Math.max(0, Math.round(수 * 4) / 4))
+}
+
+/** 저장된 JSON → { 'YYYY': 일수 }. 깨졌거나 모양이 다르면 빈 객체 */
+export function 남은연차복원(문자열) {
+  if (!문자열) return {}
+  let 데이터
+  try { 데이터 = JSON.parse(문자열) } catch { return {} }
+  if (!데이터 || typeof 데이터 !== 'object') return {}
+  const 결과 = {}
+  for (const [연도, 값] of Object.entries(데이터)) {
+    const 정리 = /^\d{4}$/.test(연도) ? 남은연차정리(값) : null
+    if (정리 != null) 결과[연도] = 정리
+  }
+  return 결과
+}
 
 export function useLeave() {
   return 상태

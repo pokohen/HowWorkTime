@@ -26,3 +26,5 @@ export const 테마저장키 = import.meta.env.THEME_KEY
 /** 쉬는 날 플래너(AI 대화) 저장 키. 대화 기록과 제공자 설정(모델·API 키)을 따로 둔다 */
 export const 어시스턴트저장키 = 'how-work-time:assistant'
 export const 어시스턴트설정키 = 'how-work-time:assistant-settings'
+/** 연도별 남은 연차. 해마다 다른 값이라 'YYYY' 키로 보관한다 */
+export const 남은연차저장키 = 'how-work-time:remaining-leave'
