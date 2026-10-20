@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue'
 import { 연차단위, 남은연차저장키 } from '../constants'
-import { 저장소읽기, 저장소쓰기 } from '../utils/assistantStorage'
+import { 저장소읽기, 저장소쓰기 } from '../utils/storage'
 import { 남은연차복원, 남은연차직렬화 } from '../utils/leaveBalance'
 import { 모듈상태 } from './moduleState'
 import { 월별상태 } from './monthScoped'

@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   새탭, 제목추출, 직렬화, 복원, 메시지최대, 탭최대,
-  기본설정, 설정직렬화, 설정복원, 저장소읽기, 저장소쓰기,
+  기본설정, 설정직렬화, 설정복원,
 } from '../src/utils/assistantStorage'
+import { 저장소읽기, 저장소쓰기 } from '../src/utils/storage'
 
 function 메시지(역할, 내용, 추가 = {}) {
   return { id: `${역할}-${내용}`, 역할, 내용, 시각: 1, ...추가 }

@@ -1,14 +1,11 @@
 import { ref, computed, watch } from 'vue'
 import { 테마저장키 as 저장키 } from '../constants'
+import { 저장소읽기, 저장소쓰기 } from '../utils/storage'
 import { 모듈상태 } from './moduleState'
 
 function 저장된테마() {
-  try {
-    const 값 = localStorage.getItem(저장키)
-    return 값 === 'light' || 값 === 'dark' ? 값 : null
-  } catch {
-    return null
-  }
+  const 값 = 저장소읽기(저장키)
+  return 값 === 'light' || 값 === 'dark' ? 값 : null
 }
 
 function 시스템테마() {
@@ -44,7 +41,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   /** 사용자가 명시적으로 바꿀 때만 저장한다 */
   function 토글() {
     테마.value = 테마.value === 'dark' ? 'light' : 'dark'
-    try { localStorage.setItem(저장키, 테마.value) } catch { /* 저장 불가 환경 */ }
+    저장소쓰기(저장키, 테마.value)
   }
 
   const 다크모드 = computed(() => 테마.value === 'dark')

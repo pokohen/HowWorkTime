@@ -1,14 +1,12 @@
 import { ref, computed, watch } from 'vue'
-import { 어시스턴트저장키, 어시스턴트설정키 } from '../constants'
-import { 제공자목록, 제공자여부 } from '../ai/providers'
+import { 어시스턴트저장키 } from '../constants'
 import { 대화요청 } from '../ai/client'
 import { 연휴찾기, 시스템프롬프트 } from '../utils/assistantContext'
 import { 남은연차문장 } from '../utils/leaveBalance'
-import {
-  새탭, 새ID, 제목추출, 직렬화, 복원, 기본설정, 설정직렬화, 설정복원,
-  저장소읽기, 저장소쓰기, 저장소삭제,
-} from '../utils/assistantStorage'
+import { 새탭, 새ID, 제목추출, 직렬화, 복원 } from '../utils/assistantStorage'
+import { 저장소읽기, 저장소쓰기, 저장소삭제 } from '../utils/storage'
 import { 모듈상태 } from './moduleState'
+import { useAssistantSettings } from './useAssistantSettings'
 import { useToday } from './useToday'
 import { useMonth } from './useMonth'
 import { useWorkResult } from './useWorkResult'
@@ -21,22 +19,13 @@ const 저장지연 = 400
 /** 하단 알림이 떠 있는 시간(ms) */
 const 알림표시시간 = 12_000
 
-// 로컬 개발 편의용. 빌드에서는 import.meta.env.DEV 가 false 로 치환돼 이 분기가 사라진다.
-// (CI 에는 이 변수를 두지 않는다 — 정적 사이트 번들에 키가 박히기 때문)
-function 개발용키(제공자) {
-  if (!import.meta.env.DEV) return ''
-  return {
-    anthropic: import.meta.env.VITE_ANTHROPIC_API_KEY,
-    openai: import.meta.env.VITE_OPENAI_API_KEY,
-    gemini: import.meta.env.VITE_GEMINI_API_KEY,
-  }[제공자] ?? ''
-}
-
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const { 오늘표시, 재택안내, 급여주여부 } = useToday()
   const { 선택월표시, 다음달표시, 이달공휴일, 다음달공휴일, 남은근무일, 선택연도, 선택월 } = useMonth()
   const { 출근남은일 } = useWorkResult()
   const { 연차일수환산, 남은연차분 } = useLeave()
+  const 설정상태 = useAssistantSettings()
+  const { 제공자, 모델, 현재키 } = 설정상태
 
   // ── 모달 ──────────────────────────────────────────────────
   const 열림 = ref(false)
@@ -98,28 +87,6 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     정리등록(() => window.removeEventListener('pagehide', 즉시저장))
   }
   정리등록(() => clearTimeout(저장타이머))
-
-  // ── 제공자 설정 ──────────────────────────────────────────
-  const 설정 = ref(설정복원(저장소읽기(어시스턴트설정키)))
-  watch(설정, () => 저장소쓰기(어시스턴트설정키, 설정직렬화(설정.value)), { deep: true })
-
-  const 제공자 = computed({
-    get: () => 설정.value.제공자,
-    set: (값) => { if (제공자여부(값)) 설정.value.제공자 = 값 },
-  })
-  const 제공자정보 = computed(() => 제공자목록[제공자.value])
-  const 모델 = computed({
-    get: () => 설정.value.모델[제공자.value],
-    set: (값) => { 설정.value.모델[제공자.value] = String(값 ?? '').trim() || 제공자정보.value.기본모델 },
-  })
-  const 저장된키 = computed({
-    get: () => 설정.value.키[제공자.value],
-    set: (값) => { 설정.value.키[제공자.value] = String(값 ?? '').trim() },
-  })
-  const 현재키 = computed(() => 저장된키.value || 개발용키(제공자.value))
-  const 키있음 = computed(() => 현재키.value.length > 0)
-  const 개발용키사용중 = computed(() => !저장된키.value && 개발용키(제공자.value).length > 0)
-  function 설정초기화() { 설정.value = 기본설정() }
 
   // ── 알림 ──────────────────────────────────────────────────
   // 모달을 닫아 둔 채 응답이 끝나면 화면 하단에 띄운다. { 종류: 'done'|'error', 탭ID, 제목 }
@@ -248,7 +215,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   return {
     열림, 설정열림, 열기, 닫기, 토글,
     탭목록, 활성탭ID, 활성탭, 탭선택, 새탭추가, 탭삭제, 모든대화삭제,
-    설정, 제공자, 제공자정보, 모델, 저장된키, 현재키, 키있음, 개발용키사용중, 설정초기화,
+    ...설정상태, // 제공자·모델·키 (useAssistantSettings). 화면 쪽에서 한 번에 꺼내 쓰도록 펼쳐 둔다
     전송중, 전송, 중단, 재시도,
     알림, 알림열기, 알림닫기,
   }

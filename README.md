@@ -59,7 +59,8 @@ src/
     workDays.js           소정근로일·남은근무일·급여일 계산
     timeFormat.js         "h:mm" 파싱/포맷, 시각 파싱
     assistantContext.js   연휴·징검다리 탐지, AI 시스템 프롬프트 (순수 함수)
-    assistantStorage.js   대화·설정 직렬화/복원, localStorage 보호
+    storage.js            localStorage 안전 읽기/쓰기 (막힌 환경 보호)
+    assistantStorage.js   대화·설정 직렬화/복원
     leaveBalance.js       남은 연차 일·시간 ↔ 분 변환, 저장 형식
     miniMarkdown.js       응답용 가벼운 마크다운 → HTML (이스케이프 우선)
   ai/
@@ -79,14 +80,16 @@ src/
     useLeave.js           연차·반차·반반차, 연도별 남은 연차(localStorage)
     useWorkResult.js      반영분, 달성률, 남은 시간, 일평균, 마일리지
     useTheme.js           다크 모드
-    useAssistant.js       쉬는 날 플래너: 모달·탭·메시지·전송·제공자 설정
+    useAssistantSettings.js 쉬는 날 플래너 제공자·모델·API 키
+    useAssistant.js       쉬는 날 플래너: 모달·탭·메시지·전송·알림
   components/
     common/               CardSection, StatCard, ToggleSection, CheckBox, TimeField, ClockField, HolidayItems
     WorkTimeCalculator    레이아웃 루트
     AppHeader, ThemeToggle, MonthSelector, MonthSummary, WorkSettings,
     RemoteWorkSettings, LeaveSettings, TodayWorkInput,
     ProgressStatus, WorkResult, HolidayList, NextMonthPreview,
-    AssistantFab, AssistantModal, AssistantSettings
+    AssistantFab, AssistantToast, AssistantModal(머리·스크롤) → AssistantTabs, AssistantEmptyState,
+    AssistantMessage(말풍선·복사), AssistantComposer(입력·전송), AssistantSettings
 ```
 
 테스트는 `tests/`에 있으며 순수 함수인 `utils/`(연휴 탐지·저장 직렬화·마크다운 포함)를 대상으로 합니다. 공휴일은 `tests/fixtures/holidays.json`(2026년 스냅샷)에 고정되어 실데이터 갱신과 무관합니다. CI에서 빌드 전에 실행됩니다.

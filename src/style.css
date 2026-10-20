@@ -165,6 +165,10 @@ body {
 }
 
 /* 입력 필드 위 작은 대문자 캡션 */
+/* 힌트 문장 뒤에 덧붙는 보조 설명 (여러 컴포넌트가 공유) */
+.hint-extra {
+  color: var(--hint);
+}
 .field-caption {
   font-size: 0.78rem;
   font-weight: 600;

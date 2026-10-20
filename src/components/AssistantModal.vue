@@ -1,30 +1,18 @@
 <script setup>
-import { ref, watch, nextTick, computed, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted } from 'vue'
 import { useAssistant } from '../composables/useAssistant'
-import { 마크다운HTML, 마크다운텍스트 } from '../utils/miniMarkdown'
-import { 클립보드복사 } from '../utils/clipboard'
 import AssistantSettings from './AssistantSettings.vue'
+import AssistantTabs from './AssistantTabs.vue'
+import AssistantEmptyState from './AssistantEmptyState.vue'
+import AssistantMessage from './AssistantMessage.vue'
+import AssistantComposer from './AssistantComposer.vue'
 
-const {
-  열림, 설정열림, 닫기,
-  탭목록, 활성탭ID, 활성탭, 탭선택, 새탭추가, 탭삭제,
-  키있음, 제공자정보, 모델,
-  전송중, 전송, 중단, 재시도,
-} = useAssistant()
+// 쉬는 날 플래너 모달. 열고 닫기·머리·스크롤만 맡고, 탭·말풍선·입력은 각 컴포넌트가 맡는다
+const { 열림, 설정열림, 닫기, 활성탭, 활성탭ID, 새탭추가, 키있음, 제공자정보, 모델 } = useAssistant()
 
 const 다이얼로그 = ref(null)
-const 입력창 = ref(null)
 const 메시지영역 = ref(null)
-const 입력 = ref('')
-
-/** 빈 탭에서 보여 주는 시작 제안. 누르면 입력창에 채워져 바로 보낼 수 있다 */
-const 시작제안 = [
-  { 아이콘: '🌴', 제목: '휴가 추천', 문장: '이번 달이나 다음 달에 연차 하루 붙여서 쉬기 좋은 날이 있을까? 그때 뭐 하면 좋을지도 같이 추천해 줘.' },
-  { 아이콘: '🎉', 제목: '주말 계획', 문장: '이번 주말에 할 만한 걸 몇 가지 추천해 줘. 집에서 쉬는 것 하나, 가볍게 나가는 것 하나, 좀 특별한 것 하나.' },
-  { 아이콘: '✈️', 제목: '여행 일정', 문장: '다가오는 연휴에 맞춰 2박 3일 국내 여행 일정을 짜고 싶어. 어디로 가면 좋을지부터 같이 정해 줘.' },
-]
-
-const 보낼수있음 = computed(() => 키있음.value && !전송중.value && 입력.value.trim().length > 0)
+const 입력부 = ref(null)
 
 // ── 열고 닫기 ──────────────────────────────────────────────
 watch(열림, async (값) => {
@@ -34,7 +22,7 @@ watch(열림, async (값) => {
     if (!el.open) el.showModal()
     await nextTick()
     아래로스크롤(true)
-    입력창.value?.focus()
+    입력부.value?.포커스()
   } else if (el.open) {
     el.close()
   }
@@ -67,58 +55,11 @@ watch(() => 활성탭.value.메시지.length, (지금, 이전) => { if (지금 >
 // 스트리밍 조각이 들어올 때마다 바닥에 붙어 있으면 따라 내려간다
 watch(() => 활성탭.value.메시지.map((m) => m.내용.length).join(','), () => nextTick(() => 아래로스크롤()))
 watch(활성탭ID, () => nextTick(() => 아래로스크롤(true)))
-watch(설정열림, (값) => { if (!값) nextTick(() => { 아래로스크롤(true); 입력창.value?.focus() }) })
+watch(설정열림, (값) => { if (!값) nextTick(() => { 아래로스크롤(true); 입력부.value?.포커스() }) })
 
-// ── 입력 ──────────────────────────────────────────────────
-function 입력높이맞춤() {
-  const el = 입력창.value
-  if (!el) return
-  el.style.height = 'auto'
-  el.style.height = `${Math.min(el.scrollHeight, 160)}px`
-}
-async function 보내기() {
-  if (!보낼수있음.value) return
-  const 내용 = 입력.value
-  입력.value = ''
-  await nextTick()
-  입력높이맞춤()
-  아래로스크롤(true)
-  await 전송(내용)
-}
-function 키입력(e) {
-  // Enter 는 전송, Shift+Enter 는 줄바꿈. 한글 조합 중(isComposing)에는 보내지 않는다
-  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-    e.preventDefault()
-    보내기()
-  }
-}
-function 제안선택(문장) {
-  입력.value = 문장
-  nextTick(() => { 입력높이맞춤(); 입력창.value?.focus() })
-}
 function 새탭열기() {
   새탭추가()
-  nextTick(() => 입력창.value?.focus())
-}
-function 탭이름(탭) {
-  return 탭.제목 || '새 대화'
-}
-
-// ── 복사 ──────────────────────────────────────────────────
-/** 방금 복사한 메시지 id. 잠깐 "복사됨" 표시 후 되돌린다 */
-const 복사됨ID = ref(null)
-const 복사실패ID = ref(null)
-let 복사표시타이머 = null
-/** 답변이 끝났고 내용이 있을 때만 복사 버튼을 보여 준다 */
-function 복사가능(m) {
-  return m.역할 === 'assistant' && !m.진행중 && !m.오류 && Boolean(m.내용?.trim())
-}
-async function 메시지복사(m) {
-  const 성공 = await 클립보드복사(마크다운텍스트(m.내용))
-  clearTimeout(복사표시타이머)
-  복사됨ID.value = 성공 ? m.id : null
-  복사실패ID.value = 성공 ? null : m.id
-  복사표시타이머 = setTimeout(() => { 복사됨ID.value = null; 복사실패ID.value = null }, 1800)
+  nextTick(() => 입력부.value?.포커스())
 }
 </script>
 
@@ -164,147 +105,28 @@ async function 메시지복사(m) {
             <path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7zm7.4-2.5a7.9 7.9 0 0 0 .1-1 7.9 7.9 0 0 0-.1-1l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.3 7.3 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.4h-4a.5.5 0 0 0-.5.4l-.4 2.6a7.3 7.3 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.9 7.9 0 0 0-.1 1 7.9 7.9 0 0 0 .1 1l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5a.5.5 0 0 0 .6.2l2.5-1a7.3 7.3 0 0 0 1.7 1l.4 2.6a.5.5 0 0 0 .5.4h4a.5.5 0 0 0 .5-.4l.4-2.6a7.3 7.3 0 0 0 1.7-1l2.5 1a.5.5 0 0 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6L19.4 13z" />
           </svg>
         </button>
-        <button type="button" class="icon-btn" aria-label="닫기" title="닫기 (Esc)" @click="닫기">✕</button>
+        <button type="button" class="icon-btn" aria-label="닫기" title="닫기 (Esc)" @click="닫기">
+          <svg class="icon-svg icon-svg--stroke" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
       </header>
 
-      <div v-if="!설정열림" class="tabs" role="tablist" aria-label="대화 목록">
-        <div class="tabs-scroll">
-          <button
-            v-for="탭 in 탭목록"
-            :key="탭.id"
-            type="button"
-            role="tab"
-            class="tab"
-            :class="{ active: 탭.id === 활성탭ID }"
-            :aria-selected="탭.id === 활성탭ID"
-            :title="탭이름(탭)"
-            @click="탭선택(탭.id)"
-          >
-            <span class="tab-name">{{ 탭이름(탭) }}</span>
-            <span
-              v-if="탭.id === 활성탭ID"
-              class="tab-close"
-              role="button"
-              tabindex="0"
-              aria-label="이 대화 닫기"
-              @click.stop="탭삭제(탭.id)"
-              @keydown.enter.space.prevent.stop="탭삭제(탭.id)"
-            >×</span>
-          </button>
-        </div>
-        <button type="button" class="tab-add" aria-label="새 대화" title="새 대화" @click="새탭열기">＋</button>
-      </div>
+      <AssistantTabs v-if="!설정열림" @새대화="새탭열기" />
 
       <AssistantSettings v-if="설정열림" class="assistant-body" />
 
       <template v-else>
         <div ref="메시지영역" class="assistant-body messages" aria-live="polite">
-          <div v-if="활성탭.메시지.length === 0" class="empty">
-            <p class="empty-lead">무엇을 계획해 볼까요?</p>
-            <p class="empty-desc">이번 달 공휴일, 연휴, 남은 출근일을 이미 알고 있어서 달력 없이 바로 물어볼 수 있어요.</p>
-            <div class="suggestions">
-              <button
-                v-for="제안 in 시작제안"
-                :key="제안.제목"
-                type="button"
-                class="suggestion"
-                @click="제안선택(제안.문장)"
-              >
-                <span class="suggestion-icon">{{ 제안.아이콘 }}</span>
-                <span class="suggestion-text">
-                  <strong>{{ 제안.제목 }}</strong>
-                  <span>{{ 제안.문장 }}</span>
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <div
-            v-for="m in 활성탭.메시지"
+          <AssistantEmptyState v-if="활성탭.메시지.length === 0" @선택="입력부?.채우기($event)" />
+          <AssistantMessage
+            v-for="(m, i) in 활성탭.메시지"
             :key="m.id"
-            class="msg"
-            :class="[`msg--${m.역할}`, { 'msg--error': m.오류, 'msg--streaming': m.진행중 }]"
-          >
-            <div v-if="m.역할 === 'user'" class="bubble">{{ m.내용 }}</div>
-            <div v-else class="bubble">
-              <div v-if="m.내용" class="md" v-html="마크다운HTML(m.내용)" />
-              <span v-if="m.진행중" class="typing" aria-label="응답 작성 중"><i /><i /><i /></span>
-              <p v-if="m.오류" class="msg-error">{{ m.오류 }}</p>
-              <p v-else-if="m.중단됨" class="msg-note">응답을 중단했어요.</p>
-              <button
-                v-if="(m.오류 || m.중단됨) && m === 활성탭.메시지[활성탭.메시지.length - 1]"
-                type="button"
-                class="retry-btn"
-                :disabled="전송중"
-                @click="재시도"
-              >다시 시도</button>
-              <div v-if="복사가능(m)" class="bubble-actions">
-                <button
-                  type="button"
-                  class="copy-btn"
-                  :class="{ 'copy-btn--done': 복사됨ID === m.id, 'copy-btn--fail': 복사실패ID === m.id }"
-                  :aria-label="복사됨ID === m.id ? '복사됨' : '이 답변 복사'"
-                  title="이 답변 복사"
-                  @click="메시지복사(m)"
-                >
-                  <svg v-if="복사됨ID === m.id" class="copy-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" />
-                  </svg>
-                  <svg v-else class="copy-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
-                  </svg>
-                  <span>{{ 복사됨ID === m.id ? '복사됨' : 복사실패ID === m.id ? '복사 실패' : '복사' }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
+            :메시지="m"
+            :마지막="i === 활성탭.메시지.length - 1"
+          />
         </div>
-
-        <footer class="composer">
-          <div v-if="!키있음" class="key-banner">
-            <span>API 키를 설정하면 대화를 시작할 수 있어요.</span>
-            <button type="button" class="key-banner-btn" @click="설정열림 = true">설정 열기</button>
-          </div>
-          <div class="composer-row">
-            <textarea
-              ref="입력창"
-              v-model="입력"
-              class="composer-input"
-              rows="1"
-              :placeholder="키있음 ? '예: 다음 달 연휴에 뭐 하면 좋을까?' : '먼저 설정에서 API 키를 넣어 주세요'"
-              :disabled="!키있음"
-              aria-label="메시지 입력"
-              @input="입력높이맞춤"
-              @keydown="키입력"
-            />
-            <button
-              v-if="전송중"
-              type="button"
-              class="send-btn send-btn--stop"
-              aria-label="응답 중단"
-              title="응답 중단"
-              @click="중단"
-            >
-              <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="6" y="6" width="12" height="12" rx="3" fill="currentColor" />
-              </svg>
-            </button>
-            <button
-              v-else
-              type="button"
-              class="send-btn"
-              :disabled="!보낼수있음"
-              aria-label="보내기"
-              title="보내기 (Enter)"
-              @click="보내기"
-            >
-              <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 19V6M6 12l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
-          </div>
-          <p class="composer-hint">Enter 전송 · Shift+Enter 줄바꿈 · 대화는 이 브라우저에 저장돼요</p>
-        </footer>
+        <AssistantComposer ref="입력부" @보냄="아래로스크롤(true)" @설정열기="설정열림 = true" />
       </template>
     </div>
   </dialog>
@@ -386,7 +208,6 @@ async function 메시지복사(m) {
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-soft);
-  font-size: 1rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -394,9 +215,9 @@ async function 메시지복사(m) {
   transition: background 0.15s, border-color 0.15s;
 }
 .icon-btn:hover { background: var(--surface-muted); }
-.icon-btn.active { background: var(--tint-amber-bg); border-color: var(--tint-amber-border); color: var(--tint-amber-text); }
 .icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
 .icon-svg { width: 19px; height: 19px; fill: currentColor; }
+.icon-svg--stroke { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .done-btn {
   height: 36px;
   padding: 0 14px;
@@ -414,81 +235,6 @@ async function 메시지복사(m) {
 .done-btn:active { transform: scale(0.97); }
 .done-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
 
-/* ── 탭 ── */
-.tabs {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-  padding: 0 12px 0 20px;
-  border-bottom: 1px solid var(--hairline);
-}
-.tabs-scroll {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  flex: 1;
-  min-width: 0;
-}
-.tabs-scroll::-webkit-scrollbar { display: none; }
-.tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex: none;
-  max-width: 180px;
-  padding: 10px 10px 11px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--label);
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin-bottom: -1px;
-  transition: color 0.15s, border-color 0.15s;
-}
-.tab:hover { color: var(--text-soft); }
-.tab.active {
-  color: var(--text);
-  border-bottom-color: var(--accent-amber);
-}
-.tab:focus-visible { outline: none; border-radius: 8px; box-shadow: 0 0 0 3px var(--focus-ring); }
-.tab-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.tab-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  font-size: 0.95rem;
-  line-height: 1;
-  color: var(--label);
-  transition: background 0.15s, color 0.15s;
-}
-.tab-close:hover { background: var(--surface-muted); color: var(--accent-red); }
-.tab-add {
-  flex: none;
-  align-self: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  border: 1px dashed var(--input-border);
-  background: transparent;
-  color: var(--label);
-  font: inherit;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.tab-add:hover { background: var(--surface-muted); color: var(--text); border-color: var(--input-border-hover); }
-
 /* ── 본문 ── */
 .assistant-body {
   flex: 1;
@@ -501,258 +247,6 @@ async function 메시지복사(m) {
   gap: 12px;
   padding: 18px 20px;
   scroll-behavior: smooth;
-}
-.empty {
-  margin: auto 0;
-  text-align: center;
-  padding: 12px 4px 20px;
-}
-.empty-lead {
-  margin: 0 0 6px;
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-.empty-desc {
-  margin: 0 auto 18px;
-  max-width: 360px;
-  font-size: 0.86rem;
-  line-height: 1.5;
-  color: var(--label);
-}
-.suggestions {
-  display: grid;
-  gap: 8px;
-  text-align: left;
-}
-.suggestion {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid var(--card-border);
-  background: var(--surface-soft);
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-}
-.suggestion:hover { background: var(--surface-muted); border-color: var(--input-border-hover); transform: translateY(-1px); }
-.suggestion:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
-.suggestion-icon { font-size: 1.3rem; line-height: 1.2; }
-.suggestion-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: var(--text-soft);
-}
-.suggestion-text strong { font-size: 0.9rem; color: var(--text); }
-
-.msg {
-  display: flex;
-}
-.msg--user { justify-content: flex-end; }
-.msg--assistant { justify-content: flex-start; }
-.bubble {
-  max-width: 86%;
-  padding: 10px 14px;
-  border-radius: 16px;
-  font-size: 0.93rem;
-  line-height: 1.6;
-  word-break: break-word;
-  white-space: pre-wrap;
-}
-.msg--user .bubble {
-  background: var(--primary);
-  color: #fff;
-  border-bottom-right-radius: 6px;
-}
-.msg--assistant .bubble {
-  background: var(--surface-soft);
-  border: 1px solid var(--card-border);
-  border-bottom-left-radius: 6px;
-  white-space: normal;
-}
-.msg--error .bubble {
-  background: var(--tint-red-bg);
-  border-color: var(--tint-red-border);
-}
-.md :deep(p) { margin: 0 0 8px; }
-.md :deep(p:last-child) { margin-bottom: 0; }
-.md :deep(h4) { margin: 10px 0 4px; font-size: 0.95rem; font-weight: 700; }
-.md :deep(h4:first-child) { margin-top: 0; }
-.md :deep(ul), .md :deep(ol) { margin: 4px 0 8px; padding-left: 20px; }
-.md :deep(li) { margin: 2px 0; }
-.md :deep(code) {
-  font-size: 0.85em;
-  padding: 1px 5px;
-  border-radius: 5px;
-  background: var(--surface-muted);
-}
-.msg-error {
-  margin: 4px 0 0;
-  font-size: 0.86rem;
-  color: var(--tint-red-text);
-}
-.msg-note {
-  margin: 4px 0 0;
-  font-size: 0.8rem;
-  color: var(--label);
-}
-.retry-btn {
-  margin-top: 8px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--input-border);
-  background: var(--card-bg);
-  color: var(--text-soft);
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.retry-btn:hover { background: var(--surface-muted); }
-.retry-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.bubble-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin: 8px -6px -4px 0;
-}
-.copy-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--label);
-  font: inherit;
-  font-size: 0.76rem;
-  font-weight: 600;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.copy-btn:hover { background: var(--surface-muted); color: var(--text-soft); }
-.copy-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
-.copy-btn--done { color: var(--tint-green-text); }
-.copy-btn--fail { color: var(--tint-red-text); }
-.copy-icon { width: 14px; height: 14px; fill: currentColor; }
-
-.typing {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  height: 1.2em;
-  vertical-align: middle;
-}
-.typing i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--label);
-  animation: typing-dot 1.2s ease-in-out infinite;
-}
-.typing i:nth-child(2) { animation-delay: 0.15s; }
-.typing i:nth-child(3) { animation-delay: 0.3s; }
-@keyframes typing-dot {
-  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-3px); }
-}
-/* 스트리밍 중 내용이 있으면 점은 글 끝에 작게 붙는다 */
-.md + .typing { margin-top: 4px; }
-
-/* ── 입력 ── */
-.composer {
-  border-top: 1px solid var(--hairline);
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
-  background: var(--card-bg);
-}
-.key-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--tint-amber-bg);
-  border: 1px solid var(--tint-amber-border);
-  color: var(--tint-amber-text);
-  font-size: 0.84rem;
-  font-weight: 600;
-}
-.key-banner-btn {
-  flex: none;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--tint-amber-border);
-  background: var(--card-bg);
-  color: var(--tint-amber-text);
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-.composer-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-}
-.composer-input {
-  flex: 1;
-  min-width: 0;
-  min-height: 44px;
-  max-height: 160px;
-  padding: 11px 14px;
-  border-radius: 14px;
-  border: 1.5px solid var(--input-border);
-  background: var(--input-bg);
-  color: var(--input-text);
-  font: inherit;
-  font-size: 0.93rem;
-  line-height: 1.45;
-  resize: none;
-  box-sizing: border-box;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.composer-input:focus-visible {
-  outline: none;
-  border-color: var(--focus);
-  box-shadow: 0 0 0 3px var(--focus-ring);
-}
-.composer-input:disabled { opacity: 0.6; cursor: not-allowed; }
-.send-btn {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  border: 0;
-  background: var(--primary);
-  color: #fff;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.15s, transform 0.1s, background 0.15s;
-}
-.send-icon { width: 22px; height: 22px; display: block; }
-.send-btn:hover { transform: translateY(-1px); }
-.send-btn:active { transform: translateY(0) scale(0.96); }
-.send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-.send-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
-.send-btn--stop { background: var(--accent-red); }
-.send-btn--stop:hover { background: var(--accent-red-deep); }
-.composer-hint {
-  margin: 8px 2px 0;
-  font-size: 0.74rem;
-  color: var(--hint);
 }
 
 /* ── 모바일: 바텀시트 ── */
@@ -774,12 +268,9 @@ async function 메시지복사(m) {
     from { transform: translateY(40px); opacity: 0.6; }
     to { transform: none; opacity: 1; }
   }
-  .bubble { max-width: 92%; }
-  .composer-hint { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .assistant-dialog[open] .assistant-panel { animation: none; }
-  .typing i { animation: none; opacity: 0.6; }
   .messages { scroll-behavior: auto; }
 }
 </style>

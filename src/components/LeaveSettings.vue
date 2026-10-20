@@ -194,9 +194,6 @@ function 남은연차입력() {
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
-.hint-extra {
-  color: var(--hint);
-}
 
 .remaining-row {
   display: flex;

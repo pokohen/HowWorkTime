@@ -19,7 +19,7 @@ const 상태별메시지 = {
 }
 
 /** HTTP 상태 코드 → 오류 종류 */
-export function 상태코드종류(status) {
+function 상태코드종류(status) {
   if (status === 401 || status === 403) return 'auth'
   if (status === 429) return 'rate'
   if (status >= 500) return 'server'

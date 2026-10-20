@@ -1,11 +1,11 @@
 import { 제공자목록, 제공자여부, 기본제공자 } from '../ai/providers'
 
 /** 저장 형식 버전. 구조를 바꾸면 올리고 복원에서 변환한다 */
-export const 저장버전 = 1
+const 저장버전 = 1
 /** 보관 상한. 넘치면 오래된 것부터 버린다 */
 export const 탭최대 = 20
 export const 메시지최대 = 200
-export const 제목최대길이 = 18
+const 제목최대길이 = 18
 
 export function 새ID() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -103,15 +103,4 @@ export function 설정복원(문자열) {
     if (typeof 데이터.키?.[id] === 'string') 설정.키[id] = 데이터.키[id].trim()
   }
   return 설정
-}
-
-/** localStorage 가 막힌 환경(사생활 보호 모드 등)에서도 앱이 죽지 않도록 감싼다 */
-export function 저장소읽기(키, 저장소 = globalThis.localStorage) {
-  try { return 저장소?.getItem(키) ?? null } catch { return null }
-}
-export function 저장소쓰기(키, 값, 저장소 = globalThis.localStorage) {
-  try { 저장소?.setItem(키, 값); return true } catch { return false }
-}
-export function 저장소삭제(키, 저장소 = globalThis.localStorage) {
-  try { 저장소?.removeItem(키) } catch { /* 무시 */ }
 }

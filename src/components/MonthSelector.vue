@@ -111,10 +111,7 @@ const {
   font-size: 0.76rem;
   color: var(--label);
 }
-.join-hint .hint-extra {
-  color: var(--hint);
-  margin-left: 6px;
-}
+.join-hint .hint-extra { margin-left: 6px; }
 
 .month-badge {
   display: flex;

@@ -4,7 +4,7 @@ import { 두자리 } from './timeFormat'
 import { 요일이름 } from '../constants'
 
 /** 연휴로 볼 최소 연속 휴일 수 (주말 2일은 연휴가 아니다) */
-export const 연휴최소일수 = 3
+const 연휴최소일수 = 3
 
 function 날짜키(날짜) {
   return `${날짜.getFullYear()}-${두자리(날짜.getMonth() + 1)}-${두자리(날짜.getDate())}`
