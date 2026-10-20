@@ -43,6 +43,9 @@ describe('스트림오류', () => {
     expect(스트림오류({ code: 429, status: 'RESOURCE_EXHAUSTED', message: 'quota' }).종류).toBe('rate')
     expect(스트림오류({ code: 403, status: 'PERMISSION_DENIED', message: 'x' }).종류).toBe('auth')
     expect(스트림오류({ status: 'UNAVAILABLE', message: 'x' }).종류).toBe('server')
+    // OpenAI 는 code 가 null 이고 type 만 있는 경우가 많다
+    expect(스트림오류({ type: 'invalid_request_error', code: null, message: 'bad' }).종류).toBe('request')
+    expect(스트림오류({ type: 'authentication_error', message: 'x' }).종류).toBe('auth')
     // 429 라도 insufficient_quota 는 기다려도 안 풀린다
     expect(스트림오류({ code: 'insufficient_quota', status: 429, message: 'quota' }).종류).toBe('quota')
     expect(스트림오류({ message: 'boom', code: 418 }).message).toContain('boom')

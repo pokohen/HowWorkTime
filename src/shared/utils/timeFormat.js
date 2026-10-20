@@ -84,6 +84,11 @@ export function 요일명(날짜문자열) {
   return 요일이름[new Date(연도, 월 - 1, 일).getDay()]
 }
 
+/** "YYYY-MM-DD" → "M월 D일 (요일)". 화면과 AI 프롬프트가 같은 표기를 쓴다 */
+export function 날짜요일표시(날짜문자열) {
+  return `${날짜포맷(날짜문자열)} (${요일명(날짜문자열)})`
+}
+
 /** "YYYY-MM-DD" → "M월 D일" */
 export function 날짜포맷(날짜문자열) {
   const [, 월, 일] = 날짜문자열.split('-')

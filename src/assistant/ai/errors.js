@@ -51,12 +51,13 @@ const 문자코드종류 = {
 
 /**
  * 상태 코드·문자 코드·상세 문구를 모아 종류를 정한다. 세 입구(HTTP 실패, 스트림 안 오류, SDK 예외)가 같은 규칙을 쓴다.
- * @param {{ status?: unknown, code?: unknown, 상세?: string }} 단서
+ * @param {{ status?: unknown, code?: unknown, type?: unknown, 상세?: string }} 단서
  */
-function 종류추정({ status, code, 상세 = '' }) {
-  // Gemini 는 { code: 429, status: 'RESOURCE_EXHAUSTED' }, OpenAI 는 { code: 'rate_limit_exceeded' } 꼴. 숫자가 있으면 숫자부터
+function 종류추정({ status, code, type, 상세 = '' }) {
+  // Gemini 는 { code: 429, status: 'RESOURCE_EXHAUSTED' }, OpenAI 는 { code: 'rate_limit_exceeded' | null, type: 'invalid_request_error' },
+  // Anthropic 은 { type: 'authentication_error' } 꼴. 숫자가 있으면 숫자, 문자 코드는 code → type → status 순으로 본다
   const 숫자 = [status, code].map(Number).find((n) => Number.isFinite(n) && n > 0)
-  const 문자 = [code, status]
+  const 문자 = [code, type, status]
     .map((v) => String(v ?? '').toLowerCase())
     .map((k) => (Object.hasOwn(문자코드종류, k) ? 문자코드종류[k] : undefined)) // 'constructor' 같은 프로토타입 키 차단
     .find(Boolean)
@@ -81,12 +82,14 @@ function 종류메시지(종류, 상세, 대안 = '요청이 거부됐어요') {
 export async function 응답오류(응답) {
   let 상세 = ''
   let 코드
+  let 유형
   try {
     const 본문 = await 응답.json()
     상세 = 본문?.error?.message ?? 본문?.message ?? ''
     코드 = 본문?.error?.code
+    유형 = 본문?.error?.type
   } catch { /* 본문이 JSON 이 아니면 상태 코드만으로 안내 */ }
-  const 종류 = 종류추정({ status: 응답.status, code: 코드, 상세 })
+  const 종류 = 종류추정({ status: 응답.status, code: 코드, type: 유형, 상세 })
   const 메시지 = 종류메시지(종류, 상세 || `HTTP ${응답.status}`)
   return new 어시스턴트오류(종류, 메시지, 상세 || undefined)
 }
@@ -97,7 +100,7 @@ export async function 응답오류(응답) {
  */
 export function 스트림오류(오류본문) {
   const 상세 = 오류본문?.message ?? ''
-  let 종류 = 종류추정({ status: 오류본문?.status, code: 오류본문?.code, 상세 })
+  let 종류 = 종류추정({ status: 오류본문?.status, code: 오류본문?.code, type: 오류본문?.type, 상세 })
   if (종류 === 'unknown') 종류 = 'server' // 스트림이 열린 뒤의 정체 모를 오류는 제공자 쪽 문제로 안내
   return new 어시스턴트오류(종류, 종류메시지(종류, 상세), 오류본문)
 }

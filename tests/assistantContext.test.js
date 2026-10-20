@@ -46,6 +46,18 @@ describe('연휴찾기', () => {
     ])
   })
 
+  it('두 달을 한 번에 찾으면 경계에 걸친 구간이 한 번만, 잘리지 않고 나온다', () => {
+    // 2/28(토) 3/1(일 삼일절) 3/2(월 대체공휴일) 가 2월·3월 경계에 걸친다
+    const 두달 = 연휴찾기(2026, 2, undefined, 2)
+    const 삼일절 = 두달.filter((구간) => 구간.공휴일.includes('삼일절'))
+    expect(삼일절).toHaveLength(1)
+    expect(삼일절[0]).toMatchObject({ 시작: '2026-02-28', 끝: '2026-03-02', 일수: 3 })
+    // 2월의 설날 연휴도 같은 결과에 들어 있다 (두 달 범위)
+    expect(두달.some((구간) => 구간.공휴일.includes('설날'))).toBe(true)
+    // 한 달만 찾을 때와 범위가 같은 달에선 결과가 같다
+    expect(연휴찾기(2026, 2)).toEqual(두달.filter((구간) => 구간.시작 <= '2026-02-28'))
+  })
+
   it('평범한 주말(2일)은 연휴로 치지 않는다', () => {
     for (const 구간 of 연휴찾기(2026, 11)) {
       expect(구간.일수).toBeGreaterThanOrEqual(3)
@@ -71,14 +83,14 @@ describe('시스템프롬프트', () => {
   it('앱이 아는 날짜·공휴일·연휴·근무일 정보를 담는다', () => {
     const 글 = 시스템프롬프트(기본)
     expect(글).toContain('2026년 2월 10일 화요일')
-    expect(글).toContain('2월 16일(월) 설날')
+    expect(글).toContain('2월 16일 (월) 설날')
     expect(글).toContain('2026년 3월 공휴일: 없음')
     expect(글).toContain('2026년 2월 남은 근무일 10일')
     expect(글).not.toContain('보고 있는 달')
     expect(글).toContain('출근 예정 8일')
     expect(글).toContain('연차 1일')
     expect(글).toContain('내일은 재택근무')
-    expect(글).toMatch(/2월 14일\(토\)~2월 18일\(수\) 5일/)
+    expect(글).toMatch(/2월 14일 \(토\)~2월 18일 \(수\) 5일/)
   })
 
   it('연휴가 없으면 없음으로, 급여주면 표시한다', () => {

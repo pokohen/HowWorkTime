@@ -1,5 +1,5 @@
 <script setup>
-import { 날짜포맷, 요일명 } from '../../shared/utils/timeFormat'
+import { 날짜요일표시 } from '../../shared/utils/timeFormat'
 
 // { 날짜, 이름 } 배열을 받아 공휴일 목록으로 표시
 defineProps({
@@ -11,7 +11,7 @@ defineProps({
 <template>
   <ul v-if="공휴일들.length > 0" class="holiday-list">
     <li v-for="항목 in 공휴일들" :key="항목.날짜" class="holiday-item">
-      <span class="holiday-date">{{ 날짜포맷(항목.날짜) }} ({{ 요일명(항목.날짜) }})</span>
+      <span class="holiday-date">{{ 날짜요일표시(항목.날짜) }}</span>
       <span class="holiday-name">{{ 항목.이름 }}</span>
     </li>
   </ul>

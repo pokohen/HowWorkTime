@@ -19,7 +19,11 @@ export function 남은연차분만들기(일, 시간) {
   const 일수 = 숫자(일)
   const 시간수 = 숫자(시간)
   if (일수 == null && 시간수 == null) return null
-  const 분 = (일수 ?? 0) * 하루근무분 + (시간수 ?? 0) * 60
+  return 분정리((일수 ?? 0) * 하루근무분 + (시간수 ?? 0) * 60)
+}
+
+/** 분을 30분 단위로 다듬고 0~최대 범위로 자른다. 입력 파서와 저장 복원이 같이 쓴다 */
+function 분정리(분) {
   const 정리 = Math.round(분 / 반올림단위) * 반올림단위
   return Math.min(최대분, Math.max(0, 정리))
 }
@@ -69,7 +73,7 @@ export function 남은연차복원(문자열) {
   for (const [연도, 값] of Object.entries(데이터)) {
     if (!/^\d{4}$/.test(연도)) continue
     let 분 = null
-    if (값 && typeof 값 === 'object') 분 = typeof 값.분 === 'number' && Number.isFinite(값.분) ? 남은연차분만들기(0, 값.분 / 60) : null
+    if (값 && typeof 값 === 'object') 분 = typeof 값.분 === 'number' && Number.isFinite(값.분) ? 분정리(값.분) : null
     else if (typeof 값 === 'number' && Number.isFinite(값)) 분 = 남은연차분만들기(값, 0)
     if (분 != null) 결과[연도] = 분
   }
