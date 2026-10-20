@@ -22,6 +22,12 @@ describe('마크다운HTML', () => {
     expect(마크다운HTML('1. 하나\n2. 둘\n\n3. 셋')).toBe('<ol><li>하나</li><li>둘</li></ol><ol start="3"><li>셋</li></ol>')
   })
 
+  it('구분선("---", "* * *")은 글머리가 아니라 수평선으로, 복사 텍스트에서는 빈 줄로', () => {
+    expect(마크다운HTML('첫째 날\n\n* * *\n\n둘째 날')).toBe('<p>첫째 날</p><hr><p>둘째 날</p>')
+    expect(마크다운HTML('---')).toBe('<hr>')
+    expect(마크다운텍스트('첫째 날\n---\n둘째 날')).toBe('첫째 날\n\n둘째 날')
+  })
+
   it('입력에 NUL 이 섞여 있어도 코드 자리표시와 충돌하지 않는다', () => {
     expect(마크다운HTML('a \u00001\u0000 `c`')).toBe('<p>a 1 <code>c</code></p>')
   })

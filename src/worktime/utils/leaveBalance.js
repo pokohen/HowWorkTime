@@ -32,9 +32,11 @@ function 분정리(분) {
 export function 입력숫자(값) {
   if (값 === '' || 값 == null) return null
   if (typeof 값 === 'number') return Number.isFinite(값) && 값 >= 0 ? 값 : null
-  // 자릿수 쉼표만 허용하고 그 외는 십진수 꼴이어야 한다 ("1e1", "0x10", "1 0" 은 Number() 가 받아들이지만 입력 실수다)
-  const 정리 = String(값).trim().replace(/,/g, '')
-  if (!/^\d+(\.\d+)?$/.test(정리)) return null
+  // 자릿수 쉼표("1,000")만 벗기고 그 외는 십진수 꼴이어야 한다. "7,5" 는 75 가 아니라 입력 실수로 본다.
+  // ".5" 와 "7." 처럼 소수점 한쪽이 빈 꼴은 흔한 입력이라 받는다. "1e1", "0x10", "1 0" 은 Number() 가 받아들이지만 거부한다
+  let 정리 = String(값).trim()
+  if (/^\d{1,3}(,\d{3})+(\.\d*)?$/.test(정리)) 정리 = 정리.replace(/,/g, '')
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(정리)) return null
   return Number(정리)
 }
 

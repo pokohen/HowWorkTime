@@ -42,8 +42,8 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     const 주시작 = new Date(현재연도.value, 오늘.value.getMonth(), 오늘.value.getDate() - 오늘요일.value)
     const 주끝 = 날짜더하기(주시작, 6)
     // 주가 월 경계에 걸치면 양쪽 달의 급여일을 모두 본다 (같은 달이면 한 번만 조회)
-    const 달들 = new Map([주시작, 주끝].map((날짜) => [`${날짜.getFullYear()}-${날짜.getMonth()}`, 날짜]))
-    return [...달들.values()].some((날짜) => {
+    const 달들 = 주시작.getMonth() === 주끝.getMonth() ? [주시작] : [주시작, 주끝]
+    return 달들.some((날짜) => {
       const 급여일 = 급여일조회(날짜.getFullYear(), 날짜.getMonth() + 1)
       return 급여일 >= 주시작 && 급여일 <= 주끝
     })

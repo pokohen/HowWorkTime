@@ -28,9 +28,10 @@ function 파싱() {
   파싱타이머 = null
   렌더HTML.value = 마크다운HTML(props.메시지.내용)
 }
-watch(() => [props.메시지.내용, props.메시지.진행중], ([, 진행중]) => {
+watch(() => [props.메시지.내용, props.메시지.진행중], ([, 진행중], 이전) => {
   if (!응답.value) return // 사용자 말풍선은 그대로 보여 주므로 파싱하지 않는다
-  if (!진행중) return 파싱()
+  // 끝났거나 처음 그릴 때(탭을 오가며 다시 마운트되는 경우 포함)는 바로, 받는 중의 조각은 묶어서
+  if (!진행중 || !이전) return 파싱()
   if (!파싱타이머) 파싱타이머 = setTimeout(파싱, 파싱간격)
 }, { immediate: true })
 onBeforeUnmount(() => clearTimeout(파싱타이머))
@@ -125,6 +126,7 @@ const 복사문구 = computed(() => ({ done: '복사됨', fail: '복사 실패' 
 .md :deep(h4:first-child) { margin-top: 0; }
 .md :deep(ul), .md :deep(ol) { margin: 4px 0 8px; padding-left: 20px; }
 .md :deep(li) { margin: 2px 0; }
+.md :deep(hr) { margin: 10px 0; border: 0; border-top: 1px solid var(--hairline); }
 .md :deep(code) {
   font-size: 0.85em;
   padding: 1px 5px;

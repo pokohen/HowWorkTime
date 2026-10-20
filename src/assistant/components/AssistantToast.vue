@@ -22,15 +22,20 @@ watch(알림, async (값) => {
   if (!el || typeof el.showPopover !== 'function') return
   try {
     if (값 && !el.matches(':popover-open')) el.showPopover()
-    else if (!값 && el.matches(':popover-open')) setTimeout(() => { if (!알림.value) el.hidePopover() }, 250) // 사라지는 전환 뒤에
-  } catch { /* 이미 열림/닫힘 등 */ }
+  } catch { /* 이미 열림 등 */ }
 }, { immediate: true })
+// 사라지는 전환이 끝난 뒤에 popover 를 닫는다 (전환 길이를 따로 알 필요가 없다)
+function 전환끝() {
+  const el = 겉.value
+  if (알림.value || !el?.matches?.(':popover-open')) return
+  try { el.hidePopover() } catch { /* 이미 닫힘 */ }
+}
 </script>
 
 <template>
   <p class="sr-only" role="status" aria-live="polite">{{ 읽기안내 }}</p>
   <div ref="겉" class="toast-layer" popover="manual">
-  <Transition name="toast">
+  <Transition name="toast" @after-leave="전환끝">
     <div v-if="알림" class="toast" :class="`toast--${알림.종류}`">
       <button type="button" class="toast-main" @click="알림열기">
         <span class="toast-icon" aria-hidden="true">{{ 알림.종류 === 'error' ? '!' : '✦' }}</span>
