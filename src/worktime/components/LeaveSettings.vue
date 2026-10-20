@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { 시분변환 } from '../../shared/utils/timeFormat'
 import { 연차단위 } from '../../shared/constants'
 import { useLeave } from '../composables/useLeave'
@@ -23,6 +23,12 @@ const 시간입력 = ref(null)
 /** 두 칸 중 하나가 바뀌면 둘을 합쳐 다시 저장한다. 둘 다 비우면 '모름' */
 function 남은연차입력() {
   남은연차분.value = 남은연차분만들기(일입력.value?.value, 시간입력.value?.value)
+  // 정리된 값이 이전과 같으면(예: 0.2시간 → 0) Vue 가 :value 를 다시 쓰지 않으므로 직접 맞춘다
+  nextTick(() => {
+    const { 일, 시간 } = 남은연차.value
+    if (일입력.value) 일입력.value.value = 일 || ''
+    if (시간입력.value) 시간입력.value.value = 시간 || ''
+  })
 }
 </script>
 

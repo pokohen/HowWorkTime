@@ -44,16 +44,28 @@ export async function 응답오류(응답) {
   return new 어시스턴트오류(종류, 메시지, 상세 || undefined)
 }
 
+/**
+ * 200 으로 열린 스트림 안에서 온 오류 페이로드({ error: { code|status, message } })를 어시스턴트오류로 바꾼다.
+ * 본문에 상태 코드가 있으면 그걸로 종류를 가린다 (429 → rate, 403 → auth …).
+ */
+export function 스트림오류(오류본문) {
+  const 코드 = Number(오류본문?.code ?? 오류본문?.status)
+  const 종류 = Number.isFinite(코드) ? 상태코드종류(코드) : 'server'
+  const 상세 = 오류본문?.message ?? '알 수 없는 오류'
+  return new 어시스턴트오류(종류, 상태별메시지[종류] ?? `요청이 거부됐어요: ${상세}`, 오류본문)
+}
+
 /** 아무 예외든 어시스턴트오류로 바꾼다 (이미 어시스턴트오류면 그대로) */
 export function 오류정리(예외) {
   if (예외 instanceof 어시스턴트오류) {
     if (!예외.message && 상태별메시지[예외.종류]) return new 어시스턴트오류(예외.종류, 상태별메시지[예외.종류], 예외.cause)
     return 예외
   }
-  if (예외?.name === 'AbortError' || 예외?.name === 'APIUserAbortError') {
+  // fetch 의 AbortError. (Anthropic SDK 의 중단·연결 오류는 name 이 'Error' 라 anthropic.js 가 클래스로 가려 보낸다)
+  if (예외?.name === 'AbortError') {
     return new 어시스턴트오류('abort', '응답을 중단했어요.', 예외)
   }
-  // Anthropic SDK 의 APIError 계열은 status 를 가진다
+  // Anthropic SDK 의 APIError 계열(HTTP 오류)은 status 를 가진다
   if (typeof 예외?.status === 'number') {
     const 종류 = 상태코드종류(예외.status)
     const 메시지 = 상태별메시지[종류] ?? `요청이 거부됐어요: ${예외.message}`
@@ -62,7 +74,7 @@ export function 오류정리(예외) {
   // fetch 가 TypeError 를 던지는 경우: 오프라인, DNS, CORS 차단 등.
   // 메시지로 가려서 제공자 모듈 안의 일반 프로그래밍 오류(undefined 접근 등)가 '네트워크 문제'로 둔갑하지 않게 한다
   const 네트워크TypeError = 예외 instanceof TypeError && /fetch|network|load failed|connection/i.test(예외.message ?? '')
-  if (네트워크TypeError || 예외?.name === 'APIConnectionError') {
+  if (네트워크TypeError) {
     return new 어시스턴트오류('network', 상태별메시지.network, 예외)
   }
   return new 어시스턴트오류('unknown', `알 수 없는 오류가 났어요: ${예외?.message ?? 예외}`, 예외)

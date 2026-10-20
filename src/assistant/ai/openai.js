@@ -1,5 +1,5 @@
 import { SSE이벤트 } from './sse'
-import { 응답오류, 어시스턴트오류 } from './errors'
+import { 응답오류, 어시스턴트오류, 스트림오류 } from './errors'
 
 /**
  * OpenAI Chat Completions API 를 fetch 로 스트리밍한다 (브라우저 CORS 허용).
@@ -34,7 +34,7 @@ export async function 대화요청({ 키, 모델, 시스템, 메시지, 신호, 
     let 본문
     try { 본문 = JSON.parse(data) } catch { continue }
     // 헤더가 나간 뒤 스트림 안에서 오는 오류(한도 초과, 서버 오류). 조용히 빈 답으로 끝내지 않는다
-    if (본문?.error) throw new 어시스턴트오류('server', `요청이 거부됐어요: ${본문.error.message ?? '알 수 없는 오류'}`, 본문.error)
+    if (본문?.error) throw 스트림오류(본문.error)
     const 선택 = 본문?.choices?.[0]
     const 텍스트 = 선택?.delta?.content
     if (텍스트) {
@@ -42,6 +42,10 @@ export async function 대화요청({ 키, 모델, 시스템, 메시지, 신호, 
       조각(텍스트)
     }
     if (선택?.finish_reason === 'length') 잘림 = true
+    // 모더레이션이 답을 끊은 경우. Gemini 의 SAFETY 와 같은 취급
+    if (선택?.finish_reason === 'content_filter') {
+      throw new 어시스턴트오류('request', '모델이 이 요청에는 답하지 않았어요 (content_filter). 질문을 바꿔서 다시 시도해 주세요.')
+    }
   }
   return { 텍스트: 전체, 잘림 }
 }

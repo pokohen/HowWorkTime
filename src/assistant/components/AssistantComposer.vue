@@ -4,7 +4,7 @@ import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
 const emit = defineEmits(['보냄', '설정열기'])
-const { 키있음, 전송중, 전송, 중단 } = useAssistant()
+const { 키있음, 전송중, 활성탭응답중, 전송, 중단 } = useAssistant()
 
 const 입력창 = ref(null)
 const 입력 = ref('')
@@ -62,8 +62,9 @@ defineExpose({ 포커스, 채우기 })
         @input="높이맞춤"
         @keydown="키입력"
       />
+      <!-- 중단 버튼은 지금 보는 탭이 응답을 받는 중일 때만. 다른 탭이 받는 중이면 보내기를 잠그고 이유를 알려 준다 -->
       <button
-        v-if="전송중"
+        v-if="활성탭응답중"
         type="button"
         class="send-btn send-btn--stop"
         aria-label="응답 중단"
@@ -80,7 +81,7 @@ defineExpose({ 포커스, 채우기 })
         class="send-btn"
         :disabled="!보낼수있음"
         aria-label="보내기"
-        title="보내기 (Enter)"
+        :title="전송중 ? '다른 대화의 응답을 받는 중이에요' : '보내기 (Enter)'"
         @click="보내기"
       >
         <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">

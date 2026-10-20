@@ -67,6 +67,14 @@ function 새탭열기() {
   새탭추가()
   nextTick(() => 입력부.value?.포커스())
 }
+
+// 스크린리더 안내. 메시지 목록 전체를 live region 으로 두면 조각마다 다시 읽으므로, 응답이 끝났을 때 한 줄만 알린다
+const 읽기안내 = ref('')
+watch(() => 활성탭.value.메시지.at(-1)?.진행중, (지금, 이전) => {
+  if (이전 !== true || 지금 !== false) return
+  const 마지막 = 활성탭.value.메시지.at(-1)
+  읽기안내.value = 마지막?.오류 ? '응답을 받지 못했어요.' : 마지막?.중단됨 ? '응답을 중단했어요.' : '응답이 도착했어요.'
+})
 </script>
 
 <template>
@@ -124,7 +132,8 @@ function 새탭열기() {
       <AssistantSettings v-if="설정열림" class="assistant-body" />
 
       <template v-else>
-        <div ref="메시지영역" class="assistant-body messages" aria-live="polite">
+        <p class="sr-only" aria-live="polite">{{ 읽기안내 }}</p>
+        <div ref="메시지영역" class="assistant-body messages">
           <AssistantEmptyState v-if="활성탭.메시지.length === 0" @선택="입력부?.채우기($event)" />
           <AssistantMessage
             v-for="(m, i) in 활성탭.메시지"

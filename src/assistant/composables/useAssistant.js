@@ -55,7 +55,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     const 탭 = 빈탭 ?? 새탭()
     if (!빈탭) {
       while (탭목록.value.length >= 탭최대) {
-        const 가장오래된 = 탭목록.value.findIndex((t) => t.id !== 요청중탭ID)
+        const 가장오래된 = 탭목록.value.findIndex((t) => t.id !== 응답중탭ID.value)
         if (가장오래된 === -1) break
         탭목록.value.splice(가장오래된, 1)
       }
@@ -69,7 +69,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     const 색인 = 탭목록.value.findIndex((탭) => 탭.id === id)
     if (색인 === -1) return
     // 지우는 탭이 응답을 받는 중이면 그 요청만 끊는다 (보고 있는 탭과는 무관)
-    if (요청중탭ID === id) 중단()
+    if (응답중탭ID.value === id) 중단()
     탭목록.value.splice(색인, 1)
     if (탭목록.value.length === 0) 탭목록.value.push(새탭())
     if (활성탭ID.value === id) 활성탭ID.value = 탭목록.value[Math.min(색인, 탭목록.value.length - 1)].id
@@ -130,8 +130,10 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   // ── 전송 ──────────────────────────────────────────────────
   const 전송중 = ref(false)
   let 중단컨트롤러 = null
-  /** 지금 응답을 받고 있는 탭. 탭을 지울 때 어느 요청을 끊을지 가리는 기준 */
-  let 요청중탭ID = null
+  /** 지금 응답을 받고 있는 탭. 탭을 지울 때 어느 요청을 끊을지, 중단 버튼을 어느 탭에 보일지의 기준 */
+  const 응답중탭ID = ref(null)
+  /** 보고 있는 탭이 응답을 받는 중인지 (중단 버튼은 이 탭에만) */
+  const 활성탭응답중 = computed(() => 전송중.value && 응답중탭ID.value === 활성탭ID.value)
 
   function 컨텍스트수집() {
     const 연휴 = [
@@ -174,7 +176,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     전송중.value = true
     const 컨트롤러 = new AbortController()
     중단컨트롤러 = 컨트롤러
-    요청중탭ID = 탭.id
+    응답중탭ID.value = 탭.id
     try {
       const { 잘림 } = await 대화요청({
         제공자: 제공자.value,
@@ -186,6 +188,8 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
         조각: (조각) => { 응답.내용 += 조각; 저장예약() },
       })
       if (잘림) 응답.잘림 = true
+      // 오류 없이 끝났는데 글자가 하나도 없으면(빈 end_turn, parts 없는 STOP) 빈 말풍선으로 두지 않고 다시 시도할 수 있게 한다
+      if (!응답.내용.trim()) 응답.오류 = '모델이 빈 답을 돌려줬어요. 다시 시도해 주세요.'
     } catch (오류) {
       // 우리가 끊은 요청은 제공자가 어떤 예외를 던지든 '중단'이다
       if (컨트롤러.signal.aborted || 오류.종류 === 'abort') 응답.중단됨 = true
@@ -194,7 +198,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       응답.진행중 = false
       전송중.value = false
       중단컨트롤러 = null
-      요청중탭ID = null
+      응답중탭ID.value = null
       저장예약()
       // 모달이 닫혀 있거나 다른 탭을 보고 있으면 끝났다고 알려 준다
       // (사용자가 직접 중단했거나 그 사이 탭을 지운 경우는 제외)
@@ -226,7 +230,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     열림, 설정열림, 열기, 닫기, 토글,
     탭목록, 활성탭ID, 활성탭, 탭선택, 새탭추가, 탭삭제, 모든대화삭제,
     ...설정상태, // 제공자·모델·키 (useAssistantSettings). 화면 쪽에서 한 번에 꺼내 쓰도록 펼쳐 둔다
-    전송중, 전송, 중단, 재시도,
+    전송중, 응답중탭ID, 활성탭응답중, 전송, 중단, 재시도,
     알림, 알림열기, 알림닫기,
   }
 })

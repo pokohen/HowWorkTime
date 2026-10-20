@@ -23,7 +23,8 @@ export async function 클립보드복사(텍스트) {
   ta.style.left = '0'
   ta.style.opacity = '0'
   // 열린 <dialog> 안에서 호출될 수 있으니 포커스를 받을 수 있는 가장 가까운 곳에 붙인다
-  const 부모 = document.activeElement?.closest?.('dialog[open]') ?? document.body
+  const 이전포커스 = document.activeElement
+  const 부모 = 이전포커스?.closest?.('dialog[open]') ?? document.body
   부모.appendChild(ta)
   ta.focus()
   ta.select()
@@ -34,5 +35,7 @@ export async function 클립보드복사(텍스트) {
     성공 = false
   }
   부모.removeChild(ta)
+  // 임시 textarea 가 가져간 포커스를 돌려준다 (키보드 사용자가 모달 밖으로 튕기지 않게)
+  if (이전포커스 && typeof 이전포커스.focus === 'function') 이전포커스.focus()
   return 성공
 }

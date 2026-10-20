@@ -1,5 +1,5 @@
 import { SSE이벤트 } from './sse'
-import { 응답오류, 어시스턴트오류 } from './errors'
+import { 응답오류, 어시스턴트오류, 스트림오류 } from './errors'
 
 /**
  * Gemini generateContent API 를 fetch 로 스트리밍한다 (alt=sse, 브라우저 CORS 허용).
@@ -9,7 +9,9 @@ import { 응답오류, 어시스턴트오류 } from './errors'
  * @returns {Promise<{ 텍스트: string, 잘림: boolean }>}
  */
 export async function 대화요청({ 키, 모델, 시스템, 메시지, 신호, 조각 }) {
-  const 주소 = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(모델)}:streamGenerateContent?alt=sse`
+  // 모델 목록 API 와 AI Studio 는 'models/gemini-…' 꼴로 이름을 보여 준다. 그대로 붙여 넣어도 되게 접두사를 뗀다
+  const 모델이름 = 모델.replace(/^models\//, '')
+  const 주소 = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(모델이름)}:streamGenerateContent?alt=sse`
   const 응답 = await fetch(주소, {
     method: 'POST',
     signal: 신호,
@@ -33,7 +35,7 @@ export async function 대화요청({ 키, 모델, 시스템, 메시지, 신호, 
     let 본문
     try { 본문 = JSON.parse(data) } catch { continue }
     // 200 으로 열린 스트림 안에서도 오류·차단이 올 수 있다. 조용히 빈 답으로 끝내지 않는다
-    if (본문?.error) throw new 어시스턴트오류('server', `요청이 거부됐어요: ${본문.error.message ?? '알 수 없는 오류'}`, 본문.error)
+    if (본문?.error) throw 스트림오류(본문.error)
     const 차단이유 = 본문?.promptFeedback?.blockReason
     if (차단이유) throw new 어시스턴트오류('request', `모델이 이 요청을 거부했어요 (${차단이유}). 질문을 바꿔서 다시 시도해 주세요.`)
     const 후보 = 본문?.candidates?.[0]

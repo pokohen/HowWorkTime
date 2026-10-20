@@ -15,7 +15,12 @@ const 출력경로 = resolve(프로젝트루트, "src/data/holidays.json");
 const 엔드포인트 =
   "https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo";
 
-const 서비스키 = process.env.DATA_GO_KR_KEY;
+// 포털이 주는 '인코딩' 키(%2B, %3D 포함)를 그대로 넣어도 되게 한 번 풀어 둔다. URLSearchParams 가 다시 인코딩한다
+const 서비스키 = 키디코딩(process.env.DATA_GO_KR_KEY);
+function 키디코딩(키) {
+  if (!키) return 키;
+  try { return decodeURIComponent(키); } catch { return 키; }
+}
 
 // API 의 dateName 표기를 화면에 쓰는 이름으로 통일
 const 이름정규화 = { "1월1일": "신정" };
@@ -60,7 +65,15 @@ async function 공휴일가져오기(연도) {
   if (!응답.ok) {
     throw Object.assign(new Error(`HTTP ${응답.status} (${연도}년)`), { status: 응답.status });
   }
-  const 본문 = await 응답.json();
+  // 키가 틀리면 200 에 XML(SERVICE_KEY_IS_NOT_REGISTERED 등)이 온다. 다시 보내도 같으므로 재시도하지 않는 오류로 올린다
+  const 글 = await 응답.text();
+  let 본문;
+  try {
+    본문 = JSON.parse(글);
+  } catch {
+    const 요약 = 글.replace(/\s+/g, " ").slice(0, 160);
+    throw Object.assign(new Error(`JSON 이 아닌 응답 — 서비스 키를 확인하세요 (${연도}년): ${요약}`), { status: 400 });
+  }
 
   const 결과코드 = 본문?.response?.header?.resultCode;
   if (결과코드 && 결과코드 !== "00") {
