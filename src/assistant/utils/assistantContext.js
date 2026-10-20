@@ -1,19 +1,11 @@
-import { 월공휴일, 연도공휴일 } from '../../worktime/utils/holidays'
-import { 월말일수 } from '../../worktime/utils/workDays'
-import { 두자리 } from '../../shared/utils/timeFormat'
-import { 요일이름 } from '../../shared/constants'
+import { 월공휴일 } from '../../worktime/utils/holidays'
+import { 월말일수, 날짜키, 근무일여부 } from '../../worktime/utils/workDays'
+import { 날짜포맷, 요일명 } from '../../shared/utils/timeFormat'
 
 /** 연휴로 볼 최소 연속 휴일 수 (주말 2일은 연휴가 아니다) */
 const 연휴최소일수 = 3
 
-function 날짜키(날짜) {
-  return `${날짜.getFullYear()}-${두자리(날짜.getMonth() + 1)}-${두자리(날짜.getDate())}`
-}
-
-function 쉬는날여부(날짜) {
-  const 요일 = 날짜.getDay()
-  return 요일 === 0 || 요일 === 6 || 연도공휴일(날짜.getFullYear()).has(날짜키(날짜))
-}
+const 쉬는날여부 = (날짜) => !근무일여부(날짜)
 
 /**
  * 어떤 달의 연휴(주말+공휴일이 3일 이상 이어지는 구간)와 징검다리(연휴 사이에 낀 평일 하루) 를 찾는다.
@@ -71,9 +63,26 @@ export function 연휴찾기(연도, 월) {
     .filter((구간) => 구간.일수 - 구간.징검다리.length >= 연휴최소일수 || (구간.징검다리.length > 0 && 구간.일수 >= 연휴최소일수 + 1))
 }
 
-function 날짜표시(키) {
-  const [y, m, d] = 키.split('-').map(Number)
-  return `${m}월 ${d}일(${요일이름[new Date(y, m - 1, d).getDay()]})`
+const 날짜표시 = (키) => `${날짜포맷(키)}(${요일명(키)})`
+
+/**
+ * 모델에 보낼 이력. 실패·빈 응답은 빼고 같은 역할이 이어지면 합친 뒤, 최근 것만 남기고
+ * 맨 앞이 user 가 되게 다듬는다 (Anthropic 은 첫 메시지가 user 가 아니면 거부한다).
+ * @param {Array<{ 역할: 'user'|'assistant', 내용: string, 오류?: string }>} 메시지들
+ * @param {number} 최대 - 남길 메시지 수 상한
+ */
+export function 이력만들기(메시지들, 최대 = Infinity) {
+  const 결과 = []
+  for (const m of 메시지들) {
+    if (m.역할 === 'assistant' && (!m.내용 || m.오류)) continue
+    if (!m.내용) continue
+    const 마지막 = 결과[결과.length - 1]
+    if (마지막 && 마지막.역할 === m.역할) 마지막.내용 += `\n\n${m.내용}`
+    else 결과.push({ 역할: m.역할, 내용: m.내용 })
+  }
+  const 최근 = 결과.slice(-최대)
+  while (최근.length && 최근[0].역할 !== 'user') 최근.shift()
+  return 최근
 }
 
 function 연휴한줄(구간) {

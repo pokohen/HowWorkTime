@@ -28,7 +28,13 @@ const 요청제한시간 = 10_000;
 // 건수만으로는 '정정'과 '일부 누락'을 구분할 수 없어 택한 절충값이다. 더 크게 줄어드는 실제 정정은 holidays.json 을 직접 고쳐 커밋한다.
 const 허용감소 = 2;
 
-/** 실패하면 간격을 늘려 가며 다시 시도한다 */
+/** 다시 보내도 결과가 같은 오류(키 거부, 잘못된 요청)는 기다리지 않고 바로 포기한다. 429 는 잠시 뒤 재시도 */
+function 재시도가치없음(오류) {
+  const 상태 = 오류?.status;
+  return typeof 상태 === "number" && 상태 >= 400 && 상태 < 500 && 상태 !== 429;
+}
+
+/** 실패하면 간격을 늘려 가며 다시 시도한다 (네트워크·시간 초과·5xx·429 만) */
 async function 재시도(작업) {
   let 마지막오류;
   for (let 시도 = 0; 시도 < 재시도횟수; 시도++) {
@@ -36,6 +42,7 @@ async function 재시도(작업) {
       return await 작업();
     } catch (오류) {
       마지막오류 = 오류;
+      if (재시도가치없음(오류)) break;
       if (시도 < 재시도횟수 - 1) await new Promise((r) => setTimeout(r, 재시도간격 * (시도 + 1)));
     }
   }
@@ -51,7 +58,7 @@ async function 공휴일가져오기(연도) {
   });
   const 응답 = await fetch(`${엔드포인트}?${쿼리}`, { signal: AbortSignal.timeout(요청제한시간) });
   if (!응답.ok) {
-    throw new Error(`HTTP ${응답.status} (${연도}년)`);
+    throw Object.assign(new Error(`HTTP ${응답.status} (${연도}년)`), { status: 응답.status });
   }
   const 본문 = await 응답.json();
 

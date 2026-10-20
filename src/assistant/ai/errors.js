@@ -56,8 +56,10 @@ export function 오류정리(예외) {
     const 메시지 = 상태별메시지[종류] ?? `요청이 거부됐어요: ${예외.message}`
     return new 어시스턴트오류(종류, 메시지, 예외)
   }
-  // fetch 가 TypeError 를 던지는 경우: 오프라인, DNS, CORS 차단 등
-  if (예외 instanceof TypeError || 예외?.name === 'APIConnectionError') {
+  // fetch 가 TypeError 를 던지는 경우: 오프라인, DNS, CORS 차단 등.
+  // 메시지로 가려서 제공자 모듈 안의 일반 프로그래밍 오류(undefined 접근 등)가 '네트워크 문제'로 둔갑하지 않게 한다
+  const 네트워크TypeError = 예외 instanceof TypeError && /fetch|network|load failed|connection/i.test(예외.message ?? '')
+  if (네트워크TypeError || 예외?.name === 'APIConnectionError') {
     return new 어시스턴트오류('network', 상태별메시지.network, 예외)
   }
   return new 어시스턴트오류('unknown', `알 수 없는 오류가 났어요: ${예외?.message ?? 예외}`, 예외)

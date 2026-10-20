@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { 연휴찾기, 시스템프롬프트 } from '../src/assistant/utils/assistantContext'
+import { 연휴찾기, 시스템프롬프트, 이력만들기 } from '../src/assistant/utils/assistantContext'
 
 // 공휴일은 tests/setup.js 가 2026년 픽스처로 고정한다
 describe('연휴찾기', () => {
@@ -82,5 +82,34 @@ describe('시스템프롬프트', () => {
     const 앎 = 시스템프롬프트({ ...기본, 남은연차: '7일 4시간' })
     expect(앎).toContain('올해 남은 연차: 7일 4시간')
     expect(앎).not.toContain('남은 연차 총량')
+  })
+})
+
+describe('이력만들기', () => {
+  const 쌍 = (n) => Array.from({ length: n }, (_, i) => [
+    { 역할: 'user', 내용: `질문 ${i}` },
+    { 역할: 'assistant', 내용: `답 ${i}` },
+  ]).flat()
+
+  it('실패·빈 응답은 빼고 같은 역할이 이어지면 합친다', () => {
+    const 결과 = 이력만들기([
+      { 역할: 'user', 내용: '하나' },
+      { 역할: 'assistant', 내용: '', 오류: '실패' },
+      { 역할: 'user', 내용: '둘' },
+      { 역할: 'assistant', 내용: '' },
+      { 역할: 'assistant', 내용: '답' },
+    ])
+    expect(결과).toEqual([{ 역할: 'user', 내용: '하나\n\n둘' }, { 역할: 'assistant', 내용: '답' }])
+  })
+
+  it('상한으로 자른 뒤에도 맨 앞은 user 다', () => {
+    const 결과 = 이력만들기([...쌍(20), { 역할: 'user', 내용: '마지막' }], 40)
+    expect(결과).toHaveLength(39)
+    expect(결과[0]).toEqual({ 역할: 'user', 내용: '질문 1' })
+    expect(결과.at(-1)).toEqual({ 역할: 'user', 내용: '마지막' })
+  })
+
+  it('맨 앞의 응답은 버린다', () => {
+    expect(이력만들기([{ 역할: 'assistant', 내용: '인사' }, { 역할: 'user', 내용: '질문' }])).toEqual([{ 역할: 'user', 내용: '질문' }])
   })
 })

@@ -7,8 +7,9 @@ import { 모듈상태 } from '../../shared/composables/moduleState'
 
 // 로컬 개발 편의용. 빌드에서는 import.meta.env.DEV 가 false 로 치환돼 이 분기가 사라진다.
 // (CI 에는 이 변수를 두지 않는다 — 정적 사이트 번들에 키가 박히기 때문)
+// vitest 도 DEV=true 이고 .env.local 을 읽으므로, 테스트에서는 개발용 키를 쓰지 않는다
 function 개발용키(제공자) {
-  if (!import.meta.env.DEV) return ''
+  if (!import.meta.env.DEV || import.meta.env.TEST) return ''
   return {
     anthropic: import.meta.env.VITE_ANTHROPIC_API_KEY,
     openai: import.meta.env.VITE_OPENAI_API_KEY,

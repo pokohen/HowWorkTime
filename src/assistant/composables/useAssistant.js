@@ -1,10 +1,10 @@
 import { ref, computed, watch } from 'vue'
 import { 어시스턴트저장키 } from '../../shared/constants'
 import { 대화요청 } from '../ai/client'
-import { 연휴찾기, 시스템프롬프트 } from '../utils/assistantContext'
+import { 연휴찾기, 시스템프롬프트, 이력만들기 } from '../utils/assistantContext'
 import { 남은연차문장 } from '../../worktime/utils/leaveBalance'
 import { 새탭, 새ID, 제목추출, 직렬화, 복원 } from '../utils/assistantStorage'
-import { 저장소읽기, 저장소쓰기, 저장소삭제 } from '../../shared/utils/storage'
+import { 저장소읽기, 저장소쓰기 } from '../../shared/utils/storage'
 import { 모듈상태 } from '../../shared/composables/moduleState'
 import { useAssistantSettings } from './useAssistantSettings'
 import { useToday } from '../../worktime/composables/useToday'
@@ -21,7 +21,7 @@ const 알림표시시간 = 12_000
 
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const { 오늘표시, 재택안내, 급여주여부 } = useToday()
-  const { 선택월표시, 다음달표시, 이달공휴일, 다음달공휴일, 남은근무일, 선택연도, 선택월 } = useMonth()
+  const { 선택월표시, 다음달, 다음달표시, 이달공휴일, 다음달공휴일, 남은근무일, 선택연도, 선택월 } = useMonth()
   const { 출근남은일 } = useWorkResult()
   const { 연차일수환산, 남은연차분 } = useLeave()
   const 설정상태 = useAssistantSettings()
@@ -57,16 +57,17 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   function 탭삭제(id) {
     const 색인 = 탭목록.value.findIndex((탭) => 탭.id === id)
     if (색인 === -1) return
-    if (전송중.value && 활성탭ID.value === id) 중단()
+    // 지우는 탭이 응답을 받는 중이면 그 요청만 끊는다 (보고 있는 탭과는 무관)
+    if (요청중탭ID === id) 중단()
     탭목록.value.splice(색인, 1)
     if (탭목록.value.length === 0) 탭목록.value.push(새탭())
     if (활성탭ID.value === id) 활성탭ID.value = 탭목록.value[Math.min(색인, 탭목록.value.length - 1)].id
   }
+  /** 모든 대화를 지우고 빈 탭 하나로 돌아간다. 저장은 watcher 가 빈 탭 상태로 덮어쓴다 */
   function 모든대화삭제() {
     if (전송중.value) 중단()
     탭목록.value = [새탭()]
     활성탭ID.value = 탭목록.value[0].id
-    저장소삭제(어시스턴트저장키)
   }
 
   // 변경을 모아서 저장. 조각이 들어올 때마다 쓰지 않도록 지연시키고, 닫을 때는 바로 쓴다
@@ -114,11 +115,13 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   // ── 전송 ──────────────────────────────────────────────────
   const 전송중 = ref(false)
   let 중단컨트롤러 = null
+  /** 지금 응답을 받고 있는 탭. 탭을 지울 때 어느 요청을 끊을지 가리는 기준 */
+  let 요청중탭ID = null
 
   function 컨텍스트수집() {
     const 연휴 = [
       ...연휴찾기(선택연도.value, 선택월.value),
-      ...연휴찾기(...다음달연월()),
+      ...연휴찾기(다음달.value.연도, 다음달.value.월),
     ].filter((구간, i, 전체) => 전체.findIndex((g) => g.시작 === 구간.시작) === i)
     return {
       오늘표시: 오늘표시.value,
@@ -135,24 +138,6 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       급여주여부: 급여주여부.value,
     }
   }
-  function 다음달연월() {
-    const d = new Date(선택연도.value, 선택월.value, 1) // 월은 0 기준이라 그대로 넣으면 다음 달
-    return [d.getFullYear(), d.getMonth() + 1]
-  }
-
-  /** 모델에 보낼 이력: 실패·빈 응답은 빼고, 같은 역할이 이어지면 합친다 (첫 메시지는 user) */
-  function 이력만들기(메시지들) {
-    const 결과 = []
-    for (const m of 메시지들) {
-      if (m.역할 === 'assistant' && (!m.내용 || m.오류)) continue
-      if (!m.내용) continue
-      const 마지막 = 결과[결과.length - 1]
-      if (마지막 && 마지막.역할 === m.역할) 마지막.내용 += `\n\n${m.내용}`
-      else 결과.push({ 역할: m.역할, 내용: m.내용 })
-    }
-    while (결과.length && 결과[0].역할 !== 'user') 결과.shift()
-    return 결과.slice(-이력최대)
-  }
 
   async function 전송(텍스트) {
     const 내용 = String(텍스트 ?? '').trim()
@@ -165,12 +150,13 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
 
   /** 탭의 마지막 사용자 메시지에 대한 응답을 받는다 (전송·재시도 공용) */
   async function 응답받기(탭) {
-    const 이력 = 이력만들기(탭.메시지)
+    const 이력 = 이력만들기(탭.메시지, 이력최대)
     탭.메시지.push({ id: 새ID(), 역할: 'assistant', 내용: '', 시각: Date.now(), 진행중: true })
     const 응답 = 탭.메시지[탭.메시지.length - 1]
 
     전송중.value = true
     중단컨트롤러 = new AbortController()
+    요청중탭ID = 탭.id
     try {
       await 대화요청({
         제공자: 제공자.value,
@@ -188,8 +174,11 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       응답.진행중 = false
       전송중.value = false
       중단컨트롤러 = null
-      // 모달이 닫혀 있거나 다른 탭을 보고 있으면 끝났다고 알려 준다 (사용자가 직접 중단한 경우는 제외)
-      if (!응답.중단됨 && (!열림.value || 활성탭ID.value !== 탭.id)) {
+      요청중탭ID = null
+      // 모달이 닫혀 있거나 다른 탭을 보고 있으면 끝났다고 알려 준다
+      // (사용자가 직접 중단했거나 그 사이 탭을 지운 경우는 제외)
+      const 탭남아있음 = 탭목록.value.some((t) => t.id === 탭.id)
+      if (!응답.중단됨 && 탭남아있음 && (!열림.value || 활성탭ID.value !== 탭.id)) {
         알림띄우기(응답.오류 ? 'error' : 'done', 탭)
       }
     }
