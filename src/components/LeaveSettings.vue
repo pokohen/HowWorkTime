@@ -1,15 +1,28 @@
 <script setup>
+import { ref, computed } from 'vue'
 import { 시분변환 } from '../utils/timeFormat'
+import { 연차단위 } from '../constants'
 import { useLeave } from '../composables/useLeave'
 import { useMonth } from '../composables/useMonth'
+import { 남은연차분만들기, 남은연차분해, 남은연차문장 } from '../utils/leaveBalance'
 import ToggleSection from './common/ToggleSection.vue'
 
-const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차초과여부, 연차항목, 연차증감, 남은연차 } = useLeave()
+const { 연차여부, 연차분, 연차예산분, 연차잔여분, 연차일수환산, 연차초과여부, 연차항목, 연차증감, 남은연차분 } = useLeave()
 const { 선택연도 } = useMonth()
 
-/** 입력 중 쉼표·공백이 섞여도 받아 주고, 빈칸은 '모름'으로 돌린다 */
-function 남은연차입력(e) {
-  남은연차.value = e.target.value.replace(/[,\s]/g, '')
+// 남은 연차는 "7일 4시간"처럼 시간까지 오므로 일·시간 두 칸으로 받고 분으로 합쳐 둔다.
+const 남은연차 = computed(() => 남은연차분해(남은연차분.value))
+const 남은연차요약 = computed(() => {
+  const 분 = 남은연차분.value
+  if (분 == null) return ''
+  const 시간 = 분 / 60
+  return `= ${Number.isInteger(시간) ? 시간 : 시간.toFixed(1)}시간 · 반차 ${Math.floor(분 / 연차단위.반차)}번`
+})
+const 일입력 = ref(null)
+const 시간입력 = ref(null)
+/** 두 칸 중 하나가 바뀌면 둘을 합쳐 다시 저장한다. 둘 다 비우면 '모름' */
+function 남은연차입력() {
+  남은연차분.value = 남은연차분만들기(일입력.value?.value, 시간입력.value?.value)
 }
 </script>
 
@@ -62,25 +75,41 @@ function 남은연차입력(e) {
 
     <template #추가>
       <div class="remaining-row">
-        <label class="remaining-label" for="remaining-leave">{{ 선택연도 }}년 남은 연차</label>
-        <div class="remaining-field">
+        <label class="remaining-label" for="remaining-leave-days">{{ 선택연도 }}년 남은 연차</label>
+        <div class="remaining-field" role="group" aria-label="남은 연차 (일과 시간)">
           <input
-            id="remaining-leave"
+            id="remaining-leave-days"
+            ref="일입력"
             class="remaining-input"
             type="number"
-            inputmode="decimal"
+            inputmode="numeric"
             min="0"
             max="365"
-            step="0.5"
-            placeholder="예: 12"
-            :value="남은연차 ?? ''"
+            step="1"
+            placeholder="0"
+            aria-label="남은 연차 일"
+            :value="남은연차.일 || ''"
             @change="남은연차입력"
           />
           <span class="remaining-unit">일</span>
+          <input
+            ref="시간입력"
+            class="remaining-input remaining-input--hours"
+            type="number"
+            inputmode="decimal"
+            min="0"
+            max="23"
+            step="0.5"
+            placeholder="0"
+            aria-label="남은 연차 시간"
+            :value="남은연차.시간 || ''"
+            @change="남은연차입력"
+          />
+          <span class="remaining-unit">시간</span>
         </div>
         <span class="remaining-hint">
-          <template v-if="남은연차 == null">적어 두면 쉬는 날 플래너가 남은 연차를 알고 제안해요</template>
-          <template v-else>쉬는 날 플래너가 이 숫자를 참고해요 · 이 브라우저에 저장</template>
+          <template v-if="남은연차분 == null">적어 두면 쉬는 날 플래너가 남은 연차를 알고 제안해요 · 반차 4시간, 반반차 2시간</template>
+          <template v-else><strong>{{ 남은연차문장(남은연차분) }}</strong> {{ 남은연차요약 }} · 플래너가 참고해요</template>
         </span>
       </div>
     </template>
@@ -200,6 +229,7 @@ function 남은연차입력(e) {
   font-variant-numeric: tabular-nums;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
+.remaining-input--hours { width: 66px; }
 .remaining-input::placeholder { color: var(--hint); font-weight: 500; }
 .remaining-input:hover { border-color: var(--input-border-hover); }
 .remaining-input:focus-visible {
@@ -218,6 +248,7 @@ function 남은연차입력(e) {
   color: var(--label);
   line-height: 1.5;
 }
+.remaining-hint strong { color: var(--text-soft); font-weight: 700; }
 @media (min-width: 560px) {
   .remaining-hint { flex: 1 1 auto; }
 }

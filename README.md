@@ -60,6 +60,7 @@ src/
     timeFormat.js         "h:mm" 파싱/포맷, 시각 파싱
     assistantContext.js   연휴·징검다리 탐지, AI 시스템 프롬프트 (순수 함수)
     assistantStorage.js   대화·설정 직렬화/복원, localStorage 보호
+    leaveBalance.js       남은 연차 일·시간 ↔ 분 변환, 저장 형식
     miniMarkdown.js       응답용 가벼운 마크다운 → HTML (이스케이프 우선)
   ai/
     providers.js          제공자 목록 (기본 모델, 키 발급 주소)

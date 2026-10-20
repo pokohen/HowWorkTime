@@ -3,6 +3,7 @@ import { 어시스턴트저장키, 어시스턴트설정키 } from '../constants
 import { 제공자목록, 제공자여부 } from '../ai/providers'
 import { 대화요청 } from '../ai/client'
 import { 연휴찾기, 시스템프롬프트 } from '../utils/assistantContext'
+import { 남은연차문장 } from '../utils/leaveBalance'
 import {
   새탭, 새ID, 제목추출, 직렬화, 복원, 기본설정, 설정직렬화, 설정복원,
   저장소읽기, 저장소쓰기, 저장소삭제,
@@ -35,7 +36,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const { 오늘표시, 재택안내, 급여주여부 } = useToday()
   const { 선택월표시, 다음달표시, 이달공휴일, 다음달공휴일, 남은근무일, 선택연도, 선택월 } = useMonth()
   const { 출근남은일 } = useWorkResult()
-  const { 연차일수환산, 남은연차 } = useLeave()
+  const { 연차일수환산, 남은연차분 } = useLeave()
 
   // ── 모달 ──────────────────────────────────────────────────
   const 열림 = ref(false)
@@ -162,7 +163,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       남은근무일: 남은근무일.value,
       출근남은일: 출근남은일.value,
       연차일수: 연차일수환산.value,
-      남은연차: 남은연차.value,
+      남은연차: 남은연차문장(남은연차분.value) || null,
       재택안내: 재택안내.value,
       급여주여부: 급여주여부.value,
     }
