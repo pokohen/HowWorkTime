@@ -132,7 +132,9 @@ async function 메인() {
   // 연도별 조회는 서로 독립이므로 동시에 보낸다
   const 응답들 = await Promise.allSettled(연도범위.map((연도) => 재시도(() => 공휴일가져오기(연도))));
 
-  let 변경 = Object.keys(결과).length !== Object.keys(기존전체).length;
+  // 연도 집합이 달라졌는지 (개수만 비교하면 "지난 해 하나 빠지고 새 해 하나 빈 채 들어옴"을 놓친다)
+  const 연도집합 = (객체) => Object.keys(객체).sort().join(",");
+  let 변경 = 연도집합(결과) !== 연도집합(기존전체);
   let 실패수 = 0;
   연도범위.forEach((연도, i) => {
     const 응답 = 응답들[i];

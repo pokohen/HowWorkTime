@@ -3,6 +3,7 @@ import { 어시스턴트저장키 } from '../../shared/constants'
 import { 대화요청 } from '../ai/client'
 import { 연휴찾기, 시스템프롬프트, 이력만들기 } from '../utils/assistantContext'
 import { 날짜키 } from '../../worktime/utils/workDays'
+import { 월공휴일 } from '../../worktime/utils/holidays'
 import { 남은연차문장 } from '../../worktime/utils/leaveBalance'
 import { 새탭, 새ID, 제목추출, 탭이름, 직렬화, 복원, 탭최대 } from '../utils/assistantStorage'
 import { 저장소읽기, 저장소쓰기 } from '../../shared/utils/storage'
@@ -21,8 +22,8 @@ const 저장지연 = 400
 const 알림표시시간 = 12_000
 
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
-  const { 오늘, 오늘표시, 재택안내, 급여주여부, 현재연도 } = useToday()
-  const { 선택월표시, 다음달, 다음달표시, 이달공휴일, 다음달공휴일, 남은근무일, 선택연도, 선택월, 이번달여부 } = useMonth()
+  const { 오늘, 오늘표시, 재택안내, 급여주여부, 현재연도, 현재월 } = useToday()
+  const { 선택월표시, 남은근무일, 선택연도, 선택월, 월차이 } = useMonth()
   const { 출근남은일 } = useWorkResult()
   const { 연차일수환산, 남은연차조회 } = useLeave()
   const 설정상태 = useAssistantSettings()
@@ -138,21 +139,30 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const 활성탭응답중 = computed(() => 전송중.value && 응답중탭ID.value === 활성탭ID.value)
 
   function 컨텍스트수집() {
-    // 이번 달과 다음 달을 한 번에 찾는다 (따로 찾아 합치면 경계에 걸친 구간이 잘리거나 겹친다). 이미 끝난 연휴는 뺀다
+    // 계획은 앞날에 대한 것이다. 지난 달을 보고 있으면 그 달이 아니라 오늘이 속한 달부터 본다
+    const 지난달보는중 = 월차이.value < 0
+    const 기준연도 = 지난달보는중 ? 현재연도.value : 선택연도.value
+    const 기준월 = 지난달보는중 ? 현재월.value : 선택월.value
+    const 다음 = new Date(기준연도, 기준월, 1)
+    const 다음연도 = 다음.getFullYear()
+    const 다음월 = 다음.getMonth() + 1
+    // 기준 달과 다음 달을 한 번에 찾는다 (따로 찾아 합치면 경계에 걸친 구간이 잘리거나 겹친다). 이미 끝난 연휴는 뺀다
     const 오늘키 = 날짜키(오늘.value)
-    const 연휴 = 연휴찾기(선택연도.value, 선택월.value, undefined, 2).filter((구간) => 구간.끝 >= 오늘키)
-    // 남은 연차는 연도별 값이라, 오늘·보는 달·다음 달이 걸친 해를 모두 준다 (12월에 1월을 계획하면 두 해가 필요하다)
-    const 연도들 = [...new Set([현재연도.value, 선택연도.value, 다음달.value.연도])].sort()
+    const 연휴 = 연휴찾기(기준연도, 기준월, undefined, 2).filter((구간) => 구간.끝 >= 오늘키)
+    // 남은 연차는 연도별 값이라, 오늘·기준 달·다음 달이 걸친 해를 모두 준다 (12월에 1월을 계획하면 두 해가 필요하다)
+    const 연도들 = [...new Set([현재연도.value, 기준연도, 다음연도])].sort()
     const 남은연차목록 = 연도들
       .map((연도) => ({ 연도, 남은: 남은연차문장(남은연차조회(연도)) }))
       .filter((항목) => 항목.남은)
     return {
       오늘표시: 오늘표시.value,
-      이번달표시: 선택월표시.value,
-      보는달이오늘달: 이번달여부.value,
-      다음달표시: 다음달표시.value,
-      이번달공휴일: 이달공휴일.value,
-      다음달공휴일: 다음달공휴일.value,
+      이번달표시: `${기준연도}년 ${기준월}월`,
+      보는달이오늘달: 월차이.value === 0,
+      지난달보는중,
+      보는달표시: 선택월표시.value,
+      다음달표시: `${다음연도}년 ${다음월}월`,
+      이번달공휴일: 월공휴일(기준연도, 기준월),
+      다음달공휴일: 월공휴일(다음연도, 다음월),
       연휴,
       남은근무일: 남은근무일.value,
       출근남은일: 출근남은일.value,

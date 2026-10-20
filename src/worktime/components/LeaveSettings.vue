@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { 시분변환 } from '../../shared/utils/timeFormat'
 import { 연차단위 } from '../../shared/constants'
 import { useLeave } from '../composables/useLeave'
@@ -18,17 +18,20 @@ const 남은연차요약 = computed(() => {
   const 시간 = 분 / 60
   return `= ${Number.isInteger(시간) ? 시간 : 시간.toFixed(1)}시간 · 반차 ${Math.floor(분 / 연차단위.반차)}번`
 })
-const 일입력 = ref(null)
-const 시간입력 = ref(null)
+// 입력 칸은 지역 값에 묶고, 바뀌면 분으로 합쳐 저장한 뒤 정리된 값으로 두 칸을 되돌린다 (0.2시간 → 0 → 빈칸)
+const 일칸 = ref('')
+const 시간칸 = ref('')
+watch(남은연차, ({ 일, 시간 }) => {
+  일칸.value = 일 ? String(일) : ''
+  시간칸.value = 시간 ? String(시간) : ''
+}, { immediate: true })
 /** 두 칸 중 하나가 바뀌면 둘을 합쳐 다시 저장한다. 둘 다 비우면 '모름' */
 function 남은연차입력() {
-  남은연차분.value = 남은연차분만들기(일입력.value?.value, 시간입력.value?.value)
-  // 정리된 값이 이전과 같으면(예: 0.2시간 → 0) Vue 가 :value 를 다시 쓰지 않으므로 직접 맞춘다
-  nextTick(() => {
-    const { 일, 시간 } = 남은연차.value
-    if (일입력.value) 일입력.value.value = 일 || ''
-    if (시간입력.value) 시간입력.value.value = 시간 || ''
-  })
+  남은연차분.value = 남은연차분만들기(일칸.value, 시간칸.value)
+  // 저장값이 전과 같으면 watch 가 안 돌므로 칸을 직접 정리한다
+  const { 일, 시간 } = 남은연차.value
+  일칸.value = 일 ? String(일) : ''
+  시간칸.value = 시간 ? String(시간) : ''
 }
 </script>
 
@@ -85,7 +88,7 @@ function 남은연차입력() {
         <div class="remaining-field" role="group" aria-label="남은 연차 (일과 시간)">
           <input
             id="remaining-leave-days"
-            ref="일입력"
+            v-model="일칸"
             class="remaining-input"
             type="number"
             inputmode="numeric"
@@ -94,12 +97,11 @@ function 남은연차입력() {
             step="1"
             placeholder="0"
             aria-label="남은 연차 일"
-            :value="남은연차.일 || ''"
             @change="남은연차입력"
           />
           <span class="remaining-unit">일</span>
           <input
-            ref="시간입력"
+            v-model="시간칸"
             class="remaining-input remaining-input--hours"
             type="number"
             inputmode="decimal"
@@ -108,7 +110,6 @@ function 남은연차입력() {
             step="0.5"
             placeholder="0"
             aria-label="남은 연차 시간"
-            :value="남은연차.시간 || ''"
             @change="남은연차입력"
           />
           <span class="remaining-unit">시간</span>

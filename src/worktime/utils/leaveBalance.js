@@ -28,10 +28,11 @@ function 분정리(분) {
   return Math.min(최대분, Math.max(0, 정리))
 }
 
+/** 입력 칸의 값 → 0 이상의 수. 비었거나 숫자가 아니거나 음수면 null (음수를 다른 칸에서 빼 주듯 조용히 섞지 않는다) */
 function 숫자(값) {
   if (값 === '' || 값 == null) return null
   const 수 = Number(String(값).replace(/[,\s]/g, ''))
-  return Number.isFinite(수) ? 수 : null
+  return Number.isFinite(수) && 수 >= 0 ? 수 : null
 }
 
 /**

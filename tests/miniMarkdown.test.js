@@ -14,6 +14,9 @@ describe('마크다운HTML', () => {
     expect(마크다운HTML('2026. 상반기에는 설 연휴가 가장 길어요')).toBe('<p>2026. 상반기에는 설 연휴가 가장 길어요</p>')
     expect(마크다운HTML('1. 하나\n2. 둘')).toBe('<ol><li>하나</li><li>둘</li></ol>')
     expect(마크다운HTML('3. 셋')).toBe('<p>3. 셋</p>')
+    // 빈 줄로 띄운 번호 항목은 이어지는 목록으로, 번호가 다시 1 부터 매겨지지 않게 start 를 붙인다
+    expect(마크다운HTML('1. 강릉\n\n2. 속초\n\n3. 여수')).toBe('<ol><li>강릉</li></ol><ol start="2"><li>속초</li></ol><ol start="3"><li>여수</li></ol>')
+    expect(마크다운HTML('1. 하나\n\n문단\n\n2. 둘')).toBe('<ol><li>하나</li></ol><p>문단</p><p>2. 둘</p>')
   })
 
   it('입력에 NUL 이 섞여 있어도 코드 자리표시와 충돌하지 않는다', () => {

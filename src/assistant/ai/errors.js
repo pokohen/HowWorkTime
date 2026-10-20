@@ -136,7 +136,9 @@ export function 오류정리(예외) {
   }
   // Anthropic SDK 의 APIError 계열(HTTP 오류)은 status 를 가진다
   if (typeof 예외?.status === 'number') {
-    const 종류 = 종류추정({ status: 예외.status, 상세: 예외.message })
+    // SDK 의 APIError 는 응답 본문을 .error 에 둔다: { type: 'error', error: { type: 'authentication_error', message } }
+    const 본문오류 = 예외.error?.error ?? 예외.error
+    const 종류 = 종류추정({ status: 예외.status, type: 본문오류?.type, code: 본문오류?.code, reason: 이유추출(본문오류), 상세: 예외.message })
     return new 어시스턴트오류(종류, 종류메시지(종류, 예외.message), 예외)
   }
   // fetch 가 TypeError 를 던지는 경우: 오프라인, DNS, CORS 차단 등.

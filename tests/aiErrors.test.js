@@ -15,6 +15,8 @@ describe('오류정리', () => {
     expect(오류정리(Object.assign(new Error('x'), { status: 429 })).종류).toBe('rate')
     expect(오류정리(Object.assign(new Error('x'), { status: 503 })).종류).toBe('server')
     expect(오류정리(Object.assign(new Error('400 Your credit balance is too low to access the Anthropic API'), { status: 400 })).종류).toBe('quota')
+    // SDK 오류의 구조화된 type 이 문구보다 먼저
+    expect(오류정리(Object.assign(new Error('400 bad'), { status: 400, error: { type: 'error', error: { type: 'authentication_error', message: 'x' } } })).종류).toBe('auth')
   })
   it('메시지를 비우면 생성자가 종류에 맞는 안내 문구를 채운다', () => {
     expect(new 어시스턴트오류('network', '').message).toContain('연결에 실패')

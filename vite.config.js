@@ -19,8 +19,8 @@ function 모듈상태HMR() {
     name: 'module-state-hmr',
     apply: 'serve',
     transform(code, id) {
-      // 파일 위치·이름이 아니라 실제 호출 구문으로 고른다 (줄바꿈 허용). 헬퍼 정의 파일의 주석은 대상이 아니다
-      if (id.includes('node_modules') || id.includes('/moduleState.js') || !/모듈상태\(\s*import\.meta\.hot/.test(code)) return null
+      // 헬퍼를 import 하는 모듈이 대상이다. 호출 문구로 고르면 별칭 import 나 변수로 넘긴 hot 을 놓쳐 리스너·타이머가 샌다
+      if (id.includes('node_modules') || !/from\s+['"][^'"]*\/moduleState(?:\.js)?['"]/.test(code)) return null
       return {
         code: `${code}\nif (import.meta.hot) import.meta.hot.accept(() => import.meta.hot.invalidate())\n`,
         map: null,
