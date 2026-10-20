@@ -1,6 +1,6 @@
 <script setup>
 import { 시분변환 } from '../../shared/utils/timeFormat'
-import { 하루근무분, 하루최대분 } from '../../shared/constants'
+import { 하루근무분 } from '../../shared/constants'
 import { useToday } from '../composables/useToday'
 import { useTodayWork } from '../composables/useTodayWork'
 import TimeField from '../../shared/components/TimeField.vue'
@@ -9,7 +9,7 @@ import CheckBox from '../../shared/components/CheckBox.vue'
 
 const { 오늘재택가능여부 } = useToday()
 const {
-  오늘재택적용, 출근시각, 퇴근시각, 휴게자동, 휴게수동분, 오늘예상시간,
+  오늘재택적용, 출근시각, 퇴근시각, 휴게자동, 휴게수동분, 오늘예상시간, 오늘예상파싱,
   자정넘김여부, 총체류분, 휴게분, 오늘예상분,
   오늘모드, 오늘모드설정,
 } = useTodayWork()
@@ -96,7 +96,7 @@ const 휴게선택지 = [
       v-model="오늘예상시간"
       :예시="['8:00']"
       빈값="0:00"
-      :최대분="하루최대분"
+      :결과="오늘예상파싱"
     >
       <template #힌트>
         오늘 추가로 일할 시간 · <strong>현재까지에 더해</strong> 합산

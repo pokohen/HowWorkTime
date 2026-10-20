@@ -27,7 +27,7 @@ watch(알림, async (값) => {
 // 사라지는 전환이 끝난 뒤에 popover 를 닫는다 (전환 길이를 따로 알 필요가 없다)
 function 전환끝() {
   const el = 겉.value
-  if (알림.value || !el?.matches?.(':popover-open')) return
+  if (알림.value || typeof el?.hidePopover !== 'function' || !el.matches(':popover-open')) return // 미지원 브라우저는 :popover-open 선택자도 모른다
   try { el.hidePopover() } catch { /* 이미 닫힘 */ }
 }
 </script>

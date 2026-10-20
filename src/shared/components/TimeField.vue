@@ -13,11 +13,11 @@ const props = defineProps({
   예시: { type: Array, default: () => ['0:00'] },
   /** 비어 있을 때 정규화 결과 */
   빈값: { type: String, default: '' },
-  /** 허용하는 최대 분. 넘으면 오류로 표시한다. 계산 쪽(composable)도 같은 값으로 시분파싱을 호출해야 한다 */
-  최대분: { type: Number, default: Infinity },
+  /** 값을 쓰는 쪽(composable)이 이미 파싱한 결과. 넘기면 한도·유효 판단을 그 결과로 해서 규칙이 한 곳에만 있다 */
+  결과: { type: Object, default: null },
 })
 
-const 결과 = computed(() => 시분파싱(값.value, { 최대분: props.최대분 }))
+const 결과 = computed(() => props.결과 ?? 시분파싱(값.value))
 const 유효 = computed(() => 결과.value.유효)
 const 콜론없는예시 = computed(() => props.예시[0].replace(':', ''))
 

@@ -25,7 +25,8 @@ export function 탭이름(탭) {
 export function 제목추출(텍스트, 최대 = 제목최대길이) {
   const 한줄 = String(텍스트 ?? '').split('\n').map((줄) => 줄.trim()).find(Boolean) ?? ''
   const 정리 = 한줄.replace(/\s+/g, ' ')
-  return 정리.length > 최대 ? `${정리.slice(0, 최대).trimEnd()}…` : 정리
+  const 글자들 = Array.from(정리) // 코드 포인트 단위. slice 로 자르면 이모지(서로게이트 쌍) 가운데가 잘린다
+  return 글자들.length > 최대 ? `${글자들.slice(0, 최대).join('').trimEnd()}…` : 정리
 }
 
 /**
