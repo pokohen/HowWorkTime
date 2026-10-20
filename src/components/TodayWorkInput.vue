@@ -5,6 +5,7 @@ import { useToday } from '../composables/useToday'
 import { useTodayWork } from '../composables/useTodayWork'
 import TimeField from './common/TimeField.vue'
 import ClockField from './common/ClockField.vue'
+import CheckBox from './common/CheckBox.vue'
 
 const { 오늘재택가능여부 } = useToday()
 const {
@@ -71,10 +72,7 @@ const 휴게선택지 = [
             >
               <option v-for="선택 in 휴게선택지" :key="선택.분" :value="선택.분">{{ 선택.이름 }}</option>
             </select>
-            <label class="auto-toggle">
-              <input type="checkbox" v-model="휴게자동" />
-              <span>자동</span>
-            </label>
+            <CheckBox v-model="휴게자동" class="auto-toggle" :크기="16">자동</CheckBox>
           </div>
         </div>
       </div>
@@ -210,13 +208,6 @@ const 휴게선택지 = [
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
-}
-.auto-toggle input[type='checkbox'] {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--focus);
-  cursor: pointer;
-  margin: 0;
 }
 .commute-result {
   display: flex;

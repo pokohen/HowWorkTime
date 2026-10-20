@@ -1,5 +1,6 @@
 <script setup>
 import { useMonth } from '../composables/useMonth'
+import CheckBox from './common/CheckBox.vue'
 
 const {
   선택연도, 선택월, 입사한달여부, 입사일,
@@ -23,10 +24,7 @@ const {
           <option v-for="월 in 월목록" :key="월" :value="월">{{ 월 }}월</option>
         </select>
       </div>
-      <label class="join-checkbox">
-        <input type="checkbox" v-model="입사한달여부" />
-        <span>이 달에 입사했어요</span>
-      </label>
+      <CheckBox v-model="입사한달여부" class="join-checkbox">이 달에 입사했어요</CheckBox>
       <div v-if="입사한달여부" class="join-date">
         <label for="입사일" class="join-date-label">입사일</label>
         <select id="입사일" v-model.number="입사일" class="select-field select-field--sm">
@@ -89,17 +87,14 @@ const {
   background: var(--surface-muted);
   border-color: var(--input-border-hover);
 }
-.join-checkbox:has(input:checked) {
+.join-checkbox.checked {
   background: var(--tint-green-bg);
   border-color: var(--tint-green-border);
   color: var(--tint-green-text);
 }
-.join-checkbox input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--focus);
-  cursor: pointer;
-  margin: 0;
+.join-checkbox.checked :deep(.checkbox-box) {
+  fill: var(--tint-green-text);
+  stroke: var(--tint-green-text);
 }
 .join-date {
   display: inline-flex;
