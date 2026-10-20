@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { 급여일조회, 재택가능일여부, 내일날짜, 업무일날짜, 날짜더하기 } from '../utils/workDays'
+import { 급여일조회, 재택가능일여부, 내일날짜, 업무일날짜, 날짜더하기, 월표시 } from '../utils/workDays'
 import { 요일이름 } from '../../shared/constants'
 import { 모듈상태 } from '../../shared/composables/moduleState'
 
@@ -30,7 +30,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const 내일재택가능여부 = computed(() => 재택가능일여부(내일날짜(오늘.value)))
 
   const 오늘표시 = computed(
-    () => `${현재연도.value}년 ${현재월.value}월 ${오늘.value.getDate()}일 ${요일이름[오늘요일.value]}요일`,
+    () => `${월표시(현재연도.value, 현재월.value)} ${오늘.value.getDate()}일 ${요일이름[오늘요일.value]}요일`,
   )
   const 재택안내 = computed(() =>
     오늘재택가능여부.value ? '오늘은 재택근무' :

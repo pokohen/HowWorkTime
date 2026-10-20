@@ -16,8 +16,8 @@ const 반올림단위 = 30 // 30분 단위로 다듬는다
  * @returns {number|null}
  */
 export function 남은연차분만들기(일, 시간) {
-  const 일수 = 숫자(일)
-  const 시간수 = 숫자(시간)
+  const 일수 = 입력숫자(일)
+  const 시간수 = 입력숫자(시간)
   if (일수 == null && 시간수 == null) return null
   return 분정리((일수 ?? 0) * 하루근무분 + (시간수 ?? 0) * 60)
 }
@@ -30,10 +30,6 @@ function 분정리(분) {
 
 /** 입력 칸의 값 → 0 이상의 수. 비었거나 숫자가 아니거나 음수면 null (음수를 다른 칸에서 빼 주듯 조용히 섞지 않는다) */
 export function 입력숫자(값) {
-  return 숫자(값)
-}
-
-function 숫자(값) {
   if (값 === '' || 값 == null) return null
   const 수 = Number(String(값).replace(/[,\s]/g, ''))
   return Number.isFinite(수) && 수 >= 0 ? 수 : null

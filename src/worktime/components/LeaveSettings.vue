@@ -21,11 +21,15 @@ const 남은연차요약 = computed(() => {
 // 입력 칸은 지역 값에 묶고, 바뀌면 분으로 합쳐 저장한 뒤 정리된 값으로 두 칸을 되돌린다 (0.2시간 → 0 → 빈칸)
 const 일칸 = ref('')
 const 시간칸 = ref('')
-watch(남은연차, ({ 일, 시간 }) => {
+function 칸채우기({ 일, 시간 }) {
   일칸.value = 일 ? String(일) : ''
   시간칸.value = 시간 ? String(시간) : ''
-}, { immediate: true })
-/** 칸의 값. 비우면 null, 잘못 적었으면(음수·글자) 지우지 않고 그 칸의 이전 값을 지킨다 */
+}
+watch(남은연차, 칸채우기, { immediate: true })
+/**
+ * 칸의 값. 비우면 null, 잘못 적었으면(음수·글자) 지우지 않고 그 칸의 이전 값을 지킨다.
+ * (칸을 type="text" 로 둔 이유: number 입력은 "7e" 같은 잘못된 글을 빈 값으로 보고해 구분할 수 없다)
+ */
 function 칸값(글, 이전) {
   if (String(글).trim() === '') return null
   return 입력숫자(글) ?? 이전
@@ -34,10 +38,7 @@ function 칸값(글, 이전) {
 function 남은연차입력() {
   const 이전 = 남은연차.value
   남은연차분.value = 남은연차분만들기(칸값(일칸.value, 이전.일), 칸값(시간칸.value, 이전.시간))
-  // 저장값이 전과 같으면 watch 가 안 돌므로 칸을 직접 정리한다
-  const { 일, 시간 } = 남은연차.value
-  일칸.value = 일 ? String(일) : ''
-  시간칸.value = 시간 ? String(시간) : ''
+  칸채우기(남은연차.value) // 저장값이 전과 같으면 watch 가 안 돌므로 직접 정리한다
 }
 </script>
 
@@ -96,11 +97,9 @@ function 남은연차입력() {
             id="remaining-leave-days"
             v-model="일칸"
             class="remaining-input"
-            type="number"
+            type="text"
             inputmode="numeric"
-            min="0"
-            max="365"
-            step="1"
+            autocomplete="off"
             placeholder="0"
             aria-label="남은 연차 일"
             @change="남은연차입력"
@@ -109,11 +108,9 @@ function 남은연차입력() {
           <input
             v-model="시간칸"
             class="remaining-input remaining-input--hours"
-            type="number"
+            type="text"
             inputmode="decimal"
-            min="0"
-            max="23"
-            step="0.5"
+            autocomplete="off"
             placeholder="0"
             aria-label="남은 연차 시간"
             @change="남은연차입력"
