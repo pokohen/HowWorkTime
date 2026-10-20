@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { 마크다운HTML, HTML이스케이프 } from '../src/utils/miniMarkdown'
+import { 마크다운HTML, 마크다운텍스트, HTML이스케이프 } from '../src/utils/miniMarkdown'
 
 describe('마크다운HTML', () => {
   it('HTML 을 먼저 이스케이프해 스크립트가 끼어들 수 없다', () => {
@@ -28,5 +28,17 @@ describe('마크다운HTML', () => {
     expect(마크다운HTML('')).toBe('')
     expect(마크다운HTML(null)).toBe('')
     expect(마크다운HTML('a\r\nb')).toBe('<p>a<br>b</p>')
+  })
+})
+
+describe('마크다운텍스트', () => {
+  it('기호를 걷어내 메신저에 붙여 넣기 좋은 일반 텍스트로 만든다', () => {
+    const 입력 = '## 추천 일정\n\n- **첫째 날**: 강릉 `카페` 투어\n- 둘째 날\n\n\n1. 하나\n2. 둘\n'
+    expect(마크다운텍스트(입력)).toBe('추천 일정\n\n• 첫째 날: 강릉 카페 투어\n• 둘째 날\n\n1. 하나\n2. 둘')
+  })
+
+  it('빈 입력은 빈 문자열', () => {
+    expect(마크다운텍스트('')).toBe('')
+    expect(마크다운텍스트(null)).toBe('')
   })
 })

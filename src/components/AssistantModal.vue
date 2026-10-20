@@ -1,7 +1,8 @@
 <script setup>
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
 import { useAssistant } from '../composables/useAssistant'
-import { 마크다운HTML } from '../utils/miniMarkdown'
+import { 마크다운HTML, 마크다운텍스트 } from '../utils/miniMarkdown'
+import { 클립보드복사 } from '../utils/clipboard'
 import AssistantSettings from './AssistantSettings.vue'
 
 const {
@@ -96,6 +97,23 @@ function 새탭열기() {
 }
 function 탭이름(탭) {
   return 탭.제목 || '새 대화'
+}
+
+// ── 복사 ──────────────────────────────────────────────────
+/** 방금 복사한 메시지 id. 잠깐 "복사됨" 표시 후 되돌린다 */
+const 복사됨ID = ref(null)
+const 복사실패ID = ref(null)
+let 복사표시타이머 = null
+/** 답변이 끝났고 내용이 있을 때만 복사 버튼을 보여 준다 */
+function 복사가능(m) {
+  return m.역할 === 'assistant' && !m.진행중 && !m.오류 && Boolean(m.내용?.trim())
+}
+async function 메시지복사(m) {
+  const 성공 = await 클립보드복사(마크다운텍스트(m.내용))
+  clearTimeout(복사표시타이머)
+  복사됨ID.value = 성공 ? m.id : null
+  복사실패ID.value = 성공 ? null : m.id
+  복사표시타이머 = setTimeout(() => { 복사됨ID.value = null; 복사실패ID.value = null }, 1800)
 }
 </script>
 
@@ -215,6 +233,24 @@ function 탭이름(탭) {
                 :disabled="전송중"
                 @click="재시도"
               >다시 시도</button>
+              <div v-if="복사가능(m)" class="bubble-actions">
+                <button
+                  type="button"
+                  class="copy-btn"
+                  :class="{ 'copy-btn--done': 복사됨ID === m.id, 'copy-btn--fail': 복사실패ID === m.id }"
+                  :aria-label="복사됨ID === m.id ? '복사됨' : '이 답변 복사'"
+                  title="이 답변 복사"
+                  @click="메시지복사(m)"
+                >
+                  <svg v-if="복사됨ID === m.id" class="copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" />
+                  </svg>
+                  <svg v-else class="copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+                  </svg>
+                  <span>{{ 복사됨ID === m.id ? '복사됨' : 복사실패ID === m.id ? '복사 실패' : '복사' }}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -568,6 +604,33 @@ function 탭이름(탭) {
 }
 .retry-btn:hover { background: var(--surface-muted); }
 .retry-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.bubble-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px -6px -4px 0;
+}
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--label);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.copy-btn:hover { background: var(--surface-muted); color: var(--text-soft); }
+.copy-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
+.copy-btn--done { color: var(--tint-green-text); }
+.copy-btn--fail { color: var(--tint-red-text); }
+.copy-icon { width: 14px; height: 14px; fill: currentColor; }
 
 .typing {
   display: inline-flex;

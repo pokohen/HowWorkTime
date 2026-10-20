@@ -66,3 +66,27 @@ export function 마크다운HTML(텍스트) {
   문단닫기(); 목록닫기()
   return 출력.join('')
 }
+
+/**
+ * 공유용 일반 텍스트. 마크다운 기호를 걷어내 메신저·메모에 붙여 넣어도 깔끔하게 보인다.
+ * 제목은 그대로 한 줄, 글머리는 "• ", 번호 목록은 그대로, 굵게·코드는 기호만 벗긴다.
+ * @param {string} 텍스트
+ * @returns {string}
+ */
+export function 마크다운텍스트(텍스트) {
+  const 줄들 = String(텍스트 ?? '').replace(/\r\n?/g, '\n').split('\n')
+  const 출력 = 줄들.map((원줄) => {
+    const 줄 = 원줄.trimEnd()
+    const 제목 = /^#{1,6}\s+(.+)$/.exec(줄)
+    const 글머리 = /^(\s*)[-*•]\s+(.+)$/.exec(줄)
+    let 결과
+    if (제목) 결과 = 제목[1]
+    else if (글머리) 결과 = `${글머리[1]}• ${글머리[2]}`
+    else 결과 = 줄
+    return 결과
+      .replace(/`([^`\n]+)`/g, '$1')
+      .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+  })
+  // 연속 빈 줄은 하나로, 앞뒤 빈 줄은 제거
+  return 출력.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
