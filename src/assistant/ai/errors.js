@@ -43,7 +43,7 @@ const 문자코드종류 = {
   // Gemini 의 details[].reason
   api_key_invalid: 'auth',
   api_key_service_blocked: 'auth',
-  rate_limit_exceeded_reason: 'rate',
+  // (Gemini 의 RATE_LIMIT_EXCEEDED 는 위 OpenAI 키와 철자가 같아 함께 걸린다)
   // Gemini 의 status 문자열
   unauthenticated: 'auth',
   permission_denied: 'auth',
@@ -74,6 +74,11 @@ function 종류추정({ status, code, type, reason, 상세 = '' }) {
   return 종류
 }
 
+/** Gemini 오류 본문의 details[].reason (API_KEY_INVALID 등). 문구가 바뀌어도 남는 구조화된 이유 */
+function 이유추출(오류본문) {
+  return 오류본문?.details?.find?.((d) => typeof d?.reason === 'string')?.reason
+}
+
 /** 종류에 맞는 안내 문구. 정해진 문구가 없으면 제공자의 상세 문구를 그대로 보여 준다 */
 function 종류메시지(종류, 상세, 대안 = '요청이 거부됐어요') {
   return 상태별메시지[종류] ?? (상세 ? `${대안}: ${상세}` : `${대안}.`)
@@ -93,7 +98,7 @@ export async function 응답오류(응답) {
     상세 = 본문?.error?.message ?? 본문?.message ?? ''
     코드 = 본문?.error?.code
     유형 = 본문?.error?.type
-    이유 = 본문?.error?.details?.find?.((d) => typeof d?.reason === 'string')?.reason // Gemini: API_KEY_INVALID 등
+    이유 = 이유추출(본문?.error)
   } catch { /* 본문이 JSON 이 아니면 상태 코드만으로 안내 */ }
   const 종류 = 종류추정({ status: 응답.status, code: 코드, type: 유형, reason: 이유, 상세 })
   const 메시지 = 종류메시지(종류, 상세 || `HTTP ${응답.status}`)
@@ -106,8 +111,7 @@ export async function 응답오류(응답) {
  */
 export function 스트림오류(오류본문) {
   const 상세 = 오류본문?.message ?? ''
-  const 이유 = 오류본문?.details?.find?.((d) => typeof d?.reason === 'string')?.reason
-  let 종류 = 종류추정({ status: 오류본문?.status, code: 오류본문?.code, type: 오류본문?.type, reason: 이유, 상세 })
+  let 종류 = 종류추정({ status: 오류본문?.status, code: 오류본문?.code, type: 오류본문?.type, reason: 이유추출(오류본문), 상세 })
   if (종류 === 'unknown') 종류 = 'server' // 스트림이 열린 뒤의 정체 모를 오류는 제공자 쪽 문제로 안내
   return new 어시스턴트오류(종류, 종류메시지(종류, 상세), 오류본문)
 }
