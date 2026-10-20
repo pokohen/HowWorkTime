@@ -16,6 +16,11 @@ export function 새탭(시각 = Date.now()) {
   return { id: 새ID(), 제목: '', 생성시각: 시각, 메시지: [] }
 }
 
+/** 화면에 보일 탭 이름. 아직 질문이 없으면 '새 대화' */
+export function 탭이름(탭) {
+  return 탭?.제목 || '새 대화'
+}
+
 /** 첫 질문에서 탭 제목을 뽑는다 (첫 줄, 공백 정리, 길이 제한) */
 export function 제목추출(텍스트, 최대 = 제목최대길이) {
   const 한줄 = String(텍스트 ?? '').split('\n').map((줄) => 줄.trim()).find(Boolean) ?? ''

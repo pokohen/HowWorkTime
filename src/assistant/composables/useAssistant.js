@@ -3,7 +3,7 @@ import { 어시스턴트저장키 } from '../../shared/constants'
 import { 대화요청 } from '../ai/client'
 import { 연휴찾기, 시스템프롬프트, 이력만들기 } from '../utils/assistantContext'
 import { 남은연차문장 } from '../../worktime/utils/leaveBalance'
-import { 새탭, 새ID, 제목추출, 직렬화, 복원, 탭최대 } from '../utils/assistantStorage'
+import { 새탭, 새ID, 제목추출, 탭이름, 직렬화, 복원, 탭최대 } from '../utils/assistantStorage'
 import { 저장소읽기, 저장소쓰기 } from '../../shared/utils/storage'
 import { 모듈상태 } from '../../shared/composables/moduleState'
 import { useAssistantSettings } from './useAssistantSettings'
@@ -116,7 +116,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   }
   function 알림띄우기(종류, 탭) {
     알림닫기()
-    알림.value = { 종류, 탭ID: 탭.id, 제목: 탭.제목 || '새 대화' }
+    알림.value = { 종류, 탭ID: 탭.id, 제목: 탭이름(탭) }
     알림타이머 = setTimeout(알림닫기, 알림표시시간)
   }
   /** 알림을 눌러 그 대화를 연다 */

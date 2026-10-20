@@ -11,7 +11,7 @@ const 상한캐시 = new Map()
 async function 모델상한(client, Anthropic, 모델, 신호) {
   if (상한캐시.has(모델)) return 상한캐시.get(모델)
   try {
-    const 정보 = await client.models.retrieve(모델, { signal: 신호 })
+    const 정보 = await client.models.retrieve(모델, undefined, { signal: 신호 }) // 2번째 인자는 params, 신호는 options
     const 상한 = typeof 정보?.max_tokens === 'number' ? 정보.max_tokens : null
     상한캐시.set(모델, 상한)
     return 상한

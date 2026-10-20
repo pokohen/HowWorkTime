@@ -1,13 +1,10 @@
 <script setup>
 import { useAssistant } from '../composables/useAssistant'
+import { 탭이름 } from '../utils/assistantStorage'
 
 // 대화 탭 줄. 새 대화는 부모가 입력창 포커스까지 맡으므로 이벤트로 올린다
 const emit = defineEmits(['새대화'])
 const { 탭목록, 활성탭ID, 탭선택, 탭삭제 } = useAssistant()
-
-function 탭이름(탭) {
-  return 탭.제목 || '새 대화'
-}
 </script>
 
 <template>

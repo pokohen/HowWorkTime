@@ -15,9 +15,18 @@ describe('오류정리', () => {
     expect(오류정리(Object.assign(new Error('x'), { status: 429 })).종류).toBe('rate')
     expect(오류정리(Object.assign(new Error('x'), { status: 503 })).종류).toBe('server')
   })
-  it('종류만 있고 메시지가 빈 어시스턴트오류는 안내 문구를 채운다', () => {
-    const 정리 = 오류정리(new 어시스턴트오류('network', ''))
-    expect(정리.message).toContain('연결에 실패')
+  it('메시지를 비우면 생성자가 종류에 맞는 안내 문구를 채운다', () => {
+    expect(new 어시스턴트오류('network', '').message).toContain('연결에 실패')
+    expect(new 어시스턴트오류('quota').message).toContain('결제')
+    expect(new 어시스턴트오류('request', '직접 쓴 문구').message).toBe('직접 쓴 문구')
+  })
+  it('동적 import 청크 로드 실패는 새 버전 안내로 (브라우저별 문구)', () => {
+    for (const 글 of ['Failed to fetch dynamically imported module: https://x/sdk-abc.js', 'Importing a module script failed.', 'error loading dynamically imported module']) {
+      expect(오류정리(new TypeError(글)).종류).toBe('stale')
+    }
+  })
+  it('프로토타입 키 같은 오류 코드는 종류로 새지 않는다', () => {
+    expect(스트림오류({ code: 'constructor', message: 'x' }).종류).toBe('server')
   })
 })
 

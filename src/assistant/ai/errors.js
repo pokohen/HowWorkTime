@@ -3,8 +3,9 @@
  * 종류: abort(사용자 중단) · auth(키 문제) · rate(한도) · quota(결제 한도) · request(요청 거부) · network(연결/CORS) · server · stale(새 버전 배포) · unknown
  */
 export class 어시스턴트오류 extends Error {
+  /** 메시지를 비우면 종류에 맞는 안내 문구가 들어간다 */
   constructor(종류, 메시지, 원인) {
-    super(메시지, 원인 ? { cause: 원인 } : undefined)
+    super(메시지 || 상태별메시지[종류] || '', 원인 ? { cause: 원인 } : undefined)
     this.name = '어시스턴트오류'
     this.종류 = 종류
   }
@@ -55,7 +56,10 @@ const 문자코드종류 = {
 function 종류추정({ status, code, 상세 = '' }) {
   // Gemini 는 { code: 429, status: 'RESOURCE_EXHAUSTED' }, OpenAI 는 { code: 'rate_limit_exceeded' } 꼴. 숫자가 있으면 숫자부터
   const 숫자 = [status, code].map(Number).find((n) => Number.isFinite(n) && n > 0)
-  const 문자 = [code, status].map((v) => 문자코드종류[String(v ?? '').toLowerCase()]).find(Boolean)
+  const 문자 = [code, status]
+    .map((v) => String(v ?? '').toLowerCase())
+    .map((k) => (Object.hasOwn(문자코드종류, k) ? 문자코드종류[k] : undefined)) // 'constructor' 같은 프로토타입 키 차단
+    .find(Boolean)
   // 문자 코드가 더 구체적이다 (예: 429 + insufficient_quota 는 '잠시 후'가 아니라 결제 문제). 없으면 숫자로
   let 종류 = 문자 ?? (숫자 ? 상태코드종류(숫자) : 'unknown')
   // Gemini 는 잘못된 키를 400 으로 돌려준다 ("API key not valid"). 키 문제로 안내하는 편이 낫다
@@ -96,11 +100,19 @@ export function 스트림오류(오류본문) {
   return new 어시스턴트오류(종류, 종류메시지(종류, 상세), 오류본문)
 }
 
+/** 브라우저별 동적 import 실패 메시지 (Chrome · Safari · Firefox) */
+function 청크로드실패여부(예외) {
+  return /dynamically imported module|Importing a module script failed|error loading dynamically imported/i.test(예외?.message ?? '')
+}
+
 /** 아무 예외든 어시스턴트오류로 바꾼다 (이미 어시스턴트오류면 그대로) */
 export function 오류정리(예외) {
-  if (예외 instanceof 어시스턴트오류) {
-    if (!예외.message && 상태별메시지[예외.종류]) return new 어시스턴트오류(예외.종류, 상태별메시지[예외.종류], 예외.cause)
-    return 예외
+  if (예외 instanceof 어시스턴트오류) return 예외
+  // 동적 import(제공자 모듈·SDK 청크) 실패. 새 버전이 배포돼 옛 청크 주소가 사라졌을 때 나는데,
+  // 오프라인이면 청크를 못 받는 것뿐이니 새로고침을 권하지 않는다 (멀쩡한 화면이 오류 페이지가 된다)
+  if (청크로드실패여부(예외)) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return new 어시스턴트오류('network', '', 예외)
+    return new 어시스턴트오류('stale', '앱이 새 버전으로 바뀌었어요. 페이지를 새로고침한 뒤 다시 시도해 주세요.', 예외)
   }
   // fetch 의 AbortError. (Anthropic SDK 의 중단·연결 오류는 name 이 'Error' 라 anthropic.js 가 클래스로 가려 보낸다)
   if (예외?.name === 'AbortError') {
