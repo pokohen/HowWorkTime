@@ -78,7 +78,8 @@ async function 공휴일가져오기(연도) {
   const 결과코드 = 본문?.response?.header?.resultCode;
   if (결과코드 && 결과코드 !== "00") {
     const 메시지 = 본문?.response?.header?.resultMsg ?? "알 수 없는 오류";
-    throw new Error(`API 오류 ${결과코드}: ${메시지} (${연도}년)`);
+    // 키 미등록·파라미터 오류처럼 다시 보내도 같은 답이 오는 오류. 재시도 없이 바로 알린다
+    throw Object.assign(new Error(`API 오류 ${결과코드}: ${메시지} (${연도}년)`), { status: 400 });
   }
 
   const 본체 = 본문?.response?.body;

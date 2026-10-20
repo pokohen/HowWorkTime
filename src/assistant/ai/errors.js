@@ -27,32 +27,62 @@ function 상태코드종류(status) {
   return 'unknown'
 }
 
+/** 제공자가 문자열로 주는 오류 코드 (OpenAI 등) → 종류 */
+const 문자코드종류 = {
+  rate_limit_exceeded: 'rate',
+  insufficient_quota: 'rate',
+  invalid_api_key: 'auth',
+  authentication_error: 'auth',
+  permission_error: 'auth',
+  context_length_exceeded: 'request',
+  invalid_request_error: 'request',
+  server_error: 'server',
+  overloaded_error: 'server',
+}
+
+/**
+ * 상태 코드·문자 코드·상세 문구를 모아 종류를 정한다. 세 입구(HTTP 실패, 스트림 안 오류, SDK 예외)가 같은 규칙을 쓴다.
+ * @param {{ status?: unknown, code?: unknown, 상세?: string }} 단서
+ */
+function 종류추정({ status, code, 상세 = '' }) {
+  const 숫자 = Number(status ?? code)
+  let 종류 = Number.isFinite(숫자) && 숫자 > 0 ? 상태코드종류(숫자) : (문자코드종류[String(code ?? '').toLowerCase()] ?? 'unknown')
+  // Gemini 는 잘못된 키를 400 으로 돌려준다 ("API key not valid"). 키 문제로 안내하는 편이 낫다
+  if ((종류 === 'request' || 종류 === 'unknown') && /api key/i.test(상세)) 종류 = 'auth'
+  return 종류
+}
+
+/** 종류에 맞는 안내 문구. 정해진 문구가 없으면 제공자의 상세 문구를 그대로 보여 준다 */
+function 종류메시지(종류, 상세, 대안 = '요청이 거부됐어요') {
+  return 상태별메시지[종류] ?? (상세 ? `${대안}: ${상세}` : `${대안}.`)
+}
+
 /**
  * fetch 응답이 실패일 때 본문의 메시지를 꺼내 오류를 만든다.
  * 제공자 응답은 { error: { message } } 꼴이 일반적이지만 아닐 수도 있어 느슨하게 읽는다.
  */
 export async function 응답오류(응답) {
-  let 종류 = 상태코드종류(응답.status)
   let 상세 = ''
+  let 코드
   try {
     const 본문 = await 응답.json()
     상세 = 본문?.error?.message ?? 본문?.message ?? ''
+    코드 = 본문?.error?.code
   } catch { /* 본문이 JSON 이 아니면 상태 코드만으로 안내 */ }
-  // Gemini 는 잘못된 키를 400 으로 돌려준다 ("API key not valid"). 키 문제로 안내하는 편이 낫다
-  if (종류 === 'request' && /api key/i.test(상세)) 종류 = 'auth'
-  const 메시지 = 상태별메시지[종류] ?? (상세 ? `요청이 거부됐어요: ${상세}` : `요청이 거부됐어요 (HTTP ${응답.status})`)
+  const 종류 = 종류추정({ status: 응답.status, code: 코드, 상세 })
+  const 메시지 = 종류메시지(종류, 상세 || `HTTP ${응답.status}`)
   return new 어시스턴트오류(종류, 메시지, 상세 || undefined)
 }
 
 /**
  * 200 으로 열린 스트림 안에서 온 오류 페이로드({ error: { code|status, message } })를 어시스턴트오류로 바꾼다.
- * 본문에 상태 코드가 있으면 그걸로 종류를 가린다 (429 → rate, 403 → auth …).
+ * 숫자 코드(Gemini 429)와 문자 코드(OpenAI 'rate_limit_exceeded') 모두 가린다.
  */
 export function 스트림오류(오류본문) {
-  const 코드 = Number(오류본문?.code ?? 오류본문?.status)
-  const 종류 = Number.isFinite(코드) ? 상태코드종류(코드) : 'server'
-  const 상세 = 오류본문?.message ?? '알 수 없는 오류'
-  return new 어시스턴트오류(종류, 상태별메시지[종류] ?? `요청이 거부됐어요: ${상세}`, 오류본문)
+  const 상세 = 오류본문?.message ?? ''
+  let 종류 = 종류추정({ status: 오류본문?.status, code: 오류본문?.code, 상세 })
+  if (종류 === 'unknown') 종류 = 'server' // 스트림이 열린 뒤의 정체 모를 오류는 제공자 쪽 문제로 안내
+  return new 어시스턴트오류(종류, 종류메시지(종류, 상세), 오류본문)
 }
 
 /** 아무 예외든 어시스턴트오류로 바꾼다 (이미 어시스턴트오류면 그대로) */
@@ -67,9 +97,8 @@ export function 오류정리(예외) {
   }
   // Anthropic SDK 의 APIError 계열(HTTP 오류)은 status 를 가진다
   if (typeof 예외?.status === 'number') {
-    const 종류 = 상태코드종류(예외.status)
-    const 메시지 = 상태별메시지[종류] ?? `요청이 거부됐어요: ${예외.message}`
-    return new 어시스턴트오류(종류, 메시지, 예외)
+    const 종류 = 종류추정({ status: 예외.status, 상세: 예외.message })
+    return new 어시스턴트오류(종류, 종류메시지(종류, 예외.message), 예외)
   }
   // fetch 가 TypeError 를 던지는 경우: 오프라인, DNS, CORS 차단 등.
   // 메시지로 가려서 제공자 모듈 안의 일반 프로그래밍 오류(undefined 접근 등)가 '네트워크 문제'로 둔갑하지 않게 한다

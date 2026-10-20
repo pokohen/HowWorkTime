@@ -1,21 +1,36 @@
 <script setup>
+import { ref, watch, nextTick } from 'vue'
 import { useAssistant } from '../composables/useAssistant'
 
 // 모달을 닫아 둔 사이 응답이 끝났을 때 화면 하단에 뜨는 알림. 누르면 그 대화가 열린다.
 const { 알림, 알림열기, 알림닫기 } = useAssistant()
+
+const 제목 = (알림) => (알림.종류 === 'error' ? '답변을 받지 못했어요' : '답변이 도착했어요')
+
+// live region 은 내용이 바뀌기 전에 이미 있어야 읽힌다. 토스트 요소는 v-if 로 생겼다 사라지므로
+// 항상 떠 있는 sr-only 영역에 문구를 따로 넣는다 (같은 문구가 연달아 와도 읽히게 비웠다 넣는다)
+const 읽기안내 = ref('')
+watch(알림, (값) => {
+  if (!값) return
+  읽기안내.value = ''
+  nextTick(() => { 읽기안내.value = `${제목(값)}. ${값.제목}` })
+})
 </script>
 
 <template>
+  <p class="sr-only" role="status" aria-live="polite">{{ 읽기안내 }}</p>
   <Transition name="toast">
-    <div v-if="알림" class="toast" :class="`toast--${알림.종류}`" role="status" aria-live="polite">
+    <div v-if="알림" class="toast" :class="`toast--${알림.종류}`">
       <button type="button" class="toast-main" @click="알림열기">
         <span class="toast-icon" aria-hidden="true">{{ 알림.종류 === 'error' ? '!' : '✦' }}</span>
         <span class="toast-text">
-          <strong>{{ 알림.종류 === 'error' ? '답변을 받지 못했어요' : '답변이 도착했어요' }}</strong>
+          <strong>{{ 제목(알림) }}</strong>
           <span class="toast-sub">{{ 알림.제목 }} · 눌러서 보기</span>
         </span>
       </button>
-      <button type="button" class="toast-close" aria-label="알림 닫기" @click="알림닫기">✕</button>
+      <button type="button" class="toast-close" aria-label="알림 닫기" @click="알림닫기">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+      </button>
     </div>
   </Transition>
 </template>
@@ -93,9 +108,12 @@ const { 알림, 알림열기, 알림닫기 } = useAssistant()
   border-radius: 10px;
   background: transparent;
   color: var(--label);
-  font-size: 0.85rem;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
+.toast-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .toast-close:hover { background: var(--surface-muted); color: var(--text); }
 .toast-close:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
 

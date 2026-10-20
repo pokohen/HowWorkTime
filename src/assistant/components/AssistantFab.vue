@@ -1,5 +1,6 @@
 <script setup>
 import { useAssistant } from '../composables/useAssistant'
+import StarIcon from './StarIcon.vue'
 
 const { 열림, 토글, 전송중 } = useAssistant()
 </script>
@@ -14,9 +15,7 @@ const { 열림, 토글, 전송중 } = useAssistant()
     :aria-expanded="열림"
     @click="토글"
   >
-    <svg class="assistant-fab-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 2.6l2.65 5.95 6.45.7-4.8 4.4 1.35 6.35L12 16.8 6.35 20l1.35-6.35-4.8-4.4 6.45-.7z" />
-    </svg>
+    <StarIcon class="assistant-fab-icon" />
   </button>
 </template>
 

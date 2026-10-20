@@ -26,6 +26,9 @@ describe('스트림오류', () => {
     expect(스트림오류({ code: 429, message: 'quota' }).종류).toBe('rate')
     expect(스트림오류({ status: 403, message: 'revoked' }).종류).toBe('auth')
     expect(스트림오류({ message: 'boom' }).종류).toBe('server')
+    expect(스트림오류({ message: 'Rate limit reached', code: 'rate_limit_exceeded' }).종류).toBe('rate')
+    expect(스트림오류({ message: 'too long', code: 'context_length_exceeded' }).message).toContain('too long')
+    expect(스트림오류({ message: 'API key not valid', code: null }).종류).toBe('auth')
     expect(스트림오류({ message: 'boom', code: 418 }).message).toContain('boom')
   })
 })
@@ -65,5 +68,14 @@ describe('SSE이벤트', () => {
     })
     for await (const ev of SSE이벤트({ body })) { if (ev.data === '1') break }
     expect(취소됨).toBe(true)
+  })
+})
+
+describe('최대토큰상한', () => {
+  it('400 메시지에서 모델의 출력 상한을 읽는다', async () => {
+    const { 최대토큰상한 } = await import('../src/assistant/ai/anthropic')
+    expect(최대토큰상한('max_tokens: 8192 > 4096, which is the maximum allowed number of output tokens for claude-3-haiku-20240307')).toBe(4096)
+    expect(최대토큰상한('invalid_request_error: something else')).toBeNull()
+    expect(최대토큰상한(undefined)).toBeNull()
   })
 })

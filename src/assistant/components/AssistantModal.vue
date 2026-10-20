@@ -6,6 +6,7 @@ import AssistantTabs from './AssistantTabs.vue'
 import AssistantEmptyState from './AssistantEmptyState.vue'
 import AssistantMessage from './AssistantMessage.vue'
 import AssistantComposer from './AssistantComposer.vue'
+import StarIcon from './StarIcon.vue'
 
 // 쉬는 날 플래너 모달. 열고 닫기·머리·스크롤만 맡고, 탭·말풍선·입력은 각 컴포넌트가 맡는다
 const { 열림, 설정열림, 닫기, 활성탭, 활성탭ID, 새탭추가, 키있음, 제공자정보, 모델 } = useAssistant()
@@ -73,7 +74,10 @@ const 읽기안내 = ref('')
 watch(() => 활성탭.value.메시지.at(-1)?.진행중, (지금, 이전) => {
   if (이전 !== true || 지금 !== false) return
   const 마지막 = 활성탭.value.메시지.at(-1)
-  읽기안내.value = 마지막?.오류 ? '응답을 받지 못했어요.' : 마지막?.중단됨 ? '응답을 중단했어요.' : '응답이 도착했어요.'
+  const 문구 = 마지막?.오류 ? '응답을 받지 못했어요.' : 마지막?.중단됨 ? '응답을 중단했어요.' : '응답이 도착했어요.'
+  // 같은 문구가 연달아 오면 DOM 이 안 바뀌어 읽히지 않는다. 비웠다가 다음 틱에 넣는다
+  읽기안내.value = ''
+  nextTick(() => { 읽기안내.value = 문구 })
 })
 </script>
 
@@ -90,9 +94,7 @@ watch(() => 활성탭.value.메시지.at(-1)?.진행중, (지금, 이전) => {
       <header class="assistant-head">
         <div class="assistant-head-text">
           <h2 id="assistant-title" class="assistant-title">
-            <svg class="assistant-title-star" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 2.6l2.65 5.95 6.45.7-4.8 4.4 1.35 6.35L12 16.8 6.35 20l1.35-6.35-4.8-4.4 6.45-.7z" />
-            </svg>
+            <StarIcon class="assistant-title-star" />
             쉬는 날 플래너
           </h2>
           <p class="assistant-sub">
