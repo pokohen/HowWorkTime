@@ -81,7 +81,7 @@ src/
     useTheme.js           다크 모드
     useAssistant.js       쉬는 날 플래너: 모달·탭·메시지·전송·제공자 설정
   components/
-    common/               CardSection, StatCard, ToggleSection, TimeField, ClockField, HolidayItems
+    common/               CardSection, StatCard, ToggleSection, CheckBox, TimeField, ClockField, HolidayItems
     WorkTimeCalculator    레이아웃 루트
     AppHeader, ThemeToggle, MonthSelector, MonthSummary, WorkSettings,
     RemoteWorkSettings, LeaveSettings, TodayWorkInput,
