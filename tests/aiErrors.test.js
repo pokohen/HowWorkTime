@@ -43,6 +43,8 @@ describe('스트림오류', () => {
     expect(스트림오류({ code: 429, status: 'RESOURCE_EXHAUSTED', message: 'quota' }).종류).toBe('rate')
     expect(스트림오류({ code: 403, status: 'PERMISSION_DENIED', message: 'x' }).종류).toBe('auth')
     expect(스트림오류({ status: 'UNAVAILABLE', message: 'x' }).종류).toBe('server')
+    // Gemini 의 details[].reason 은 문구가 바뀌어도 남는다
+    expect(스트림오류({ code: 400, status: 'INVALID_ARGUMENT', message: 'The provided credential is not valid', details: [{ reason: 'API_KEY_INVALID' }] }).종류).toBe('auth')
     // OpenAI 는 code 가 null 이고 type 만 있는 경우가 많다
     expect(스트림오류({ type: 'invalid_request_error', code: null, message: 'bad' }).종류).toBe('request')
     expect(스트림오류({ type: 'authentication_error', message: 'x' }).종류).toBe('auth')

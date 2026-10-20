@@ -73,9 +73,8 @@ const 상태 = 모듈상태(import.meta.hot, () => {
 
   // ── 다음 달 ────────────────────────────────────────────────
   const 다음달 = computed(() => {
-    const 월 = 선택월.value === 12 ? 1 : 선택월.value + 1
-    const 연도 = 선택월.value === 12 ? 선택연도.value + 1 : 선택연도.value
-    return { 연도, 월 }
+    const d = new Date(선택연도.value, 선택월.value, 1) // 월은 0 기준이라 그대로 넣으면 다음 달 1일 (12월→다음 해 1월도 알아서)
+    return { 연도: d.getFullYear(), 월: d.getMonth() + 1 }
   })
   const 다음달표시 = computed(() => `${다음달.value.연도}년 ${다음달.value.월}월`)
   const 다음달근로일 = computed(() => 소정근로일수(다음달.value.연도, 다음달.value.월))

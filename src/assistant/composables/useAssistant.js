@@ -20,10 +20,10 @@ const 저장지연 = 400
 const 알림표시시간 = 12_000
 
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
-  const { 오늘표시, 재택안내, 급여주여부 } = useToday()
+  const { 오늘표시, 재택안내, 급여주여부, 현재연도 } = useToday()
   const { 선택월표시, 다음달표시, 이달공휴일, 다음달공휴일, 남은근무일, 선택연도, 선택월, 이번달여부 } = useMonth()
   const { 출근남은일 } = useWorkResult()
-  const { 연차일수환산, 남은연차분 } = useLeave()
+  const { 연차일수환산, 남은연차조회 } = useLeave()
   const 설정상태 = useAssistantSettings()
   const { 제공자, 모델, 현재키 } = 설정상태
 
@@ -150,7 +150,9 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       남은근무일: 남은근무일.value,
       출근남은일: 출근남은일.value,
       연차일수: 연차일수환산.value,
-      남은연차: 남은연차문장(남은연차분.value) || null,
+      // 남은 연차는 연도별 값이다. 보고 있는 달이 아니라 오늘이 속한 해의 것을 준다
+      남은연차: 남은연차문장(남은연차조회(현재연도.value)) || null,
+      남은연차연도: 현재연도.value,
       재택안내: 재택안내.value,
       급여주여부: 급여주여부.value,
     }

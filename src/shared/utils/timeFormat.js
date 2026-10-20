@@ -25,7 +25,8 @@ function 형식파싱(문자열) {
   const 정리 = String(문자열).trim()
   if (!정리) return { 분: 0, 유효: true, 비어있음: true }
 
-  const 콜론매칭 = 정리.match(/^(\d+):(\d{1,2})$/)
+  // 분은 두 자리만 받는다. "137:5" 를 137:05 로 받아들이면 137:50 을 치다 만 것이 조용히 45분 줄어든다
+  const 콜론매칭 = 정리.match(/^(\d+):(\d{2})$/)
   if (콜론매칭) {
     const 시 = parseInt(콜론매칭[1], 10)
     const 분 = parseInt(콜론매칭[2], 10)

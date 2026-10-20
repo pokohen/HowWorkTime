@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { 급여일조회, 재택가능일여부, 내일날짜, 업무일날짜 } from '../utils/workDays'
+import { 급여일조회, 재택가능일여부, 내일날짜, 업무일날짜, 날짜더하기 } from '../utils/workDays'
 import { 요일이름 } from '../../shared/constants'
 import { 모듈상태 } from '../../shared/composables/moduleState'
 
@@ -40,8 +40,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   // 이번 주(일~토)에 급여일이 포함되는지
   const 급여주여부 = computed(() => {
     const 주시작 = new Date(현재연도.value, 오늘.value.getMonth(), 오늘.value.getDate() - 오늘요일.value)
-    const 주끝 = new Date(주시작)
-    주끝.setDate(주끝.getDate() + 6)
+    const 주끝 = 날짜더하기(주시작, 6)
     // 주가 월 경계에 걸치면 양쪽 달의 급여일을 모두 본다
     return [주시작, 주끝].some((날짜) => {
       const 급여일 = 급여일조회(날짜.getFullYear(), 날짜.getMonth() + 1)

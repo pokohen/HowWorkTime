@@ -52,12 +52,18 @@ export function 업무일날짜(시각 = new Date(), 시작시 = 업무일시작
   return 날짜
 }
 
+/** 날짜를 복사해 n일 더한다 (원본은 그대로). 시각은 유지한다 */
+export function 날짜더하기(날짜, n) {
+  const 결과 = new Date(날짜)
+  결과.setDate(결과.getDate() + n)
+  return 결과
+}
+
 /** 오늘 다음 날 00:00 */
 export function 내일날짜(오늘) {
-  const 내일 = new Date(오늘)
-  내일.setHours(0, 0, 0, 0)
-  내일.setDate(내일.getDate() + 1)
-  return 내일
+  const 자정 = new Date(오늘)
+  자정.setHours(0, 0, 0, 0)
+  return 날짜더하기(자정, 1)
 }
 
 /**

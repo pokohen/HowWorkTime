@@ -17,7 +17,8 @@ export function HTML이스케이프(텍스트) {
  */
 function 코드보호(텍스트, 코드변환, 나머지변환) {
   const 코드들 = []
-  const 자리 = 텍스트.replace(/`([^`\n]+)`/g, (_, 코드) => {
+  // 자리표시에 NUL 을 쓰므로 입력의 NUL 은 미리 걷어낸다 (글에 의미 있는 글자가 아니다)
+  const 자리 = 텍스트.replace(/\u0000/g, '').replace(/`([^`\n]+)`/g, (_, 코드) => {
     코드들.push(코드변환(코드))
     return `\u0000${코드들.length - 1}\u0000`
   })

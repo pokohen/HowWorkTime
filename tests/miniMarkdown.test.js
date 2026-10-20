@@ -16,6 +16,10 @@ describe('마크다운HTML', () => {
     expect(마크다운HTML('3. 셋')).toBe('<p>3. 셋</p>')
   })
 
+  it('입력에 NUL 이 섞여 있어도 코드 자리표시와 충돌하지 않는다', () => {
+    expect(마크다운HTML('a \u00001\u0000 `c`')).toBe('<p>a 1 <code>c</code></p>')
+  })
+
   it('코드 스팬 안의 별표는 굵게로 바꾸지 않는다', () => {
     expect(마크다운HTML('`**/*.log` 패턴과 **강조**')).toBe('<p><code>**/*.log</code> 패턴과 <strong>강조</strong></p>')
     expect(마크다운텍스트('`**/*.log` 패턴과 **강조**')).toBe('**/*.log 패턴과 강조')
