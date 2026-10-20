@@ -279,7 +279,11 @@ async function 메시지복사(m) {
               aria-label="응답 중단"
               title="응답 중단"
               @click="중단"
-            >■</button>
+            >
+              <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="6" y="6" width="12" height="12" rx="3" fill="currentColor" />
+              </svg>
+            </button>
             <button
               v-else
               type="button"
@@ -288,7 +292,11 @@ async function 메시지복사(m) {
               aria-label="보내기"
               title="보내기 (Enter)"
               @click="보내기"
-            >↑</button>
+            >
+              <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 19V6M6 12l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
           </div>
           <p class="composer-hint">Enter 전송 · Shift+Enter 줄바꿈 · 대화는 이 브라우저에 저장돼요</p>
         </footer>
@@ -723,19 +731,18 @@ async function 메시지복사(m) {
   border: 0;
   background: var(--primary);
   color: #fff;
-  font-size: 1.15rem;
-  font-weight: 800;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: opacity 0.15s, transform 0.1s, background 0.15s;
 }
+.send-icon { width: 22px; height: 22px; display: block; }
 .send-btn:hover { transform: translateY(-1px); }
 .send-btn:active { transform: translateY(0) scale(0.96); }
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 .send-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
-.send-btn--stop { background: var(--accent-red); font-size: 0.9rem; }
+.send-btn--stop { background: var(--accent-red); }
 .send-btn--stop:hover { background: var(--accent-red-deep); }
 .composer-hint {
   margin: 8px 2px 0;
