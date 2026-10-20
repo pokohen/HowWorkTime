@@ -146,10 +146,11 @@ watch(() => { const m = 활성탭.value.메시지.at(-1); return m ? { id: m.id,
 
       <AssistantTabs v-if="!설정열림" @새대화="새탭열기" />
 
+      <!-- live region 은 설정 화면이 열려 있어도 남아 있어야 그 사이 끝난 응답이 읽힌다 -->
+      <p class="sr-only" aria-live="polite">{{ 읽기안내 }}</p>
       <AssistantSettings v-if="설정열림" class="assistant-body" />
 
       <template v-else>
-        <p class="sr-only" aria-live="polite">{{ 읽기안내 }}</p>
         <div ref="메시지영역" class="assistant-body messages" @scroll.passive="스크롤됨">
           <div ref="내용영역" class="messages-inner">
             <AssistantEmptyState v-if="활성탭.메시지.length === 0" @선택="입력부?.채우기($event)" />

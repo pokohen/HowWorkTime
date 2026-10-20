@@ -64,6 +64,8 @@ function 종류추정({ status, code, 상세 = '' }) {
   let 종류 = 문자 ?? (숫자 ? 상태코드종류(숫자) : 'unknown')
   // Gemini 는 잘못된 키를 400 으로 돌려준다 ("API key not valid"). 키 문제로 안내하는 편이 낫다
   if ((종류 === 'request' || 종류 === 'unknown') && /api key/i.test(상세)) 종류 = 'auth'
+  // Anthropic 은 크레딧이 떨어지면 400 "credit balance is too low" 로 알린다. 다시 시도해도 소용없는 결제 문제다
+  if (종류 === 'request' && /credit balance/i.test(상세)) 종류 = 'quota'
   return 종류
 }
 
