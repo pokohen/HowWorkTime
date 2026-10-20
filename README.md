@@ -51,47 +51,58 @@ GitHub Actions(`.github/workflows/deploy.yml`)가 main 푸시 때마다 배포�
 
 ## 구조
 
+기능별로 나눈다. `shared` 는 어느 기능에도 속하지 않는 공용이고, `worktime`(근무시간 계산기)과 `assistant`(쉬는 날 플래너)는 각자 components·composables·utils 를 가진다. `assistant` 는 `worktime` 의 상태를 읽어 프롬프트에 넣지만 반대 방향 의존은 없다. 두 기능을 한 화면에 올리는 것은 `App.vue` 의 몫이다.
+
 ```
 src/
-  constants.js            하루근무분, 연차단위, 급여기준일, 업무일시작시
-  utils/
-    holidays.js           공휴일 조회
-    workDays.js           소정근로일·남은근무일·급여일 계산
-    timeFormat.js         "h:mm" 파싱/포맷, 시각 파싱
-    assistantContext.js   연휴·징검다리 탐지, AI 시스템 프롬프트 (순수 함수)
-    storage.js            localStorage 안전 읽기/쓰기 (막힌 환경 보호)
-    assistantStorage.js   대화·설정 직렬화/복원
-    leaveBalance.js       남은 연차 일·시간 ↔ 분 변환, 저장 형식
-    miniMarkdown.js       응답용 가벼운 마크다운 → HTML (이스케이프 우선)
-  ai/
-    providers.js          제공자 목록 (기본 모델, 키 발급 주소)
-    client.js             제공자별 구현을 동적 로드해 대화 요청, 오류 정리
-    anthropic.js          Claude (공식 SDK, 브라우저 직접 호출)
-    openai.js / gemini.js fetch + SSE 스트리밍
-    sse.js / errors.js    SSE 파서, 어시스턴트오류
-  composables/            도메인별 상태 (모듈 단위 싱글턴)
-    moduleState.js        effectScope 로 묶은 싱글턴 + HMR 정리
-    monthScoped.js        선택 월마다 따로 보관되는 상태 (누적 시간·연차·재택·입사일)
-    useToday.js           오늘(업무일, 새벽 6시 기준) 날짜, 급여주 여부
-    useMonth.js           선택 월, 근로일, 공휴일, 다음 달
-    useWorkInput.js       고정 연장, 누적 근무시간
-    useTodayWork.js       오늘 예상 근무시간 (출퇴근/직접/재택)
-    useRemoteWork.js      금요일 재택
-    useLeave.js           연차·반차·반반차, 연도별 남은 연차(localStorage)
-    useWorkResult.js      반영분, 달성률, 남은 시간, 일평균, 마일리지
-    useTheme.js           다크 모드
-    useAssistantSettings.js 쉬는 날 플래너 제공자·모델·API 키
-    useAssistant.js       쉬는 날 플래너: 모달·탭·메시지·전송·알림
-  components/
-    common/               CardSection, StatCard, ToggleSection, CheckBox, TimeField, ClockField, HolidayItems
-    WorkTimeCalculator    레이아웃 루트
-    AppHeader, ThemeToggle, MonthSelector, MonthSummary, WorkSettings,
-    RemoteWorkSettings, LeaveSettings, TodayWorkInput,
-    ProgressStatus, WorkResult, HolidayList, NextMonthPreview,
-    AssistantFab, AssistantToast, AssistantModal(머리·스크롤) → AssistantTabs, AssistantEmptyState,
-    AssistantMessage(말풍선·복사), AssistantComposer(입력·전송), AssistantSettings
+  main.js · App.vue · style.css      진입점, 레이아웃 루트, 전역 스타일·테마 토큰
+  data/holidays.json                 공휴일 데이터 (CI 가 갱신)
+  shared/
+    constants.js            하루근무분, 연차단위, 급여기준일, 업무일시작시, 저장 키
+    utils/
+      storage.js            localStorage 안전 읽기/쓰기 (막힌 환경 보호)
+      timeFormat.js         "h:mm" 파싱/포맷, 시각 파싱
+      clipboard.js          클립보드 복사 (구형 환경 대체 경로)
+    composables/
+      moduleState.js        effectScope 로 묶은 싱글턴 + HMR 정리
+      monthScoped.js        선택 월마다 따로 보관되는 상태
+      useTheme.js           다크 모드
+    components/             CardSection, StatCard, ToggleSection, CheckBox, TimeField, ClockField, ThemeToggle
+  worktime/
+    utils/
+      holidays.js           공휴일 조회
+      workDays.js           소정근로일·남은근무일·급여일 계산
+      leaveBalance.js       남은 연차 일·시간 ↔ 분 변환, 저장 형식
+    composables/            도메인별 상태 (모듈 단위 싱글턴)
+      useToday.js           오늘(업무일, 새벽 6시 기준) 날짜, 급여주 여부
+      useMonth.js           선택 월, 근로일, 공휴일, 다음 달
+      useWorkInput.js       고정 연장, 누적 근무시간
+      useTodayWork.js       오늘 예상 근무시간 (출퇴근/직접/재택)
+      useRemoteWork.js      금요일 재택
+      useLeave.js           연차·반차·반반차, 연도별 남은 연차(localStorage)
+      useWorkResult.js      반영분, 달성률, 남은 시간, 일평균, 마일리지
+    components/
+      AppHeader, MonthSelector, MonthSummary, WorkSettings, RemoteWorkSettings, LeaveSettings,
+      TodayWorkInput, ProgressStatus, WorkResult, HolidayList, HolidayItems, NextMonthPreview
+  assistant/
+    ai/
+      providers.js          제공자 목록 (기본 모델, 키 발급 주소)
+      client.js             제공자별 구현을 동적 로드해 대화 요청, 오류 정리
+      anthropic.js          Claude (공식 SDK, 브라우저 직접 호출)
+      openai.js / gemini.js fetch + SSE 스트리밍
+      sse.js / errors.js    SSE 파서, 어시스턴트오류
+    utils/
+      assistantContext.js   연휴·징검다리 탐지, AI 시스템 프롬프트 (순수 함수)
+      assistantStorage.js   대화·설정 직렬화/복원
+      miniMarkdown.js       응답용 가벼운 마크다운 → HTML / 공유용 일반 텍스트
+    composables/
+      useAssistantSettings.js 제공자·모델·API 키
+      useAssistant.js       모달·탭·메시지·전송·알림
+    components/
+      AssistantFab, AssistantToast, AssistantModal(머리·열닫기·스크롤) → AssistantTabs, AssistantEmptyState,
+      AssistantMessage(말풍선·복사·재시도), AssistantComposer(입력·전송), AssistantSettings
 ```
 
-테스트는 `tests/`에 있으며 순수 함수인 `utils/`(연휴 탐지·저장 직렬화·마크다운 포함)를 대상으로 합니다. 공휴일은 `tests/fixtures/holidays.json`(2026년 스냅샷)에 고정되어 실데이터 갱신과 무관합니다. CI에서 빌드 전에 실행됩니다.
+테스트는 `tests/`에 있으며 각 기능의 `utils/`(순수 함수: 근무일·연휴 탐지·저장 직렬화·마크다운 등)와 composable 초기화를 대상으로 합니다. 공휴일은 `tests/fixtures/holidays.json`(2026년 스냅샷)에 고정되어 실데이터 갱신과 무관합니다. CI에서 빌드 전에 실행됩니다.
 
 네이밍 규칙: 파일·컴포넌트·composable 이름은 영어, 변수·함수·prop 이름은 한글.

@@ -5,15 +5,15 @@ import { describe, it, expect } from 'vitest'
 // 모든 composable 을 실제로 불러와 초기화가 끝까지 되는지 확인한다.
 describe('composable 초기화', () => {
   it('모든 composable 이 예외 없이 로드되고 핵심 값을 돌려준다', async () => {
-    const { useToday } = await import('../src/composables/useToday')
-    const { useMonth } = await import('../src/composables/useMonth')
-    const { useWorkInput } = await import('../src/composables/useWorkInput')
-    const { useTodayWork } = await import('../src/composables/useTodayWork')
-    const { useRemoteWork } = await import('../src/composables/useRemoteWork')
-    const { useLeave } = await import('../src/composables/useLeave')
-    const { useWorkResult } = await import('../src/composables/useWorkResult')
-    const { useTheme } = await import('../src/composables/useTheme')
-    const { useAssistant } = await import('../src/composables/useAssistant')
+    const { useToday } = await import('../src/worktime/composables/useToday')
+    const { useMonth } = await import('../src/worktime/composables/useMonth')
+    const { useWorkInput } = await import('../src/worktime/composables/useWorkInput')
+    const { useTodayWork } = await import('../src/worktime/composables/useTodayWork')
+    const { useRemoteWork } = await import('../src/worktime/composables/useRemoteWork')
+    const { useLeave } = await import('../src/worktime/composables/useLeave')
+    const { useWorkResult } = await import('../src/worktime/composables/useWorkResult')
+    const { useTheme } = await import('../src/shared/composables/useTheme')
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
 
     expect(useToday().오늘.value).toBeInstanceOf(Date)
     expect(useMonth().소정근로일.value).toBeGreaterThanOrEqual(0)

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
-import { 월별상태 } from '../src/composables/monthScoped'
+import { 월별상태 } from '../src/shared/composables/monthScoped'
 
 describe('월별상태', () => {
   it('월마다 값을 따로 보관하고, 돌아오면 그대로 있다', () => {

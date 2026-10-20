@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { 연도공휴일, 공휴일데이터여부, 월공휴일 } from '../src/utils/holidays'
+import { 연도공휴일, 공휴일데이터여부, 월공휴일 } from '../src/worktime/utils/holidays'
 
 describe('holidays', () => {
   it('연도별 공휴일 셋', () => {

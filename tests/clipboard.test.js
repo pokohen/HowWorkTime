@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { 클립보드복사 } from '../src/utils/clipboard'
+import { 클립보드복사 } from '../src/shared/utils/clipboard'
 
 describe('클립보드복사', () => {
   afterEach(() => {

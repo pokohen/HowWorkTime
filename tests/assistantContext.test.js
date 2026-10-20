@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { 연휴찾기, 시스템프롬프트 } from '../src/utils/assistantContext'
+import { 연휴찾기, 시스템프롬프트 } from '../src/assistant/utils/assistantContext'
 
 // 공휴일은 tests/setup.js 가 2026년 픽스처로 고정한다
 describe('연휴찾기', () => {

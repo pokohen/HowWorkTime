@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { 마크다운HTML, 마크다운텍스트, HTML이스케이프 } from '../src/utils/miniMarkdown'
+import { 마크다운HTML, 마크다운텍스트, HTML이스케이프 } from '../src/assistant/utils/miniMarkdown'
 
 describe('마크다운HTML', () => {
   it('HTML 을 먼저 이스케이프해 스크립트가 끼어들 수 없다', () => {

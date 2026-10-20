@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach } from 'vitest'
-import { 남은연차분만들기, 남은연차분해, 남은연차문장, 남은연차복원, 남은연차직렬화 } from '../src/utils/leaveBalance'
-import { 남은연차저장키 } from '../src/constants'
+import { 남은연차분만들기, 남은연차분해, 남은연차문장, 남은연차복원, 남은연차직렬화 } from '../src/worktime/utils/leaveBalance'
+import { 남은연차저장키 } from '../src/shared/constants'
 
 describe('남은연차분만들기', () => {
   it('일·시간을 분으로 합치고 30분 단위로 다듬는다', () => {
@@ -52,8 +52,8 @@ describe('useLeave 남은연차분', () => {
   beforeEach(() => localStorage.clear())
 
   it('선택 연도별로 보관하고 localStorage 에 저장한다', async () => {
-    const { useLeave } = await import('../src/composables/useLeave')
-    const { useMonth } = await import('../src/composables/useMonth')
+    const { useLeave } = await import('../src/worktime/composables/useLeave')
+    const { useMonth } = await import('../src/worktime/composables/useMonth')
     const { 남은연차분 } = useLeave()
     const { 선택연도 } = useMonth()
     const 올해 = 선택연도.value

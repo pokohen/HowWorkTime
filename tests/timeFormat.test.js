@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { 시분파싱, 시분변환, 시각파싱, 시각조립, 요일명, 날짜포맷 } from '../src/utils/timeFormat'
+import { 시분파싱, 시분변환, 시각파싱, 시각조립, 요일명, 날짜포맷 } from '../src/shared/utils/timeFormat'
 
 describe('시분파싱', () => {
   it.each([
