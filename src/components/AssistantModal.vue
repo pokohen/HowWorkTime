@@ -57,8 +57,13 @@ function 아래로스크롤(강제 = false) {
   const el = 메시지영역.value
   if (!el) return
   const 바닥근처 = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-  if (강제 || 바닥근처) el.scrollTop = el.scrollHeight
+  // CSS 의 smooth 스크롤을 쓰면 애니메이션 도중 들어온 다음 조각이 '바닥 근처'가 아니라고 판단해 따라가기를 멈춘다.
+  // 프로그램이 내리는 스크롤은 항상 즉시 이동한다 (사용자의 휠·터치 스크롤은 영향 없음)
+  if (강제 || 바닥근처) el.scrollTo({ top: el.scrollHeight, behavior: 'instant' })
 }
+// 메시지가 새로 추가되면(내가 보낸 말 + 응답 자리) 항상 끝까지 내려간다.
+// 두 말풍선이 한 번에 붙으면 '바닥 근처' 판정을 넘겨 따라가지 못하므로 강제로 내린다
+watch(() => 활성탭.value.메시지.length, (지금, 이전) => { if (지금 > 이전) nextTick(() => 아래로스크롤(true)) })
 // 스트리밍 조각이 들어올 때마다 바닥에 붙어 있으면 따라 내려간다
 watch(() => 활성탭.value.메시지.map((m) => m.내용.length).join(','), () => nextTick(() => 아래로스크롤()))
 watch(활성탭ID, () => nextTick(() => 아래로스크롤(true)))
