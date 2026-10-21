@@ -15,7 +15,7 @@ describe('쓰기재시도', () => {
     const 다시쓰기 = vi.fn()
     const r = 쓰기재시도(정리등록, { 키, 쓸것있음: () => true, 다시쓰기, 떠날때다시쓰기: false })
     r.실패함()
-    이벤트({ key: 키, oldValue: null, newValue: 'x' }) // 늘림: 간격 끝으로 미룸
+    r.이키이벤트(new StorageEvent('storage', { key: 키, oldValue: null, newValue: 'x' })) // 늘림: 간격 끝으로 미룸
     await vi.advanceTimersByTimeAsync(1_000)
     expect(다시쓰기).not.toHaveBeenCalled()
     이벤트({ key: '다른', oldValue: 'xx', newValue: null }) // 지움: 앞당겨 바로
@@ -30,22 +30,19 @@ describe('쓰기재시도', () => {
     const r = 쓰기재시도(정리등록, { 키, 쓸것있음: () => true, 다시쓰기, 떠날때다시쓰기: false })
     r.실패함()
     localStorage.setItem(키, 'x'.repeat(100)) // 그 뒤 다시 늘었다
-    이벤트({ key: 키, oldValue: 'x'.repeat(50), newValue: 'x' })
+    r.이키이벤트(new StorageEvent('storage', { key: 키, oldValue: 'x'.repeat(50), newValue: 'x' }))
     await vi.advanceTimersByTimeAsync(0)
     expect(다시쓰기).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(5_000) // 늘림처럼 간격 뒤에는 한다
     expect(다시쓰기).toHaveBeenCalledTimes(1)
   })
 
-  it('쓸 것이 없으면 하지 않고, 판단은 같은 이벤트를 다룬 다른 리스너 뒤의 상태로 한다', async () => {
+  it('이 키 이벤트는 직접 받지 않고(모듈이 합친 뒤 넘긴다), 다른 키는 늘리기만 하면 하지 않는다', async () => {
     const 다시쓰기 = vi.fn()
-    let 남음 = true
-    쓰기재시도(정리등록, { 키, 쓸것있음: () => 남음, 다시쓰기, 떠날때다시쓰기: false })
-    const 뒤리스너 = () => { 남음 = false } // 나중에 등록된 리스너가 같은 이벤트로 상태를 바꾼다
-    window.addEventListener('storage', 뒤리스너)
-    정리등록(() => window.removeEventListener('storage', 뒤리스너))
-    이벤트({ key: '다른', oldValue: 'xx', newValue: null })
-    await vi.advanceTimersByTimeAsync(0)
+    쓰기재시도(정리등록, { 키, 쓸것있음: () => true, 다시쓰기, 떠날때다시쓰기: false })
+    이벤트({ key: 키, oldValue: 'xx', newValue: null }) // 이 키: 모듈이 넘겨야 한다
+    이벤트({ key: '다른', oldValue: 'x', newValue: 'xx' }) // 다른 키 늘림
+    await vi.advanceTimersByTimeAsync(10_000)
     expect(다시쓰기).not.toHaveBeenCalled()
   })
 })
