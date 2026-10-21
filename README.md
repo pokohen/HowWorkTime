@@ -96,7 +96,7 @@ src/
       systemPrompt.js       AI 시스템 프롬프트 (순수 함수)
       history.js            모델에 보낼 대화 이력 정리
       assistantStorage.js   대화·설정 직렬화/복원
-      miniMarkdown.js       응답용 가벼운 마크다운 → HTML / 공유용 일반 텍스트
+      miniMarkdown.js       응답 마크다운 → 화면 HTML / 공유용 일반 텍스트 (해석은 markdown-it, 모달과 함께 처음 열 때 로드)
     composables/
       useAssistantSettings.js 제공자·모델·API 키
       usePlannerContext.js  플래너가 근무시간 계산기에서 읽는 값 모음 (worktime 상태를 읽는 곳은 여기만)

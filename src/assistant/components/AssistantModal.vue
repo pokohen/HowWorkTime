@@ -17,22 +17,20 @@ const 메시지영역 = ref(null)
 const 입력부 = ref(null)
 
 // ── 열고 닫기 ──────────────────────────────────────────────
-watch(열림, async (값) => {
+async function 열기처리() {
   const el = 다이얼로그.value
   if (!el) return
-  if (값) {
-    if (!el.open) el.showModal()
-    await nextTick()
-    아래로스크롤(true)
-    입력부.value?.포커스()
-  } else if (el.open) {
-    el.close()
-  }
+  if (!el.open) el.showModal()
+  await nextTick()
+  아래로스크롤(true)
+  입력부.value?.포커스()
+}
+watch(열림, (값) => {
+  if (값) return 열기처리()
+  if (다이얼로그.value?.open) 다이얼로그.value.close()
 })
-// 열린 상태에서 컴포넌트가 다시 마운트되면(HMR 등) 새 dialog 요소도 열어 둔다
-onMounted(() => {
-  if (열림.value && 다이얼로그.value && !다이얼로그.value.open) 다이얼로그.value.showModal()
-})
+// 모달은 처음 열 때 불러오므로 이미 열린 상태로 마운트된다 (HMR 로 다시 마운트될 때도). 그때도 같은 열기 처리를 한다
+onMounted(() => { if (열림.value) 열기처리() })
 // Esc 로 닫혔을 때 상태를 맞춘다
 function 다이얼로그닫힘() {
   if (열림.value) 닫기()

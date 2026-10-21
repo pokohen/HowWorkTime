@@ -1,10 +1,29 @@
+import MarkdownIt from 'markdown-it'
+
 /**
- * 모델 응답에 흔히 섞이는 아주 가벼운 마크다운만 다룬다.
- * 지원: 제목(#), 글머리(-, *, 숫자.), 들여쓴 하위 목록과 이어지는 줄, 빈 줄로 띄운 목록, 구분선(---),
- * 코드 블록(```), **굵게**, `코드`, 줄바꿈. 그 외는 글자 그대로.
- * 한 번 블록으로 쪼갠 뒤 HTML(화면)과 일반 텍스트(복사)로 각각 찍어, 두 결과의 목록 번호가 늘 같다.
- * HTML 은 입력을 먼저 전부 이스케이프하므로 v-html 에 넣어도 스크립트가 끼어들 수 없다.
+ * 모델 응답의 마크다운을 화면용 HTML 과 공유용 일반 텍스트로 바꾼다.
+ * 해석은 CommonMark 구현(markdown-it)에 맡기고, 여기서는 화면에 맞춘 설정과 토큰 → 일반 텍스트 변환만 한다.
+ * 같은 토큰에서 두 결과를 만들므로 목록 번호·중첩이 화면과 복사 글에서 늘 같다.
+ *
+ * 안전: html 을 끄면 입력의 HTML 은 전부 글자로 이스케이프되고, 링크는 javascript: 같은 주소를 거른다.
+ * 그래서 v-html 에 넣어도 스크립트가 끼어들 수 없다.
  */
+const md = new MarkdownIt({ html: false, linkify: false, breaks: true, typographer: false })
+  // 외부 이미지를 불러오지 않고(사생활), 표는 쓰지 말라고 프롬프트에 적어 두었으므로 끈다.
+  // 네 칸 들여쓴 줄을 코드로 보는 규칙도 끈다: 모델이 탭·깊은 들여쓰기로 목록을 쓰면 글이 코드 상자가 된다 (``` 코드는 그대로)
+  .disable(['image', 'table', 'code'])
+
+// 제목은 말풍선 안에서 한 단계 크기만 쓴다
+md.renderer.rules.heading_open = () => '<h4>'
+md.renderer.rules.heading_close = () => '</h4>'
+// 링크는 새 탭에서, 이 페이지에 접근하지 못하게
+const 기본링크 = md.renderer.rules.link_open ?? ((tokens, i, options, env, self) => self.renderToken(tokens, i, options))
+md.renderer.rules.link_open = (tokens, i, options, env, self) => {
+  tokens[i].attrSet('target', '_blank')
+  tokens[i].attrSet('rel', 'noopener noreferrer')
+  return 기본링크(tokens, i, options, env, self)
+}
+
 const 이스케이프표 = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 
 export function HTML이스케이프(텍스트) {
@@ -12,208 +31,101 @@ export function HTML이스케이프(텍스트) {
 }
 
 /**
- * 코드 스팬 안의 기호(예: `**` 나 `*`)가 굵게 규칙에 걸리지 않도록, 코드를 먼저 떼어 두고 나머지만 바꾼 뒤 되돌린다.
- * @param {string} 텍스트
- * @param {(코드: string) => string} 코드변환
- * @param {(나머지: string) => string} 나머지변환
+ * CommonMark 는 "2026. 상반기에는…" 을 2026 번부터 시작하는 번호 목록으로 읽는다.
+ * 세 자리 이상 번호는 실제 목록일 일이 거의 없으므로 연도로 보고 점을 이스케이프한다 (코드 블록 안은 그대로).
  */
-function 코드보호(텍스트, 코드변환, 나머지변환) {
-  const 코드들 = []
-  // 자리표시에 NUL 을 쓰므로 입력의 NUL 은 미리 걷어낸다 (글에 의미 있는 글자가 아니다)
-  const 자리 = 텍스트.replace(/\u0000/g, '').replace(/`([^`\n]+)`/g, (_, 코드) => {
-    코드들.push(코드변환(코드))
-    return `\u0000${코드들.length - 1}\u0000`
-  })
-  return 나머지변환(자리).replace(/\u0000(\d+)\u0000/g, (_, i) => 코드들[Number(i)])
+function 연도보호(텍스트) {
+  let 코드안 = false
+  return String(텍스트 ?? '')
+    .split('\n')
+    .map((줄) => {
+      if (/^\s*(```|~~~)/.test(줄)) { 코드안 = !코드안; return 줄 }
+      return 코드안 ? 줄 : 줄.replace(/^(\s*\d{3,})([.)])(\s)/, '$1\\$2$3')
+    })
+    .join('\n')
 }
 
-const 인라인HTML = (텍스트) => 코드보호(
-  HTML이스케이프(텍스트),
-  (코드) => `<code>${코드}</code>`,
-  (나머지) => 나머지.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>'),
-)
-const 인라인텍스트 = (텍스트) => 코드보호(텍스트, (코드) => 코드, (나머지) => 나머지.replace(/\*\*([^*\n]+)\*\*/g, '$1'))
-
-const 글머리식 = /^(\s*)([-*•])\s+(.*)$/
-const 번호식 = /^(\s*)(\d{1,2})[.)]\s+(.*)$/
-const 수평선식 = /^\s*([-*_])(\s*\1){2,}\s*$/ // "---" "* * *" 같은 구분선
-const 제목식 = /^\s*#{1,6}\s+(.+)$/
-const 펜스식 = /^\s*```/
-/** 목록 항목의 내용으로 볼 최소 추가 들여쓰기 */
-const 하위들여씀 = 2
-
-const 들여쓰기 = (줄) => /^\s*/.exec(줄)[0].replace(/\t/g, '    ').length
-const 빈줄 = (줄) => !줄.trim()
-
-/**
- * 목록 표시가 붙은 줄이면 그 정보를, 아니면 null. 내용칸은 표시 뒤 글이 시작하는 열이다.
- * @returns {{ 종류: 'ul'|'ol', 번호?: number, 글: string, 깊이: number, 내용칸: number } | null}
- */
-function 목록표시(줄) {
-  if (수평선식.test(줄)) return null
-  const 글머리 = 글머리식.exec(줄)
-  if (글머리) return { 종류: 'ul', 글: 글머리[3], 깊이: 들여쓰기(글머리[1]), 내용칸: 줄.length - 글머리[3].length }
-  const 번호 = 번호식.exec(줄)
-  if (번호) return { 종류: 'ol', 번호: Number(번호[2]), 글: 번호[3], 깊이: 들여쓰기(번호[1]), 내용칸: 줄.length - 번호[3].length }
-  return null
-}
-
-/** 줄 앞의 공백을 최대 n 칸 걷어낸다 */
-function 내어쓰기(줄, n) {
-  const 앞 = Math.min(들여쓰기(줄), n)
-  return 줄.replace(/^\s*/, (공백) => 공백.replace(/\t/g, '    ').slice(앞))
-}
-
-/**
- * 줄들을 블록으로 쪼갠다. 목록 항목의 내용(표시 뒤 글 + 그 아래 들여쓴 줄들)은 같은 함수로 다시 파싱해
- * 하위 목록·코드 블록·구분선이 몇 단계든 제자리에 들어간다.
- * @returns {Array<
- *   | { 종류: 'p', 줄들: string[] }
- *   | { 종류: 'h', 글: string }
- *   | { 종류: 'hr' }
- *   | { 종류: 'code', 줄들: string[] }
- *   | { 종류: 'ul'|'ol', 시작: number, 항목: Array<Array<블록>> }
- * >}
- */
-function 블록파싱(텍스트) {
-  return 줄블록파싱(String(텍스트 ?? '').replace(/\r\n?/g, '\n').split('\n'))
-}
-
-function 줄블록파싱(줄들) {
-  const 블록들 = []
-  let 문단 = null
-  let 목록 = null // 열려 있는 목록. 빈 줄이 와도 바로 닫지 않는다 (모델은 항목 사이를 빈 줄로 띄우곤 한다)
-  // 바로 앞 번호 목록의 마지막 번호. 사이에 글머리 목록이나 설명 문단이 끼어도 "3." 이 이어서 세어지게. 제목·구분선이 끼면 끊긴다
-  let 직전번호 = 0
-
-  const 문단닫기 = () => { if (문단) { 블록들.push(문단); 문단 = null } }
-  const 목록닫기 = () => {
-    if (!목록) return
-    if (목록.종류 === 'ol') 직전번호 = 목록.시작 + 목록.항목.length - 1
-    목록 = null
-  }
-  const 모두닫기 = () => { 문단닫기(); 목록닫기() }
-
-  let i = 0
-  while (i < 줄들.length) {
-    const 줄 = 줄들[i].trimEnd()
-
-    if (펜스식.test(줄)) {
-      // 코드 블록 안의 줄은 아무 규칙도 적용하지 않는다. 닫는 ``` 가 없으면 끝까지 코드로
-      모두닫기()
-      const 코드 = { 종류: 'code', 줄들: [] }
-      i++
-      while (i < 줄들.length && !펜스식.test(줄들[i])) 코드.줄들.push(줄들[i++])
-      i++
-      블록들.push(코드)
-      continue
-    }
-    if (빈줄(줄)) { 문단닫기(); i++; continue }
-
-    const 표시 = 목록표시(줄)
-    // 번호 목록은 1 로 시작하거나, 열린 번호 목록이거나, 앞 번호에 바로 이어질 때만. "2026. 상반기에는…" 같은 문장을 목록으로 오해하지 않게
-    const 목록줄 = 표시 && (
-      표시.종류 === 'ul' || 표시.번호 === 1 || 목록?.종류 === 'ol' || (직전번호 > 0 && 표시.번호 === 직전번호 + 1)
-    )
-
-    if (목록줄) {
-      문단닫기()
-      if (목록 && 목록.종류 !== 표시.종류) 목록닫기()
-      if (!목록) {
-        목록 = { 종류: 표시.종류, 시작: 표시.종류 === 'ol' ? 표시.번호 : 1, 항목: [] }
-        블록들.push(목록)
-      }
-      // 항목의 내용: 표시 뒤 글 + 표시보다 더 들여쓴 줄들(사이의 빈 줄 포함). 내용칸만큼 내어 써서 다시 파싱한다
-      const 내용 = [표시.글]
-      i++
-      while (i < 줄들.length) {
-        const 다음 = 줄들[i]
-        if (!빈줄(다음) && 들여쓰기(다음) < 표시.깊이 + 하위들여씀) break
-        if (빈줄(다음)) {
-          // 빈 줄 뒤에 더 들여쓴 줄이 오면 이 항목의 내용이다. 아니면 항목은 여기서 끝난다
-          let j = i
-          while (j < 줄들.length && 빈줄(줄들[j])) j++
-          if (j >= 줄들.length || 들여쓰기(줄들[j]) < 표시.깊이 + 하위들여씀) break
-        }
-        내용.push(내어쓰기(다음, 표시.내용칸))
-        i++
-      }
-      목록.항목.push(줄블록파싱(내용))
-      continue
-    }
-
-    const 제목 = 제목식.exec(줄)
-    if (수평선식.test(줄)) {
-      모두닫기(); 블록들.push({ 종류: 'hr' }); 직전번호 = 0
-    } else if (제목) {
-      모두닫기(); 블록들.push({ 종류: 'h', 글: 제목[1] }); 직전번호 = 0
-    } else {
-      목록닫기()
-      if (!문단) 문단 = { 종류: 'p', 줄들: [] }
-      문단.줄들.push(줄.trim())
-    }
-    i++
-  }
-  모두닫기()
-  return 블록들
-}
-
-// ── HTML ────────────────────────────────────────────────────
-function 블록HTML(블록) {
-  switch (블록.종류) {
-    case 'p': return `<p>${블록.줄들.map(인라인HTML).join('<br>')}</p>`
-    case 'h': return `<h4>${인라인HTML(블록.글)}</h4>`
-    case 'hr': return '<hr>'
-    case 'code': return `<pre><code>${HTML이스케이프(블록.줄들.join('\n'))}</code></pre>`
-    case 'ul': case 'ol': {
-      const 시작 = 블록.종류 === 'ol' && 블록.시작 > 1 ? ` start="${블록.시작}"` : ''
-      return `<${블록.종류}${시작}>${블록.항목.map(항목HTML).join('')}</${블록.종류}>`
-    }
-    default: return ''
-  }
-}
-/** 항목의 첫 문단은 <p> 없이 글로 (보통의 촘촘한 목록), 이어지는 줄은 마크다운처럼 한 칸 띄워 잇는다. 나머지 블록은 제자리에 */
-function 항목HTML(블록들) {
-  const [첫, ...나머지] = 블록들
-  const 머리 = 첫?.종류 === 'p' ? 첫.줄들.map(인라인HTML).join(' ') : (첫 ? 블록HTML(첫) : '')
-  return `<li>${머리}${나머지.map(블록HTML).join('')}</li>`
-}
+const 파싱 = (텍스트) => md.parse(연도보호(텍스트), {})
 
 /**
  * @param {string} 텍스트
  * @returns {string} HTML
  */
 export function 마크다운HTML(텍스트) {
-  return 블록파싱(텍스트).map(블록HTML).join('')
+  return md.renderer.render(파싱(텍스트), md.options, {})
 }
 
-// ── 일반 텍스트 ─────────────────────────────────────────────
-/** 블록 하나를 줄들로. 목록 항목의 내용은 들여 써서 화면의 계층이 복사 글에도 남게 한다 */
-function 블록줄들(블록) {
-  switch (블록.종류) {
-    case 'p': return 블록.줄들.map(인라인텍스트)
-    case 'h': return [인라인텍스트(블록.글)]
-    case 'hr': return ['']
-    case 'code': return 블록.줄들
-    case 'ul': case 'ol': return 블록.항목.flatMap((항목, i) => {
-      const 머리 = 블록.종류 === 'ol' ? `${블록.시작 + i}. ` : '• '
-      const [첫줄 = '', ...나머지] = 항목.flatMap(블록줄들)
-      return [`${머리}${첫줄}`, ...나머지.map((줄) => (줄 ? `  ${줄}` : 줄))]
-    })
-    default: return []
+/** 인라인 토큰 → 글. 굵게·기울임 기호는 벗기고, 링크는 글 뒤에 주소를 붙인다 */
+function 인라인글(토큰들) {
+  let 글 = ''
+  let 링크주소 = null
+  for (const 토큰 of 토큰들 ?? []) {
+    switch (토큰.type) {
+      case 'text': case 'code_inline': 글 += 토큰.content; break
+      case 'softbreak': case 'hardbreak': 글 += '\n'; break
+      case 'link_open': 링크주소 = 토큰.attrGet('href'); break
+      case 'link_close': if (링크주소 && !글.endsWith(링크주소)) 글 += ` (${링크주소})`; 링크주소 = null; break
+      default: break
+    }
   }
+  return 글
 }
 
 /**
  * 공유용 일반 텍스트. 마크다운 기호를 걷어내 메신저·메모에 붙여 넣어도 깔끔하게 보인다.
- * 제목은 그대로 한 줄, 글머리는 "• ", 번호 목록은 화면과 같은 번호로, 굵게·코드는 기호만 벗긴다.
- * 구분선은 빈 줄, 코드 블록은 글자 그대로.
+ * 제목은 그대로 한 줄, 글머리는 "• ", 번호 목록은 화면과 같은 번호로, 하위 목록과 이어지는 줄은 두 칸씩 들여 쓴다.
+ * 구분선은 빈 줄, 코드 블록은 글자 그대로. 블록 사이에는 빈 줄을 두되 촘촘한 목록의 항목 사이는 붙인다.
  * @param {string} 텍스트
  * @returns {string}
  */
 export function 마크다운텍스트(텍스트) {
-  return 블록파싱(텍스트)
-    .map((블록) => 블록줄들(블록).join('\n'))
-    .filter((글) => 글.trim())
-    .join('\n\n')
+  const 줄들 = []
+  const 목록들 = [] // 열린 목록마다 { 번호: number|null } (글머리면 null)
+  let 들여 = ''
+  let 항목머리 = null // 다음에 쓸 첫 줄 앞에 붙일 "• " / "3. "
+  let 블록끝 = false // 같은 그릇 안에서 블록이 하나 끝났는지. 다음 블록 앞에 빈 줄을 둔다
+
+  const 빈줄 = () => { if (블록끝 && 줄들.length && 줄들[줄들.length - 1] !== '') 줄들.push('') }
+  const 쓰기 = (글) => {
+    for (const 줄 of 글.split('\n')) {
+      if (항목머리 != null) { 줄들.push(항목머리 + 줄); 항목머리 = null } else 줄들.push(줄 ? 들여 + 줄 : '')
+    }
+  }
+  const 남은머리쓰기 = () => { if (항목머리 != null) { 줄들.push(항목머리.trimEnd()); 항목머리 = null } }
+
+  for (const 토큰 of 파싱(텍스트)) {
+    switch (토큰.type) {
+      case 'paragraph_open': if (!토큰.hidden) 빈줄(); break
+      case 'paragraph_close': if (!토큰.hidden) 블록끝 = true; break
+      case 'heading_open': 빈줄(); break
+      case 'heading_close': 블록끝 = true; break
+      case 'inline': 쓰기(인라인글(토큰.children)); break
+      case 'fence': case 'code_block': 빈줄(); 쓰기(토큰.content.replace(/\n$/, '')); 블록끝 = true; break
+      case 'hr': 블록끝 = true; break
+      case 'bullet_list_open': case 'ordered_list_open':
+        if (목록들.length === 0) 빈줄()
+        남은머리쓰기() // 글 없이 하위 목록부터 시작한 항목
+        목록들.push({ 번호: 토큰.type === 'ordered_list_open' ? Number(토큰.attrGet('start') ?? 1) : null })
+        블록끝 = false
+        break
+      case 'bullet_list_close': case 'ordered_list_close':
+        목록들.pop()
+        if (목록들.length === 0) 블록끝 = true
+        break
+      case 'list_item_open': {
+        const 목록 = 목록들[목록들.length - 1]
+        항목머리 = 들여 + (목록.번호 == null ? '• ' : `${목록.번호++}. `)
+        들여 += '  '
+        블록끝 = false
+        break
+      }
+      case 'list_item_close':
+        남은머리쓰기() // 빈 항목
+        들여 = 들여.slice(2)
+        블록끝 = false
+        break
+      default: break
+    }
+  }
+  return 줄들.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }
