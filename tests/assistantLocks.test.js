@@ -330,7 +330,8 @@ describe('다른 창이 받는 중인 답', () => {
       expect(a.활성탭.value.메시지.at(-1).내용).toBe('답')
       expect(await 잠금들.request(잠금(탭ID), { ifAvailable: true }, (l) => Boolean(l))).toBe(true) // 잠금을 놓았다
       expect(JSON.parse(localStorage.getItem(저장키)).탭목록.some((t) => t.id === 탭ID)).toBe(true) // 저장했다
-      expect(오류).toHaveBeenCalled() // 실패는 기록한다
+      expect(오류).toHaveBeenCalledWith('[플래너] 다른 창의 저장본을 합치지 못함', expect.any(Error)) // 실패는 기록·안내한다
+      expect(a.합치기실패.value).toBe(true)
     } finally {
       오류.mockRestore()
       vi.doUnmock('../src/assistant/utils/assistantStorage')
@@ -338,4 +339,13 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
+
+  it('창을 떠날(pagehide) 때 예약된 저장을 바로 쓴다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    a.활성탭.value.제목 = '떠나기 전'
+    a.탭삭제(a.활성탭.value.id)
+    window.dispatchEvent(new Event('pagehide'))
+    expect(localStorage.getItem(저장키)).not.toBeNull()
+  })
 })

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   새탭, 제목추출, 직렬화, 복원, 메시지최대, 탭최대,
   기본설정, 설정직렬화, 설정복원, 대화합치기, 메시지합치기, 설정합치기, 상한맞추기,
@@ -287,6 +287,17 @@ describe('여러 창 합치기', () => {
       // 이 창이 받는 중인 답(진행중)은 바꾸지 않는다
       const 내것 = [질('q', 1), 답('a', 2, { 내용: '받는 중', 진행중: true })]
       expect(메시지합치기(내것, 다른쪽)).toBe(내것)
+    })
+
+    it('한 대화의 메시지를 합치지 못해도 대화합치기는 실패하지 않고 그 대화만 더 최근 사본을 쓴다', () => {
+      const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const 이상한 = { id: 't', 제목: '', 생성시각: 1, 수정시각: 9, 메시지: [null] }
+      const 내탭 = { id: 't', 제목: '', 생성시각: 1, 수정시각: 5, 메시지: [질('q', 1)] }
+      const 다른탭 = { id: 'u', 제목: '', 생성시각: 2, 수정시각: 5, 메시지: [질('q2', 1)] }
+      const 결과 = 대화합치기({ 탭목록: [내탭, 다른탭] }, { 탭목록: [이상한, { ...다른탭, 메시지: [질('q2', 1), 답('a2', 2)] }] })
+      expect(결과.탭목록.find((t) => t.id === 't').메시지).toEqual([null])
+      expect(결과.탭목록.find((t) => t.id === 'u').메시지.map((m) => m.id)).toEqual(['q2', 'a2'])
+      오류.mockRestore()
     })
 
     it('대화합치기는 남의 사본을 바꾸지 않는다', () => {

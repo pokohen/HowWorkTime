@@ -4,7 +4,7 @@ import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
 const emit = defineEmits(['보냄', '설정열기'])
-const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패 } = useAssistant()
+const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 합치기실패 } = useAssistant()
 
 const 입력창 = ref(null)
 const 입력 = ref('')
@@ -102,7 +102,8 @@ defineExpose({ 포커스, 채우기 })
         </svg>
       </button>
     </div>
-    <p v-if="저장실패" class="composer-hint composer-hint--warn" role="status">⚠ 대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>
+    <p v-if="합치기실패" class="composer-hint composer-hint--warn" role="status">⚠ 다른 창에서 저장한 대화를 읽지 못했어요. 이 창의 대화로 저장되니, 다른 창의 대화가 필요하면 이 창을 새로고침해 주세요</p>
+    <p v-else-if="저장실패" class="composer-hint composer-hint--warn" role="status">⚠ 대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>
     <p v-else class="composer-hint">Enter 전송 · Shift+Enter 줄바꿈 · 대화는 이 브라우저에 저장돼요</p>
   </footer>
 </template>
