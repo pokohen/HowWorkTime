@@ -38,7 +38,7 @@ describe('쓰기재시도', () => {
     expect(다시쓰기).toHaveBeenCalledTimes(1)
   })
 
-  it('이 키 이벤트는 합치기를 먼저 부른 뒤 그 상태로 판단하고(합치기가 false·예외면 하지 않음), 다른 키는 늘리기만 하면 하지 않는다', async () => {
+  it('이 키 이벤트는 합치기를 먼저 부른 뒤 그 상태로 판단하고, 다른 키는 늘리기만 하면 하지 않는다', async () => {
     const 다시쓰기 = vi.fn()
     let 남음 = true
     const 순서 = []
