@@ -4,11 +4,11 @@ import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
 const emit = defineEmits(['보냄', '설정열기'])
-const { 키있음, 전송중, 활성탭응답중, 전송, 중단, 저장실패 } = useAssistant()
+const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패 } = useAssistant()
 
 const 입력창 = ref(null)
 const 입력 = ref('')
-const 보낼수있음 = computed(() => 키있음.value && !전송중.value && 입력.value.trim().length > 0)
+const 보낼수있음 = computed(() => 키있음.value && !전송중.value && !활성탭다른창받는중.value && 입력.value.trim().length > 0)
 
 function 높이맞춤() {
   const el = 입력창.value
@@ -56,7 +56,7 @@ defineExpose({ 포커스, 채우기 })
         v-model="입력"
         class="composer-input"
         rows="1"
-        :placeholder="키있음 ? '예: 다음 달 연휴에 뭐 하면 좋을까?' : '먼저 설정에서 API 키를 넣어 주세요'"
+        :placeholder="!키있음 ? '먼저 설정에서 API 키를 넣어 주세요' : 활성탭다른창받는중 ? '다른 창에서 이 대화의 답을 받는 중이에요' : '예: 다음 달 연휴에 뭐 하면 좋을까?'"
         :disabled="!키있음"
         aria-label="메시지 입력"
         @input="높이맞춤"

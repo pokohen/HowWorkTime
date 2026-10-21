@@ -97,7 +97,7 @@ async function 쪽가져오기(연도, 쪽) {
   } catch {
     const 요약 = 글.replace(/\s+/g, " ").slice(0, 160);
     // 키·계정·한도 문제면 다시 보내도 같다. 그 밖의 XML 오류 페이지(일시 장애)는 재시도한다
-    const 키문제 = /SERVICE_KEY|NOT_REGISTERED|UNAUTHORIZED|ACCESS_DENIED|DEADLINE_HAS_EXPIRED|UNREGISTERED_IP|LIMITED_NUMBER_OF_SERVICE_REQUESTS/i.test(글);
+    const 키문제 = /SERVICE_KEY|NOT_REGISTERED|UNAUTHORIZED|ACCESS_DENIED|DEADLINE_HAS_EXPIRED|UNREGISTERED_IP|LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS/i.test(글); // 하루 한도. 초당 한도(…_PER_SECOND_…)는 재시도
     throw Object.assign(
       new Error(`JSON 이 아닌 응답${키문제 ? " — 서비스 키·활용 신청 기간·호출 한도를 확인하세요" : ""} (${연도}년): ${요약}`),
       키문제 ? { status: 400 } : {},

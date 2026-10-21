@@ -16,10 +16,9 @@ export function 새탭(시각 = Date.now()) {
   return { id: 새ID(), 제목: '', 생성시각: 시각, 수정시각: 시각, 메시지: [] }
 }
 
-/** 삭제 기록 보관 상한. 오래된 기록부터 버린다 */
-const 삭제기록최대 = 100
-/** 다른 창에서 '받는 중'으로 저장된 답이 이보다 오래되면 그 창이 닫힌 것으로 보고 중단됨으로 본다 */
-const 받는중유효시간 = 10 * 60 * 1000
+/** 삭제 기록 보관: 개수 상한과 기간. 둘 다 넘은 기록부터 버린다 (그보다 오래 열어 둔 창의 옛 대화는 되살아날 수 있다) */
+const 삭제기록최대 = 500
+const 삭제기록기간 = 30 * 24 * 60 * 60 * 1000
 
 /** 문자열을 보이는 글자(grapheme) 단위로 나눈다. Intl.Segmenter 가 없으면 코드 포인트 단위로 */
 function 글자단위(문자열) {
@@ -69,9 +68,9 @@ export function 직렬화({ 탭목록, 활성탭ID, 삭제기록 = {} }) {
   return JSON.stringify({ 버전: 저장버전, 활성탭ID, 탭목록: 탭들, 삭제기록: 삭제기록정리(삭제기록) })
 }
 
-function 삭제기록정리(기록) {
+function 삭제기록정리(기록, 지금 = Date.now()) {
   const 항목들 = Object.entries(기록 ?? {})
-    .filter(([id, 시각]) => typeof id === 'string' && Number.isFinite(Number(시각)))
+    .filter(([id, 시각]) => typeof id === 'string' && Number.isFinite(Number(시각)) && 지금 - Number(시각) < 삭제기록기간)
     .sort((가, 나) => Number(나[1]) - Number(가[1]))
     .slice(0, 삭제기록최대)
   return Object.fromEntries(항목들.map(([id, 시각]) => [id, Number(시각)]))
@@ -80,12 +79,12 @@ function 삭제기록정리(기록) {
 /**
  * 저장된 JSON 을 상태로 되돌린다. 깨졌거나 모양이 다르면 null (호출 쪽이 기본 상태로 시작).
  * 메시지 단위로도 검증해 일부가 망가져도 나머지는 살린다.
- * '받는중' 응답은 이 창을 새로 열 때는 중단됨으로(그 요청은 이미 끊겼다), 다른 창의 저장본을 받을 때는
- * 다른창받는중으로(그 창이 아직 받고 있다) 되돌린다. 단 오래된 것은 그 창이 닫힌 것으로 보고 중단됨으로.
+ * '받는중' 응답은 지금 그 대화를 받고 있는 창이 살아 있으면(생존 신호) 다른창받는중으로, 아니면 중단됨으로 되돌린다.
+ * 그 창이 닫혔거나 이 창을 새로 연 경우(그 요청은 이미 끊겼다)는 생존 신호가 없으므로 중단됨이 된다.
  * @param {string|null} 문자열
- * @param {{ 다른창?: boolean, 지금?: number }} [옵션]
+ * @param {{ 살아있는탭?: Set<string> }} [옵션] 생존 신호가 살아 있는 대화 id
  */
-export function 복원(문자열, { 다른창 = false, 지금 = Date.now() } = {}) {
+export function 복원(문자열, { 살아있는탭 = new Set() } = {}) {
   if (!문자열) return null
   let 데이터
   try { 데이터 = JSON.parse(문자열) } catch { return null }
@@ -104,22 +103,16 @@ export function 복원(문자열, { 다른창 = false, 지금 = Date.now() } = {
           const 복구 = { id: typeof m.id === 'string' ? m.id : 새ID(), 역할: m.역할, 내용: m.내용, 시각: Number(m.시각) || 0 }
           if (typeof m.오류 === 'string') 복구.오류 = m.오류
           if (m.중단됨 === true) 복구.중단됨 = true
+          else if (m.받는중 === true) {
+            if (살아있는탭.has(탭.id)) 복구.다른창받는중 = true
+            else 복구.중단됨 = true
+          }
           if (m.잘림 === true) 복구.잘림 = true
           return 복구
         }),
-      _받는중: 탭.메시지.filter((m) => m?.받는중 === true).map((m) => m.id),
     }))
-    .map(({ _받는중, ...탭 }) => {
-      const 살아있음 = 다른창 && 지금 - 탭.수정시각 < 받는중유효시간
-      for (const m of 탭.메시지) {
-        if (!_받는중.includes(m.id)) continue
-        if (살아있음) m.다른창받는중 = true
-        else m.중단됨 = true
-      }
-      return 탭
-    })
   const 삭제기록 = 삭제기록정리(데이터.삭제기록)
-  if (탭목록.length === 0) return 다른창 ? { 탭목록: [], 활성탭ID: null, 삭제기록 } : null
+  if (탭목록.length === 0) return null // 창은 늘 대화를 하나 이상 가지므로 빈 목록은 깨진 저장값으로 본다
 
   const 활성탭ID = 탭목록.some((탭) => 탭.id === 데이터.활성탭ID) ? 데이터.활성탭ID : 탭목록[탭목록.length - 1].id
   return { 탭목록, 활성탭ID, 삭제기록 }
@@ -131,11 +124,12 @@ export function 복원(문자열, { 다른창 = false, 지금 = Date.now() } = {
  * 통째로 바꿔치지 않으므로 한 창의 옛 목록이 다른 창의 새 대화를 지우지 않는다.
  * @param {{ 탭목록: Array, 삭제기록?: Record<string, number> }} 내것
  * @param {{ 탭목록: Array, 삭제기록?: Record<string, number> } | null} 남의것
- * @param {{ 고정ID?: string|null }} [옵션] 고정ID: 이 창에서 지금 받는 중인 탭. 늘 내 것을 쓴다
+ * 상한(탭최대)을 넘으면 오래된 대화부터 버리되 고정ID 는 지키고, 버린 대화는 삭제 기록에 남겨 창마다 같은 것을 버리게 한다.
+ * @param {{ 고정ID?: string|null, 지금?: number }} [옵션] 고정ID: 이 창에서 지금 받는 중인 탭. 늘 내 것을 쓴다
  * @returns {{ 탭목록: Array, 삭제기록: Record<string, number> }}
  */
-export function 대화합치기(내것, 남의것, { 고정ID = null } = {}) {
-  if (!남의것) return { 탭목록: 내것.탭목록, 삭제기록: 삭제기록정리(내것.삭제기록) }
+export function 대화합치기(내것, 남의것, { 고정ID = null, 지금 = Date.now() } = {}) {
+  if (!남의것) return { 탭목록: 내것.탭목록, 삭제기록: 삭제기록정리(내것.삭제기록, 지금) }
   const 삭제기록 = { ...(남의것.삭제기록 ?? {}) }
   for (const [id, 시각] of Object.entries(내것.삭제기록 ?? {})) 삭제기록[id] = Math.max(시각, 삭제기록[id] ?? 0)
 
@@ -151,8 +145,13 @@ export function 대화합치기(내것, 남의것, { 고정ID = null } = {}) {
   const 탭목록 = [...결과.values()]
     .filter((탭) => 탭.id === 고정ID || !(삭제기록[탭.id] >= 수정(탭)))
     .sort((가, 나) => (가.생성시각 ?? 0) - (나.생성시각 ?? 0))
-    .slice(-탭최대)
-  return { 탭목록, 삭제기록: 삭제기록정리(삭제기록) }
+  while (탭목록.length > 탭최대) {
+    const 버릴 = 탭목록.findIndex((탭) => 탭.id !== 고정ID)
+    if (버릴 === -1) break
+    삭제기록[탭목록[버릴].id] = Math.max(지금, 수정(탭목록[버릴]))
+    탭목록.splice(버릴, 1)
+  }
+  return { 탭목록, 삭제기록: 삭제기록정리(삭제기록, 지금) }
 }
 
 /** 제공자별 모델·키를 담는 설정. 키는 이 브라우저 localStorage 에만 머문다 */
