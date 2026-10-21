@@ -42,7 +42,6 @@ describe('쓰기재시도', () => {
     const 다시쓰기 = vi.fn()
     let 남음 = true
     const 순서 = []
-    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
     쓰기재시도(정리등록, {
       키,
       합치기: () => { 순서.push('합치기'); 남음 = false },
@@ -52,7 +51,6 @@ describe('쓰기재시도', () => {
     })
     이벤트({ key: 키, oldValue: 'xx', newValue: null })
     expect(순서).toEqual(['합치기', '판단'])
-    오류.mockRestore()
     이벤트({ key: '다른', oldValue: 'x', newValue: 'xx' })
     await vi.advanceTimersByTimeAsync(10_000)
     expect(다시쓰기).not.toHaveBeenCalled()
@@ -90,6 +88,25 @@ describe('쓰기재시도', () => {
     이벤트({ key: null })
     await vi.advanceTimersByTimeAsync(0)
     expect(다시쓰기).not.toHaveBeenCalled()
+  })
+
+  it('합치지 못한 값이 오면 앞서 미뤄 둔 재시도와 다른 키의 공간 생김으로도 그 위에 쓰지 않고, 이 창이 쓰기에 성공하면 풀린다', async () => {
+    const 다시쓰기 = vi.fn()
+    let 합침 = true
+    const r = 쓰기재시도(정리등록, { 키, 합치기: () => 합침, 쓸것있음: () => true, 다시쓰기, 떠날때다시쓰기: false })
+    r.실패함()
+    localStorage.setItem(키, 'x')
+    이벤트({ key: 키, oldValue: null, newValue: 'x' }) // 합침·늘림: 간격 뒤로 미룸
+    합침 = false
+    localStorage.setItem(키, 'xyz')
+    이벤트({ key: 키, oldValue: 'x', newValue: 'xyz' }) // 합치지 못함
+    이벤트({ key: '다른', oldValue: 'xx', newValue: null }) // 다른 키 공간 생김
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(다시쓰기).not.toHaveBeenCalled()
+    r.성공함() // 이 창이 썼다: 합치지 못한 값은 이제 없다
+    이벤트({ key: '다른', oldValue: 'xx', newValue: null })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(다시쓰기).toHaveBeenCalledTimes(1)
   })
 })
 
