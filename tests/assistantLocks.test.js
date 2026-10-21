@@ -387,6 +387,17 @@ describe('다른 창이 받는 중인 답', () => {
       실패대화 = ['x']
       저장이벤트(4) // 회복 뒤 또 실패하면 다시 기록한다
       expect(기록수()).toBe(2)
+      expect(a.합치지못한대화수.value).toBe(1)
+      a.탭삭제('x') // 지운 대화는 바로 세지 않는다
+      expect(a.합치지못한대화수.value).toBe(0)
+      실패대화 = ['y4']
+      저장이벤트(5)
+      expect(a.합치지못한대화수.value).toBe(1)
+      await vi.advanceTimersByTimeAsync(1_000) // 이 창이 저장하면(저장소가 이 창의 내용) 비운다
+      a.새탭추가()
+      a.탭삭제(a.활성탭.value.id)
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(a.합치지못한대화.value.size).toBe(0)
     } finally {
       오류.mockRestore()
       vi.doUnmock('../src/assistant/utils/assistantStorage')

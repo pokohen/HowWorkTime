@@ -1,4 +1,5 @@
 <script setup>
+import WarnIcon from '../../shared/components/WarnIcon.vue'
 import { useMonth } from '../composables/useMonth'
 import CheckBox from '../../shared/components/CheckBox.vue'
 
@@ -46,7 +47,7 @@ const {
   </section>
 
   <div v-if="!공휴일있음" class="warn-notice" role="alert">
-    ⚠ {{ 선택연도 }}년 공휴일 데이터가 없습니다. 근무일 계산에서 공휴일이 평일로 간주되어 부정확할 수 있습니다.
+    <WarnIcon />{{ 선택연도 }}년 공휴일 데이터가 없습니다. 근무일 계산에서 공휴일이 평일로 간주되어 부정확할 수 있습니다.
   </div>
 </template>
 

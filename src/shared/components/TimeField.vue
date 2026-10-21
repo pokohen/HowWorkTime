@@ -1,4 +1,5 @@
 <script setup>
+import WarnIcon from './WarnIcon.vue'
 import { computed } from 'vue'
 import { 시분파싱, 시분변환 } from '../utils/timeFormat'
 
@@ -44,8 +45,8 @@ function 정규화() {
       />
     </div>
     <p v-if="!유효" class="input-error">
-      <template v-if="결과.초과">⚠ 입력할 수 있는 범위를 넘었습니다.</template>
-      <template v-else>⚠ 형식이 올바르지 않습니다.</template>
+      <template v-if="결과.초과"><WarnIcon />입력할 수 있는 범위를 넘었습니다.</template>
+      <template v-else><WarnIcon />형식이 올바르지 않습니다.</template>
       예: <code>{{ 예시[0] }}</code> 또는 <code>{{ 콜론없는예시 }}</code>
     </p>
     <p v-else class="input-hint">

@@ -1,4 +1,5 @@
 <script setup>
+import WarnIcon from '../../shared/components/WarnIcon.vue'
 import { ref, computed, watch } from 'vue'
 import { 시분변환 } from '../../shared/utils/timeFormat'
 import { 연차단위 } from '../../shared/constants'
@@ -87,7 +88,7 @@ function 남은연차입력() {
     <template #힌트>
       <template v-if="연차예산분 === 0">현재까지 근무시간을 먼저 입력하면 그 안에서 연차를 지정할 수 있어요.</template>
       <template v-else-if="연차초과여부">
-        ⚠ 지정한 연차가 근무시간 한도를 넘어 <strong>{{ 시분변환(연차분) }}</strong>만 반영됩니다 · 출근일 −{{ 연차일수환산 }}일
+        <WarnIcon />지정한 연차가 근무시간 한도를 넘어 <strong>{{ 시분변환(연차분) }}</strong>만 반영됩니다 · 출근일 −{{ 연차일수환산 }}일
       </template>
       <template v-else-if="연차여부">
         <template v-if="연차분 > 0">지정 <strong>{{ 시분변환(연차분) }}</strong> · 출근일 −{{ 연차일수환산 }}일 · </template>남은 한도 {{ 시분변환(연차잔여분) }} / {{ 시분변환(연차예산분) }}
@@ -130,7 +131,7 @@ function 남은연차입력() {
           <span class="remaining-unit">시간</span>
         </div>
         <span id="remaining-leave-hint" class="remaining-hint" :class="{ 'remaining-hint--error': 잘못된칸.일 || 잘못된칸.시간 }">
-          <template v-if="잘못된칸.일 || 잘못된칸.시간">⚠ 숫자로 적어 주세요 (예: 7일 4시간, 0.5시간). 고치기 전까지는 저장하지 않아요</template>
+          <template v-if="잘못된칸.일 || 잘못된칸.시간"><WarnIcon />숫자로 적어 주세요 (예: 7일 4시간, 0.5시간). 고치기 전까지는 저장하지 않아요</template>
           <template v-else-if="남은연차분 == null">적어 두면 쉬는 날 플래너가 남은 연차를 알고 제안해요 · 반차 4시간, 반반차 2시간</template>
           <template v-else><strong>{{ 남은연차문장(남은연차분) }}</strong> {{ 남은연차요약 }} · 플래너가 참고해요</template>
         </span>
