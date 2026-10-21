@@ -113,11 +113,13 @@ describe('시스템프롬프트', () => {
     expect(글).toContain('연차 1일')
     expect(글).toContain('내일은 재택근무')
     expect(글).toMatch(/2월 14일 \(토\)~2월 18일 \(수\) 5일/)
+    // 연휴 줄은 '연휴 후보' 머리줄 아래 들여 쓴 묶음이다
+    expect(글).toMatch(/- 연휴 후보 \(.*\):\n  - 2월 14일/)
   })
 
   it('연휴가 없으면 없음으로, 급여주면 표시한다', () => {
     const 글 = 시스템프롬프트({ ...기본, 연휴: [], 급여주여부: true, 연차일수: 0, 재택안내: '' })
-    expect(글).toContain('- 없음')
+    expect(글).toContain('- 연휴 후보: 없음')
     expect(글).toContain('(이번 주 급여일)')
     expect(글).not.toContain('이미 지정한 연차')
   })

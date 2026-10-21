@@ -27,17 +27,16 @@ function 칸채우기({ 일, 시간 }) {
 }
 watch(남은연차, 칸채우기, { immediate: true })
 /**
- * 칸의 값. 비우면 null, 잘못 적었으면(음수·글자) 지우지 않고 그 칸의 이전 값을 지킨다.
+ * 잘못 적은 칸(음수·글자·"7,5" 등). 그 칸은 저장하지 않고 적은 글을 그대로 둔 채 오류로 표시한다.
  * (칸을 type="text" 로 둔 이유: number 입력은 "7e" 같은 잘못된 글을 빈 값으로 보고해 구분할 수 없다)
  */
-function 칸값(글, 이전) {
-  if (String(글).trim() === '') return null
-  return 입력숫자(글) ?? 이전
-}
-/** 두 칸 중 하나가 바뀌면 둘을 합쳐 다시 저장한다. 둘 다 비우면 '모름' */
+const 잘못된칸 = ref({ 일: false, 시간: false })
+const 잘못됨 = (글) => String(글).trim() !== '' && 입력숫자(글) == null
+/** 두 칸 중 하나가 바뀌면 둘을 합쳐 다시 저장한다. 둘 다 비우면 '모름'. 잘못 적은 칸이 있으면 저장하지 않는다 */
 function 남은연차입력() {
-  const 이전 = 남은연차.value
-  남은연차분.value = 남은연차분만들기(칸값(일칸.value, 이전.일), 칸값(시간칸.value, 이전.시간))
+  잘못된칸.value = { 일: 잘못됨(일칸.value), 시간: 잘못됨(시간칸.value) }
+  if (잘못된칸.value.일 || 잘못된칸.value.시간) return
+  남은연차분.value = 남은연차분만들기(일칸.value, 시간칸.value)
   칸채우기(남은연차.value) // 저장값이 전과 같으면 watch 가 안 돌므로 직접 정리한다
 }
 </script>
@@ -97,6 +96,9 @@ function 남은연차입력() {
             id="remaining-leave-days"
             v-model="일칸"
             class="remaining-input"
+            :class="{ error: 잘못된칸.일 }"
+            :aria-invalid="잘못된칸.일"
+            aria-describedby="remaining-leave-hint"
             type="text"
             inputmode="numeric"
             autocomplete="off"
@@ -108,6 +110,9 @@ function 남은연차입력() {
           <input
             v-model="시간칸"
             class="remaining-input remaining-input--hours"
+            :class="{ error: 잘못된칸.시간 }"
+            :aria-invalid="잘못된칸.시간"
+            aria-describedby="remaining-leave-hint"
             type="text"
             inputmode="decimal"
             autocomplete="off"
@@ -117,8 +122,9 @@ function 남은연차입력() {
           />
           <span class="remaining-unit">시간</span>
         </div>
-        <span class="remaining-hint">
-          <template v-if="남은연차분 == null">적어 두면 쉬는 날 플래너가 남은 연차를 알고 제안해요 · 반차 4시간, 반반차 2시간</template>
+        <span id="remaining-leave-hint" class="remaining-hint" :class="{ 'remaining-hint--error': 잘못된칸.일 || 잘못된칸.시간 }">
+          <template v-if="잘못된칸.일 || 잘못된칸.시간">⚠ 숫자로 적어 주세요 (예: 7일 4시간, 0.5시간). 고치기 전까지는 저장하지 않아요</template>
+          <template v-else-if="남은연차분 == null">적어 두면 쉬는 날 플래너가 남은 연차를 알고 제안해요 · 반차 4시간, 반반차 2시간</template>
           <template v-else><strong>{{ 남은연차문장(남은연차분) }}</strong> {{ 남은연차요약 }} · 플래너가 참고해요</template>
         </span>
       </div>
@@ -256,6 +262,8 @@ function 남은연차입력() {
   line-height: 1.5;
 }
 .remaining-hint strong { color: var(--text-soft); font-weight: 700; }
+.remaining-hint--error { color: var(--tint-red-text); }
+.remaining-input.error { border-color: var(--tint-red-text); }
 @media (min-width: 560px) {
   .remaining-hint { flex: 1 1 auto; }
 }

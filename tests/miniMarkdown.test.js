@@ -16,7 +16,10 @@ describe('마크다운HTML', () => {
     expect(마크다운HTML('3. 셋')).toBe('<p>3. 셋</p>')
     // 빈 줄로 띄운 번호 항목은 한 목록으로 이어진다
     expect(마크다운HTML('1. 강릉\n\n2. 속초\n\n3. 여수')).toBe('<ol><li>강릉</li><li>속초</li><li>여수</li></ol>')
-    expect(마크다운HTML('1. 하나\n\n문단\n\n2. 둘')).toBe('<ol><li>하나</li></ol><p>문단</p><p>2. 둘</p>')
+    // 설명 문단을 사이에 두고 바로 다음 번호가 오면 이어서 센다 (아무 번호나는 아니다)
+    expect(마크다운HTML('1. 하나\n\n문단\n\n2. 둘')).toBe('<ol><li>하나</li></ol><p>문단</p><ol start="2"><li>둘</li></ol>')
+    expect(마크다운HTML('1. a\n2. b\n\n설명 문단\n\n3. c')).toBe('<ol><li>a</li><li>b</li></ol><p>설명 문단</p><ol start="3"><li>c</li></ol>')
+    expect(마크다운HTML('1. 하나\n\n문단\n\n5. 다섯')).toBe('<ol><li>하나</li></ol><p>문단</p><p>5. 다섯</p>')
     // 모델이 번호를 1 로만 써도 마크다운처럼 이어서 센다
     expect(마크다운HTML('1. 강릉\n\n1. 속초\n\n1. 여수')).toBe('<ol><li>강릉</li><li>속초</li><li>여수</li></ol>')
     expect(마크다운HTML('1. 하나\n2. 둘\n\n3. 셋')).toBe('<ol><li>하나</li><li>둘</li><li>셋</li></ol>')
@@ -34,7 +37,7 @@ describe('마크다운HTML', () => {
 
   it('빈 줄 뒤 들여쓴 설명·하위 글머리는 항목에 남고, 다음 번호도 이어진다', () => {
     const 설명 = '1. **강릉**\n\n   바다가 가깝다\n\n2. **속초**\n\n   설악산'
-    expect(마크다운HTML(설명)).toBe('<ol><li><strong>강릉</strong> 바다가 가깝다</li><li><strong>속초</strong> 설악산</li></ol>')
+    expect(마크다운HTML(설명)).toBe('<ol><li><strong>강릉</strong><p>바다가 가깝다</p></li><li><strong>속초</strong><p>설악산</p></li></ol>')
     expect(마크다운텍스트(설명)).toBe('1. 강릉\n  바다가 가깝다\n2. 속초\n  설악산')
     const 하위 = '1. 첫째 날\n\n   - 아침 산책\n   - 점심 회\n\n2. 둘째 날'
     expect(마크다운HTML(하위)).toBe('<ol><li>첫째 날<ul><li>아침 산책</li><li>점심 회</li></ul></li><li>둘째 날</li></ol>')
@@ -46,8 +49,20 @@ describe('마크다운HTML', () => {
     expect(마크다운텍스트(입력)).toBe('1. 첫째 날\n  1. 아침\n  2. 점심\n2. 둘째 날')
   })
 
-  it('하위 항목보다 덜 들여쓴 이어지는 줄은 부모 항목에 붙는다', () => {
-    expect(마크다운HTML('1. 첫째 날\n   - 아침 산책\n  오후는 자유 시간')).toBe('<ol><li>첫째 날 오후는 자유 시간<ul><li>아침 산책</li></ul></li></ol>')
+  it('하위 목록 뒤에 이어지는 줄은 부모 항목에, 원래 순서대로 남는다', () => {
+    expect(마크다운HTML('1. 첫째 날\n   - 아침 산책\n  오후는 자유 시간')).toBe('<ol><li>첫째 날<ul><li>아침 산책</li></ul><p>오후는 자유 시간</p></li></ol>')
+    expect(마크다운텍스트('1. a\n   - s\n   계속')).toBe('1. a\n  • s\n  계속')
+  })
+
+  it('하위 목록은 몇 단계든 제자리에 중첩된다', () => {
+    const 입력 = '1. a\n   - s1\n     - ss\n   - s2'
+    expect(마크다운HTML(입력)).toBe('<ol><li>a<ul><li>s1<ul><li>ss</li></ul></li><li>s2</li></ul></li></ol>')
+    expect(마크다운텍스트(입력)).toBe('1. a\n  • s1\n    • ss\n  • s2')
+  })
+
+  it('목록 안의 코드 블록·구분선도 항목에 남고 뒤 번호는 이어진다', () => {
+    expect(마크다운HTML('1. a\n   ```\n   x\n   ```\n2. b')).toBe('<ol><li>a<pre><code>x</code></pre></li><li>b</li></ol>')
+    expect(마크다운HTML('- a\n  ---\n- b')).toBe('<ul><li>a<hr></li><li>b</li></ul>')
   })
 
   it('글머리 목록 뒤 새 번호 목록은 1 부터 시작한다', () => {
