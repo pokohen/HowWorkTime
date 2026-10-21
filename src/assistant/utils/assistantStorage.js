@@ -79,12 +79,11 @@ function 삭제기록정리(기록, 지금 = Date.now()) {
 /**
  * 저장된 JSON 을 상태로 되돌린다. 깨졌거나 모양이 다르면 null (호출 쪽이 기본 상태로 시작).
  * 메시지 단위로도 검증해 일부가 망가져도 나머지는 살린다.
- * '받는중' 응답은 지금 그 대화를 받고 있는 창이 살아 있으면(생존 신호) 다른창받는중으로, 아니면 중단됨으로 되돌린다.
- * 그 창이 닫혔거나 이 창을 새로 연 경우(그 요청은 이미 끊겼다)는 생존 신호가 없으므로 중단됨이 된다.
+ * '받는중' 응답은 다른창받는중으로 되돌린다. 정말 어느 창이 받고 있는지는 부르는 쪽이 잠금(Web Locks)으로 곧바로 확인해,
+ * 받던 창이 없으면 중단됨으로 바꾼다 (useAssistant 의 '다른 창이 받는 중인 답 지켜보기').
  * @param {string|null} 문자열
- * @param {{ 살아있는탭?: Set<string> }} [옵션] 생존 신호가 살아 있는 대화 id
  */
-export function 복원(문자열, { 살아있는탭 = new Set() } = {}) {
+export function 복원(문자열) {
   if (!문자열) return null
   let 데이터
   try { 데이터 = JSON.parse(문자열) } catch { return null }
@@ -103,10 +102,7 @@ export function 복원(문자열, { 살아있는탭 = new Set() } = {}) {
           const 복구 = { id: typeof m.id === 'string' ? m.id : 새ID(), 역할: m.역할, 내용: m.내용, 시각: Number(m.시각) || 0 }
           if (typeof m.오류 === 'string') 복구.오류 = m.오류
           if (m.중단됨 === true) 복구.중단됨 = true
-          else if (m.받는중 === true) {
-            if (살아있는탭.has(탭.id)) 복구.다른창받는중 = true
-            else 복구.중단됨 = true
-          }
+          else if (m.받는중 === true) 복구.다른창받는중 = true
           if (m.잘림 === true) 복구.잘림 = true
           return 복구
         }),

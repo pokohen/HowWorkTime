@@ -1,10 +1,10 @@
 import { ref, computed, watch } from 'vue'
-import { 어시스턴트저장키, 어시스턴트생존접두사 } from '../../shared/constants'
+import { 어시스턴트저장키, 어시스턴트잠금접두사 } from '../../shared/constants'
 import { 대화요청 } from '../ai/client'
 import { 시스템프롬프트 } from '../utils/systemPrompt'
 import { 이력만들기 } from '../utils/history'
 import { 새탭, 새ID, 제목추출, 탭이름, 직렬화, 복원, 대화합치기, 상한맞추기 } from '../utils/assistantStorage'
-import { 저장소읽기, 저장소쓰기, 저장소삭제, 저장소키목록, 다른창저장감시 } from '../../shared/utils/storage'
+import { 저장소읽기, 저장소쓰기, 다른창저장감시 } from '../../shared/utils/storage'
 import { 모듈상태 } from '../../shared/composables/moduleState'
 import { useAssistantSettings } from './useAssistantSettings'
 import { usePlannerContext } from './usePlannerContext'
@@ -13,23 +13,25 @@ import { usePlannerContext } from './usePlannerContext'
 const 이력최대 = 40
 /** 스트리밍 중 조각마다 저장하지 않도록 묶는 시간(ms) */
 const 저장지연 = 400
-/** 생존 신호를 남기는 간격과, 신호가 이보다 오래되면 그 창이 더는 받지 않는 것으로 보는 시간(ms) */
-const 생존주기 = 5_000
-// 유효 시간은 넉넉히: 숨겨진 창은 타이머가 분 단위로 늦춰질 수 있다 (받는 동안은 답 조각이 올 때도 신호를 갱신한다).
-// 창을 닫으면 신호를 바로 지우므로, 이 시간은 비정상 종료 때만 기다리게 된다
-const 생존유효 = 2 * 60_000
+/**
+ * '받는 중' 판단은 브라우저 Web Locks 로 한다. 받는 창이 요청 내내 그 대화 이름의 잠금을 쥐고, 다른 창은 그 잠금이 풀리기를
+ * 기다린다. 창을 닫거나 비정상 종료·탭 버리기가 일어나도 브라우저가 잠금을 풀어 주고, 숨겨진 창의 타이머 지연과도 무관하다.
+ * (Web Locks 가 없는 환경에서는 다른 창이 받는 중인지 알 수 없으므로 중단됨으로 본다)
+ */
+const 잠금지원 = typeof navigator !== 'undefined' && typeof navigator.locks?.request === 'function'
+const 잠금이름 = (탭ID) => `${어시스턴트잠금접두사}${탭ID}`
 
-/** 신호 시각이 아직 유효한지 (읽는 쪽·지우는 쪽이 같은 기준을 쓴다) */
-const 신호유효 = (시각, 지금 = Date.now()) => Number.isFinite(시각) && 지금 - 시각 < 생존유효
-/** 지금 어느 창이든 받고 있는 대화 id. 오래된 신호 키는 지나가며 치운다 */
-function 살아있는탭() {
-  const 살아있음 = new Set()
-  for (const 키 of 저장소키목록(어시스턴트생존접두사)) {
-    if (신호유효(Number(저장소읽기(키)))) 살아있음.add(키.slice(어시스턴트생존접두사.length))
-    else 저장소삭제(키)
-  }
-  return 살아있음
+/** 이 대화를 받는 동안 잠금을 쥔다. 돌려준 함수를 부르면 놓는다 */
+async function 받는동안잠그기(탭ID) {
+  if (!잠금지원) return () => {}
+  let 놓기
+  const 끝 = new Promise((풀림) => { 놓기 = 풀림 })
+  await new Promise((얻음) => { navigator.locks.request(잠금이름(탭ID), () => { 얻음(); return 끝 }) })
+  return 놓기
 }
+
+/** 대화 목록에서 다른 창이 받는 중인 대화 id (마지막 답이 다른창받는중) */
+const 다른창받는탭ID = (목록) => 목록.filter((탭) => 탭.메시지.at(-1)?.다른창받는중).map((탭) => 탭.id)
 
 /** 하단 알림이 떠 있는 시간(ms) */
 const 알림표시시간 = 12_000
@@ -47,8 +49,8 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   function 토글() { 열림.value ? 닫기() : 열기() }
 
   // ── 대화 탭 ──────────────────────────────────────────────
-  // 다른 창이 지금 받고 있는 답은 받는 중으로, 이 창을 새로 열기 전 끊긴 답은 중단됨으로 (생존 신호로 가린다)
-  const 저장본 = 복원(저장소읽기(어시스턴트저장키), { 살아있는탭: 살아있는탭() })
+  // 저장본의 '받는중' 답은 일단 다른 창에서 받는 중으로 두고, 아래 잠금 확인이 곧바로 끊긴 것은 중단됨으로 바꾼다
+  const 저장본 = 복원(저장소읽기(어시스턴트저장키))
   const 탭목록 = ref(저장본?.탭목록 ?? [새탭()])
   const 활성탭ID = ref(저장본?.활성탭ID ?? 탭목록.value[0].id)
   const 활성탭 = computed(() => 탭목록.value.find((탭) => 탭.id === 활성탭ID.value) ?? 탭목록.value[0])
@@ -75,7 +77,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       // 새 대화를 넣고 상한에 맞춘다. 어느 창이든 받는 중인 대화는 버리지 않는다 (공용 규칙: 상한맞추기)
       const 목록 = [...탭목록.value, 탭]
       const 기록 = { ...삭제기록.value }
-      상한맞추기(목록, 기록, { 지킬ID: new Set([...살아있는탭(), 탭.id, ...(응답중탭ID.value ? [응답중탭ID.value] : [])]) })
+      상한맞추기(목록, 기록, { 지킬ID: new Set([...다른창받는탭ID(목록), 탭.id, ...(응답중탭ID.value ? [응답중탭ID.value] : [])]) })
       탭목록.value = 목록
       삭제기록.value = 기록
       저장예약()
@@ -121,8 +123,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   function 다른창것과합치기(문자열) {
     if (!문자열 || 문자열 === 마지막저장본) return
     마지막저장본 = 문자열
-    const 살아있음 = 살아있는탭() // 한 번만 읽어 복원과 상한 정리가 같은 집합을 쓰게 한다
-    const 남의것 = 복원(문자열, { 살아있는탭: 살아있음 })
+    const 남의것 = 복원(문자열)
     if (!남의것) return
     // 이 창이 받고 있는 대화를 다른 창에서 지웠으면 요청을 끊고 지운 쪽을 따른다 (끝난 뒤 되살아나지 않게)
     const 받는탭 = 탭목록.value.find((탭) => 탭.id === 응답중탭ID.value)
@@ -131,7 +132,9 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     if (다른창에서지움) 중단()
     // 받는 대화를 이 창에서 이미 지웠으면(목록에 없음) 고정하지 않는다. 고정하면 남의 사본이 되살아난다
     const 고정ID = 받는탭 && !다른창에서지움 ? 받는탭.id : null
-    합친것적용(대화합치기({ 탭목록: 탭목록.value, 삭제기록: 삭제기록.value }, 남의것, { 고정ID, 살아있는탭: 살아있음 }))
+    // 상한에서 버리지 않을 대화: 어느 쪽에서든 다른 창이 받는 중인 대화
+    const 받는중 = new Set([...다른창받는탭ID(탭목록.value), ...다른창받는탭ID(남의것.탭목록)])
+    합친것적용(대화합치기({ 탭목록: 탭목록.value, 삭제기록: 삭제기록.value }, 남의것, { 고정ID, 살아있는탭: 받는중 }))
   }
   function 저장() {
     clearTimeout(저장타이머)
@@ -155,13 +158,9 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   watch(활성탭ID, 저장예약)
   watch(열림, (값) => { if (!값) 즉시저장() })
   if (typeof window !== 'undefined') {
-    // 떠날 때: 받은 데까지 저장하고, 이 창의 생존 신호를 지운다 (남은 신호가 다른 창·새로 연 창을 15초 동안 잠그지 않게)
-    const 떠남 = () => {
-      즉시저장()
-      if (응답중탭ID.value) 생존신호(응답중탭ID.value, false)
-    }
-    window.addEventListener('pagehide', 떠남)
-    정리등록(() => window.removeEventListener('pagehide', 떠남))
+    // 떠날 때 받은 데까지 저장한다 (잠금은 브라우저가 풀어 준다)
+    window.addEventListener('pagehide', 즉시저장)
+    정리등록(() => window.removeEventListener('pagehide', 즉시저장))
     // 다른 창이 대화를 저장하면 대화 단위로 합친다. 이 창의 아직 저장 안 한 변경(예약된 저장)은 그대로 살아 있다
     정리등록(다른창저장감시(어시스턴트저장키, 다른창것과합치기))
   }
@@ -214,50 +213,34 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   /** 보고 있는 대화의 답을 다른 창이 받는 중인지. 그동안은 이 창에서 보내지 않는다 (두 창이 같은 대화에 쓰면 한쪽이 사라진다) */
   const 활성탭다른창받는중 = computed(() => Boolean(활성탭.value.메시지.at(-1)?.다른창받는중))
 
-  // ── 생존 신호 ────────────────────────────────────────────
-  // 받는 동안 이 대화의 생존 신호를 주기적으로 남긴다. 다른 창은 이걸로 '받는 중'을 판단하고, 신호가 끊기면 중단됨으로 바꾼다
-  let 생존타이머 = null
-  let 마지막신호 = 0
-  // 예전 판(대화별 키가 아닌 한 키)에 남은 생존 기록은 치운다
-  저장소삭제('how-work-time:assistant-live')
-  function 생존신호(탭ID, 켜기) {
-    const 키 = `${어시스턴트생존접두사}${탭ID}`
-    if (켜기) 저장소쓰기(키, String(Date.now()))
-    else 저장소삭제(키)
+  // ── 다른 창이 받는 중인 답 지켜보기 ─────────────────────────
+  // 그 대화의 잠금이 풀리기를 기다렸다가(받던 창이 끝났거나 닫힘), 저장본을 다시 읽어 끝난 답이면 반영하고
+  // 아니면(닫히거나 죽음) 중단됨으로 바꿔 다시 시도할 수 있게 한다. 받던 창은 최종 저장 뒤에 잠금을 놓는다
+  const 지켜보는중 = new Set()
+  const 지켜보기중단 = new AbortController()
+  function 끊김처리(탭ID) {
+    지켜보는중.delete(탭ID)
+    if (폐기됨) return
+    다른창것과합치기(저장소읽기(어시스턴트저장키))
+    const 탭 = 탭목록.value.find((t) => t.id === 탭ID)
+    const m = 탭?.메시지.at(-1)
+    if (!m?.다른창받는중) return
+    delete m.다른창받는중
+    m.중단됨 = true
+    고침(탭)
+    저장예약()
   }
-  watch(응답중탭ID, (지금탭, 이전탭) => {
-    clearInterval(생존타이머)
-    생존타이머 = null
-    if (이전탭) 생존신호(이전탭, false)
-    if (지금탭) {
-      생존신호(지금탭, true)
-      생존타이머 = setInterval(() => 생존신호(지금탭, true), 생존주기)
-    }
-  }, { flush: 'sync' })
-  // 다른 창이 받던 답의 생존 신호가 끊겼으면(창을 닫음) 중단됨으로 바꿔 다시 시도할 수 있게 한다.
-  // '다른 창에서 받는 중'인 답이 있을 때만 돈다. 바꾼 결과는 저장해 창마다 같은 판단을 하게 한다
-  const 다른창받는탭 = computed(() => 탭목록.value.filter((탭) => 탭.메시지.at(-1)?.다른창받는중))
-  let 끊김타이머 = null
-  function 끊김점검() {
-    const 살아있음 = 살아있는탭()
-    for (const 탭 of 다른창받는탭.value) {
-      if (살아있음.has(탭.id)) continue
-      const m = 탭.메시지.at(-1)
-      delete m.다른창받는중
-      m.중단됨 = true
-      고침(탭)
-      저장예약()
+  function 다른창받는답지켜보기() {
+    for (const 탭ID of 다른창받는탭ID(탭목록.value)) {
+      if (지켜보는중.has(탭ID)) continue
+      지켜보는중.add(탭ID)
+      if (!잠금지원) { 끊김처리(탭ID); continue }
+      navigator.locks.request(잠금이름(탭ID), { signal: 지켜보기중단.signal }, () => 끊김처리(탭ID))
+        .catch(() => 지켜보는중.delete(탭ID)) // 정리(HMR)로 기다림을 그만둔 경우
     }
   }
-  watch(() => 다른창받는탭.value.length > 0, (있음) => {
-    clearInterval(끊김타이머)
-    끊김타이머 = 있음 ? setInterval(끊김점검, 생존주기) : null
-  }, { immediate: true })
-  정리등록(() => {
-    clearInterval(끊김타이머)
-    clearInterval(생존타이머)
-    if (응답중탭ID.value) 생존신호(응답중탭ID.value, false)
-  })
+  watch(() => 다른창받는탭ID(탭목록.value).join(','), 다른창받는답지켜보기, { immediate: true })
+  정리등록(() => 지켜보기중단.abort())
 
   async function 전송(텍스트) {
     const 내용 = String(텍스트 ?? '').trim()
@@ -283,6 +266,8 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     const 컨트롤러 = new AbortController()
     중단컨트롤러 = 컨트롤러
     응답중탭ID.value = 탭.id
+    // 받는 동안 이 대화의 잠금을 쥔다 (다른 창이 '받는 중'을 아는 기준)
+    const 잠금놓기 = await 받는동안잠그기(탭.id)
     try {
       const { 잘림 } = await 대화요청({
         제공자: 제공자.value,
@@ -291,11 +276,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
         시스템: 시스템프롬프트(컨텍스트수집()),
         메시지: 이력,
         신호: 컨트롤러.signal,
-        조각: (조각) => {
-          응답.내용 += 조각 // 조각마다 전체를 직렬화하지 않는다. 끝·닫기·pagehide 때 저장
-          // 숨겨진 창은 타이머가 늦춰지므로 조각이 올 때도 생존 신호를 갱신한다 (최대 초당 1번)
-          if (Date.now() - 마지막신호 > 1000) { 마지막신호 = Date.now(); 생존신호(탭.id, true) }
-        },
+        조각: (조각) => { 응답.내용 += 조각 }, // 조각마다 전체를 직렬화하지 않는다. 끝·닫기·pagehide 때 저장
       })
       if (잘림) 응답.잘림 = true
       // 오류 없이 끝났는데 글자가 하나도 없으면(빈 end_turn, parts 없는 STOP) 빈 말풍선으로 두지 않고 다시 시도할 수 있게 한다
@@ -309,8 +290,9 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       고침(탭)
       전송중.value = false
       중단컨트롤러 = null
-      // 마지막 상태를 먼저 저장하고 나서 생존 신호를 지운다 (그 사이 다른 창이 끝난 답을 중단됨으로 보지 않게)
+      // 마지막 상태를 먼저 저장하고 나서 잠금을 놓는다 (기다리던 창이 저장본을 읽을 때 끝난 답이 있게)
       저장()
+      잠금놓기()
       응답중탭ID.value = null
       // 모달이 닫혀 있거나 다른 탭을 보고 있으면 끝났다고 알려 준다
       // (사용자가 직접 중단했거나 그 사이 탭을 지운 경우는 제외)

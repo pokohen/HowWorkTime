@@ -23,8 +23,9 @@ async function 보내기() {
   await nextTick()
   높이맞춤()
   emit('보냄')
-  // 그 사이 상황이 바뀌어(다른 창이 이 대화를 받기 시작 등) 보내지 못했으면 적은 글을 되살린다
-  const 보냄 = await 전송(내용)
+  // 그 사이 상황이 바뀌어(다른 창이 이 대화를 받기 시작 등) 보내지 못했거나 도중에 실패하면 적은 글을 되살린다
+  let 보냄 = false
+  try { 보냄 = await 전송(내용) } catch { 보냄 = false }
   if (보냄 === false && !입력.value) {
     입력.value = 내용
     await nextTick()

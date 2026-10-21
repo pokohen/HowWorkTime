@@ -44,15 +44,15 @@ describe('직렬화 → 복원', () => {
     const 저장 = JSON.parse(직렬화({ 탭목록: [탭], 활성탭ID: 탭.id }))
     expect(저장.탭목록[0].메시지).toHaveLength(5)
     expect(저장.탭목록[0].메시지.some((m) => '진행중' in m)).toBe(false)
-    // 받는 중이던 응답은 '받는중' 으로 저장하고, 이 창을 새로 열면 중단됨으로 본다 (그 요청은 이미 끊겼다)
+    // 받는 중이던 응답은 '받는중' 으로 저장하고, 복원하면 일단 다른 창이 받는 중으로 본다 (잠금 확인이 곧 가린다)
     expect(저장.탭목록[0].메시지[1]).toMatchObject({ 받는중: true, 내용: '' })
     expect(저장.탭목록[0].메시지[2]).toMatchObject({ 오류: '키 오류' })
     expect(저장.탭목록[0].메시지[3]).toMatchObject({ 중단됨: true, 내용: '일부만' })
     expect(저장.탭목록[0].메시지[4]).toMatchObject({ 받는중: true, 잘림: true, 내용: '받는 중' })
     const 다시연 = 복원(JSON.stringify(저장)).탭목록[0].메시지
-    expect(다시연[1]).toMatchObject({ 중단됨: true })
-    expect(다시연[4]).toMatchObject({ 중단됨: true, 잘림: true })
-    expect(다시연.some((m) => m.다른창받는중)).toBe(false)
+    expect(다시연[1]).toMatchObject({ 다른창받는중: true })
+    expect(다시연[3]).toMatchObject({ 중단됨: true })
+    expect(다시연[4]).toMatchObject({ 다른창받는중: true, 잘림: true })
   })
 
   it('상한을 넘는 오래된 메시지·탭은 잘라낸다', () => {
@@ -129,17 +129,14 @@ describe('저장소 보호', () => {
 describe('여러 창 합치기', () => {
   const 탭 = (id, 수정시각, 내용 = id) => ({ id, 제목: id, 생성시각: 수정시각, 수정시각, 메시지: [메시지('user', 내용)] })
 
-  it('받는중 답은 그 대화의 생존 신호가 살아 있으면 다른 창이 받는 중, 아니면 중단됨', () => {
+  it('받는중 답은 다른 창이 받는 중으로 복원한다 (다시 시도 대상이 아님)', () => {
     const 저장 = 직렬화({ 탭목록: [{ ...탭('a', Date.now()), 메시지: [메시지('user', 'q'), 메시지('assistant', '', { 진행중: true })] }], 활성탭ID: 'a' })
-    const 받은 = 복원(저장, { 살아있는탭: new Set(['a']) }).탭목록[0].메시지[1]
+    const 받은 = 복원(저장).탭목록[0].메시지[1]
     expect(받은.다른창받는중).toBe(true)
     expect(받은.중단됨).toBeUndefined()
-    const 죽은 = 복원(저장).탭목록[0].메시지[1]
-    expect(죽은.중단됨).toBe(true)
-    expect(죽은.다른창받는중).toBeUndefined()
     // id 가 없거나 숫자인 옛 데이터도 받는중 표시를 잃지 않는다
     const 옛 = JSON.stringify({ 탭목록: [{ id: 'a', 메시지: [{ id: 7, 역할: 'assistant', 내용: '', 받는중: true }] }] })
-    expect(복원(옛).탭목록[0].메시지[0].중단됨).toBe(true)
+    expect(복원(옛).탭목록[0].메시지[0].다른창받는중).toBe(true)
   })
 
   it('상한을 넘으면 받는 중인 대화는 지키고, 버린 대화는 삭제 기록에 남긴다', () => {
