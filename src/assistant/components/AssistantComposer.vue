@@ -109,7 +109,7 @@ defineExpose({ 포커스, 채우기 })
     <p v-if="새판감지" class="composer-hint composer-hint--warn" role="status">
       <WarnIcon />플래너가 새 버전으로 저장한 대화가 있어 이 창에서는 저장하거나 보내지 않아요. 새로고침해 주세요.
       <template v-if="덮어쓰기실패 === '공간'">이 창의 대화를 저장하지 못해 덮어쓰지 못했어요(저장 공간이 가득 찼거나 브라우저가 막음). </template>
-      <template v-else-if="덮어쓰기실패">뜻밖의 오류로 덮어쓰지 못했어요. 새로고침해 주세요. </template>
+      <template v-else-if="덮어쓰기실패">뜻밖의 오류로 덮어쓰지 못했어요. </template>
       <template v-if="덮어쓰기확인중">
         저장된 새 버전 대화는 지워져요.
         <button type="button" class="hint-action" @click="이창으로덮어쓰기()">{{ 덮어쓸대화있음 ? '정말 덮어쓰기' : '정말 지우고 새로 시작' }}</button>

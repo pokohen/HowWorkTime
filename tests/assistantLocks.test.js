@@ -542,6 +542,24 @@ describe('다른 창이 받는 중인 답', () => {
     expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
   })
 
+  it('저장 공간이 계속 가득 차 있어도 저장이 스스로를 쉬지 않고 되풀이하지 않는다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    try {
+      a.탭삭제(a.활성탭.value.id)
+      await vi.advanceTimersByTimeAsync(1_000)
+      a.새탭추가()
+      a.탭삭제(a.활성탭.value.id)
+      await vi.advanceTimersByTimeAsync(1_000)
+      const 횟수 = 쓰기.mock.calls.length
+      await vi.advanceTimersByTimeAsync(10_000) // 바깥 일이 없으면 더 쓰지 않는다
+      expect(쓰기.mock.calls.length).toBe(횟수)
+    } finally {
+      쓰기.mockRestore()
+    }
+  })
+
   it('확인하지 않았으면(확인한 값 없음) 새 형식 저장본을 덮지 않는다', async () => {
     localStorage.setItem(저장키, '{"버전":2}')
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
