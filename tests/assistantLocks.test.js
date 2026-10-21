@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { 다른창저장감시 } from '../src/shared/utils/storage'
+import { 모듈상태모두정리 } from '../src/shared/composables/moduleState'
 
 const 저장키 = 'how-work-time:assistant'
 const 잠금 = (id) => `how-work-time:assistant-receiving:${id}`
@@ -55,6 +56,7 @@ describe('다른 창이 받는 중인 답', () => {
     localStorage.clear()
   })
   afterEach(() => {
+    모듈상태모두정리() // 앞 테스트의 useAssistant 가 남긴 storage 리스너·타이머를 걷어 낸다
     vi.useRealTimers()
     vi.unstubAllGlobals()
   })
@@ -513,5 +515,19 @@ describe('다른창저장감시', () => {
     해제()
     localStorage.removeItem('k')
     expect(받은).toEqual(['v', 'v'])
+  })
+})
+
+describe('설정 감시', () => {
+  afterEach(() => { 모듈상태모두정리(); localStorage.clear() })
+  it('다른 창이 설정을 지우면(통째 비움 포함) 이 창도 기본 설정으로 돌아가 지운 키가 되살아나지 않는다', async () => {
+    vi.resetModules()
+    localStorage.setItem('how-work-time:assistant-settings', JSON.stringify({ 버전: 1, 제공자: 'anthropic', 키: { anthropic: 'sk-test' } }))
+    const { useAssistantSettings } = await import('../src/assistant/composables/useAssistantSettings')
+    const s = useAssistantSettings()
+    expect(s.현재키.value).toBe('sk-test')
+    localStorage.clear()
+    window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage }))
+    expect(s.현재키.value).toBe('')
   })
 })

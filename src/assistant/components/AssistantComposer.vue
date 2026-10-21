@@ -1,6 +1,6 @@
 <script setup>
 import WarnIcon from '../../shared/components/WarnIcon.vue'
-import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
@@ -11,15 +11,21 @@ const 입력창 = ref(null)
 const 입력 = ref('')
 const 보낼수있음 = computed(() => 키있음.value && !새판감지.value && !전송중.value && !활성탭다른창받는중.value && 입력.value.trim().length > 0)
 
-// 빈 창의 덮어쓰기는 저장된 대화를 모두 지우므로 한 번 더 눌러 확인한다 (5초 안에)
+// 덮어쓰기는 저장된 새 버전 대화를 지우므로(이 창에 없는 대화도) 늘 한 번 더 눌러 확인한다 (5초 안에)
 const 지우기확인중 = ref(false)
 let 지우기확인타이머 = null
 const 덮어쓰기문구 = computed(() => {
-  if (덮어쓸대화있음.value) return '이 창의 대화로 덮어쓰기'
-  return 지우기확인중.value ? '정말 지울까요? 한 번 더 누르면 지워요' : '저장된 대화를 지우고 이 창에서 새로 시작'
+  if (지우기확인중.value) return '정말 덮어쓸까요? 저장된 새 버전 대화는 지워져요. 한 번 더 누르면 진행해요'
+  return 덮어쓸대화있음.value ? '이 창의 대화로 덮어쓰기' : '저장된 대화를 지우고 이 창에서 새로 시작'
+})
+// 안내가 사라지면 확인 대기도 거둔다 (다시 나타난 안내가 이미 확인 중인 상태로 시작하지 않게)
+watch(새판감지, (켜짐) => {
+  if (켜짐) return
+  지우기확인중.value = false
+  clearTimeout(지우기확인타이머)
 })
 function 덮어쓰기누름() {
-  if (!덮어쓸대화있음.value && !지우기확인중.value) {
+  if (!지우기확인중.value) {
     지우기확인중.value = true
     clearTimeout(지우기확인타이머)
     지우기확인타이머 = setTimeout(() => { 지우기확인중.value = false }, 5_000)

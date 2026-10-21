@@ -19,9 +19,22 @@ export function 모듈상태(hot, 정의) {
   const 스코프 = effectScope(true)
   const 정리목록 = []
   const 상태 = 스코프.run(() => 정의((fn) => 정리목록.push(fn)))
-  hot?.dispose(() => {
+  const 정리 = () => {
+    살아있는상태정리().delete(정리)
     스코프.stop()
     정리목록.forEach((fn) => fn())
-  })
+  }
+  hot?.dispose(정리)
+  살아있는상태정리().add(정리)
   return 상태
+}
+
+/**
+ * 만든 모듈 상태들의 정리 함수. 테스트가 모듈을 다시 불러와도(vi.resetModules) 옛 상태의 리스너·타이머를 걷어 낼 수 있게
+ * 모듈 밖(globalThis)에 둔다 (이 모듈도 다시 불러와지므로 모듈 안의 목록으로는 옛 상태에 닿지 못한다)
+ */
+const 살아있는상태정리 = () => (globalThis.__how_work_time_모듈상태정리 ??= new Set())
+/** 지금까지 만든 모듈 상태를 모두 정리한다. 테스트 전용 (앱에서는 HMR 이 모듈마다 정리한다) */
+export function 모듈상태모두정리() {
+  for (const 정리 of [...살아있는상태정리()]) 정리()
 }
