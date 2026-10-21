@@ -13,7 +13,12 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const 모달 = shallowRef(null)
   const 불러오는중 = ref(false)
 
-  const Esc취소 = (e) => { if (e.key === 'Escape') 닫기() }
+  // 받는 동안만 붙는다. 다른 곳(입력창·다른 팝업)이 이미 처리한 Esc 는 건드리지 않고, 한 번 취소하면 바로 뗀다
+  const Esc취소 = (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || !열림.value) return
+    window.removeEventListener('keydown', Esc취소)
+    닫기()
+  }
   if (typeof window !== 'undefined') 정리등록(() => window.removeEventListener('keydown', Esc취소))
   async function 불러오기() {
     if (모달.value || 불러오는중.value) return

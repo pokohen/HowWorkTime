@@ -126,6 +126,9 @@ const 복사문구 = computed(() => ({ done: '복사됨', fail: '복사 실패' 
 .md :deep(h4:first-child) { margin-top: 0; }
 .md :deep(ul), .md :deep(ol) { margin: 4px 0 8px; padding-left: 20px; }
 .md :deep(li) { margin: 2px 0; }
+/* 연도처럼 넓은 번호가 섞인 목록은 번호를 글 안쪽에 둬 말풍선 밖으로 나가지 않게 */
+.md :deep(ol.적힌번호) { padding-left: 0; list-style-position: inside; }
+.md :deep(ol.적힌번호 > li > p:first-child) { display: inline; } /* 안쪽 번호와 첫 문단을 한 줄에 */
 .md :deep(hr) { margin: 10px 0; border: 0; border-top: 1px solid var(--hairline); }
 .md :deep(pre) {
   margin: 6px 0 8px;
