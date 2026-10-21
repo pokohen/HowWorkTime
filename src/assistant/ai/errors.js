@@ -40,6 +40,11 @@ const 문자코드종류 = {
   invalid_request_error: 'request',
   server_error: 'server',
   overloaded_error: 'server',
+  // Anthropic 의 error.type (HTTP 오류와 스트림 도중 오류 모두)
+  rate_limit_error: 'rate',
+  api_error: 'server',
+  not_found_error: 'request',
+  request_too_large: 'request',
   // Gemini 의 details[].reason
   api_key_invalid: 'auth',
   api_key_service_blocked: 'auth',
@@ -135,10 +140,10 @@ export function 오류정리(예외) {
   if (예외?.name === 'AbortError') {
     return new 어시스턴트오류('abort', '응답을 중단했어요.', 예외)
   }
-  // Anthropic SDK 의 APIError 계열(HTTP 오류)은 status 를 가진다
-  if (typeof 예외?.status === 'number') {
-    // SDK 의 APIError 는 응답 본문을 .error 에 둔다: { type: 'error', error: { type: 'authentication_error', message } }
-    const 본문오류 = 예외.error?.error ?? 예외.error
+  // Anthropic SDK 의 APIError 계열. HTTP 오류는 status 를 갖고, 스트림 도중 온 오류(event: error)는 status 없이
+  // 본문만 갖는다: { type: 'error', error: { type: 'overloaded_error', message } }. 둘 다 본문의 type 으로 가린다
+  const 본문오류 = 예외?.error?.error ?? 예외?.error
+  if (typeof 예외?.status === 'number' || typeof 본문오류?.type === 'string') {
     const 종류 = 종류추정({ status: 예외.status, type: 본문오류?.type, code: 본문오류?.code, reason: 이유추출(본문오류), 상세: 예외.message })
     return new 어시스턴트오류(종류, 종류메시지(종류, 예외.message), 예외)
   }

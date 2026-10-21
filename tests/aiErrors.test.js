@@ -93,3 +93,12 @@ describe('SSE이벤트', () => {
     expect(취소됨).toBe(true)
   })
 })
+
+describe('오류정리 — Anthropic SDK', () => {
+  it('스트림 도중 온 오류(status 없음)도 본문 type 으로 분류한다', () => {
+    const 과부하 = Object.assign(new Error('{"type":"error","error":{"type":"overloaded_error"}}'), { error: { type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } } })
+    expect(오류정리(과부하).종류).toBe('server')
+    const 한도 = Object.assign(new Error('x'), { error: { type: 'error', error: { type: 'rate_limit_error', message: 'x' } } })
+    expect(오류정리(한도).종류).toBe('rate')
+  })
+})

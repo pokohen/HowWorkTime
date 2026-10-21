@@ -16,7 +16,8 @@ const md = new MarkdownIt({ html: false, linkify: false, breaks: true, typograph
 
 // 연도·날짜로 시작하는 줄은 CommonMark 상 번호 목록, 날짜면 계단식 중첩 목록이 된다 ("2026. 1. 1. 신정" → 2026 › 1 › 1).
 // 목록 규칙보다 먼저 도는 규칙이 그런 줄을 markdown-it 의 원래 문단 규칙에 넘긴다. 정해 둔 규칙 (tests/miniMarkdown.test.js 에 고정):
-// - 날짜 꼴 줄은 문단: 네 자리 번호("2026. …", "1592. …"), 번호 바로 뒤에 또 번호가 오는 줄("3. 1. 삼일절")
+// - 네 자리 번호로 시작하는 줄("2026. …", "2026. 1. 1. …", "1592. …")만 문단으로. 월·일("3. 1.")은 손대지 않는다:
+//   정상 목록("2. 1) 세부 방법")과 구별할 수 없어서, 대신 시스템 프롬프트가 날짜를 "3월 1일"처럼 쓰게 한다
 // - 그래서 천 번을 넘는 번호 목록은 1000번부터 문단이 된다 (감수한다: 그런 목록보다 연도 줄이 훨씬 흔하다)
 // - 문단은 원래 규칙대로 이어지되, 같은 칸에 글이 있는 일반 번호 항목("3. 추석") 앞에서 끊는다.
 //   덜 들여 쓴 줄·빈 번호("3.")·네 칸 이상 들여 쓴 줄은 표준대로 이어지는 줄이다
@@ -25,7 +26,7 @@ const md = new MarkdownIt({ html: false, linkify: false, breaks: true, typograph
 // 원래 문단 규칙은 공개 API(getRules)로 가져온다. 기본 블록 규칙 사슬의 마지막이 문단 규칙이다 (아래 점검 참고)
 const 문단규칙 = md.block.ruler.getRules('').at(-1)
 // 목록 표시 뒤는 CommonMark 처럼 스페이스·탭·줄 끝만 (전각 공백 등은 표시로 치지 않는다)
-const 날짜줄 = /^(\d{4}[.)]([ \t]|$)|\d{1,2}[.)][ \t]+\d{1,2}[.)]([ \t]|$))/
+const 날짜줄 = /^\d{4}[.)]([ \t]|$)/
 const 글있는번호줄 = /^\d{1,9}[.)][ \t]+\S/
 
 md.block.ruler.before('list', '연도문단', (state, 시작줄, 끝줄, silent) => {
@@ -89,6 +90,7 @@ export function 마크다운HTML(텍스트) {
 /** 주소에서 풀어 보여 줄 글자: 왼쪽에서 오른쪽으로 쓰는 문자(한글·한자·가나·라틴·키릴·그리스)와 숫자 */
 // 보이지 않는 글자(한글 채움 문자 U+3164 등)는 문자 범위에 들어 있어도 뺀다.
 // (집합 빼기 v 플래그는 Safari 16 등 구형 브라우저가 몰라 모듈째 깨지므로 u 플래그 + 부정 전방탐색으로)
+const 영숫자 = /[A-Za-z0-9]/
 /** 앞 글자에 붙는 결합 문자. 보이지 않는 것(변형 선택자 U+FE0F, 결합 자소 연결자 U+034F 등)은 뺀다 */
 const 결합문자 = /^(?!\p{Default_Ignorable_Code_Point})\p{M}$/u
 const 읽는글자 = /^(?!\p{Default_Ignorable_Code_Point})[\p{Script=Hangul}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{Nd}]$/u
@@ -101,7 +103,7 @@ const 읽는글자 = /^(?!\p{Default_Ignorable_Code_Point})[\p{Script=Hangul}\p{
 function 읽는주소(주소) {
   return String(주소 ?? '').replace(/(?:%[0-9A-Fa-f]{2})+/g, (조각, 위치, 전체) => {
     // 결합 문자(분해형 "か + ゛", "e + ◌̣")는 바로 앞 글자가 우리가 푼 글자이거나, 인코딩 밖의 글자일 때만 함께 푼다
-    let 앞이글자 = /[\p{L}\p{N}]/u.test(전체[위치 - 1] ?? '')
+    let 앞이글자 = 영숫자.test(전체[위치 - 1] ?? '') // 파서가 주소를 ASCII 로 정규화해 두므로 인코딩 밖 글자는 ASCII 다
     const 바이트들 = 조각.match(/%[0-9A-Fa-f]{2}/g)
     let 결과 = ''
     for (let i = 0; i < 바이트들.length;) {

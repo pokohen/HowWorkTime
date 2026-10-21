@@ -112,6 +112,7 @@ describe('시스템프롬프트', () => {
     expect(글).toContain('출근 예정 8일')
     expect(글).toContain('연차 1일')
     expect(글).toContain('내일은 재택근무')
+    expect(글).toContain('"3월 1일 (일)"') // 날짜는 숫자·점 꼴로 쓰지 않게 (목록 번호로 보인다)
     expect(글).toMatch(/2월 14일 \(토\)~2월 18일 \(수\) 5일/)
     // 연휴 줄은 '연휴 후보' 머리줄 아래 들여 쓴 묶음이다
     expect(글).toMatch(/- 연휴 후보 \(.*\):\n  - 2월 14일/)
