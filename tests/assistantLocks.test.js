@@ -454,4 +454,18 @@ describe('다른 창이 받는 중인 답', () => {
     await vi.advanceTimersByTimeAsync(1_000)
     expect(localStorage.getItem(저장키)).toBe('{"버전":9}')
   })
+
+  it('새 형식 저장본이 사라지거나 읽을 수 있는 값이 되면 안내가 저절로 풀리고, 그동안은 보내지 않는다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    const 새판 = '{"버전":2}'
+    localStorage.setItem(저장키, 새판)
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 새판 }))
+    expect(a.새판감지.value).toBe(true)
+    expect(await a.전송('질문')).toBe(false) // 저장할 수 없으니 보내지 않는다
+    expect(a.덮어쓸대화있음.value).toBe(false) // 빈 창은 덮어쓰기를 내밀지 않는다
+    localStorage.removeItem(저장키)
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: null }))
+    expect(a.새판감지.value).toBe(false)
+  })
 })

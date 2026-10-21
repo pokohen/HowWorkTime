@@ -5,11 +5,11 @@ import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
 const emit = defineEmits(['보냄', '설정열기'])
-const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 일부합치기실패, 전체합치기실패, 새판감지, 이창으로덮어쓰기 } = useAssistant()
+const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 일부합치기실패, 전체합치기실패, 새판감지, 이창으로덮어쓰기, 덮어쓸대화있음 } = useAssistant()
 
 const 입력창 = ref(null)
 const 입력 = ref('')
-const 보낼수있음 = computed(() => 키있음.value && !전송중.value && !활성탭다른창받는중.value && 입력.value.trim().length > 0)
+const 보낼수있음 = computed(() => 키있음.value && !새판감지.value && !전송중.value && !활성탭다른창받는중.value && 입력.value.trim().length > 0)
 
 function 높이맞춤() {
   const el = 입력창.value
@@ -104,8 +104,8 @@ defineExpose({ 포커스, 채우기 })
       </button>
     </div>
     <p v-if="새판감지" class="composer-hint composer-hint--warn" role="status">
-      <WarnIcon />플래너가 새 버전으로 저장한 대화가 있어 이 창에서는 저장하지 않아요. 새로고침해 주세요.
-      <button type="button" class="hint-action" @click="이창으로덮어쓰기">이 창의 대화로 덮어쓰기</button>
+      <WarnIcon />플래너가 새 버전으로 저장한 대화가 있어 이 창에서는 저장하거나 보내지 않아요. 새로고침해 주세요.
+      <button v-if="덮어쓸대화있음" type="button" class="hint-action" @click="이창으로덮어쓰기">이 창의 대화로 덮어쓰기</button>
     </p>
     <p v-else-if="저장실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>
     <p v-else-if="전체합치기실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />다른 창에서 저장한 대화를 합치지 못해 이 창의 내용으로 저장했어요. 다른 창에만 있던 대화는 빠졌을 수 있어요</p>
@@ -200,7 +200,7 @@ defineExpose({ 포커스, 채우기 })
   font-size: 0.74rem;
   color: var(--hint);
 }
-.composer-hint.composer-hint--warn { color: var(--tint-red-text); }
+.composer-hint.composer-hint--warn { color: var(--tint-red-text); } /* 기본 힌트 색보다 뒤·더 구체적으로 */
 .hint-action {
   margin-left: 6px;
   padding: 0;
@@ -212,7 +212,7 @@ defineExpose({ 포커스, 채우기 })
   text-decoration: underline;
   cursor: pointer;
 }
-.hint-action:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); border-radius: 4px; } /* 기본 힌트 색보다 뒤·더 구체적으로 */
+.hint-action:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); border-radius: 4px; }
 @media (max-width: 640px) {
   .composer-hint:not(.composer-hint--warn) { display: none; }
 }
