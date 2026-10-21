@@ -80,10 +80,12 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   // 변경을 모아서 저장. 조각이 들어올 때마다 쓰지 않도록 지연시키고, 닫을 때는 바로 쓴다.
   // 탭 전체를 깊게 감시하면 조각마다 모든 메시지를 다시 훑게 되므로, 바꾸는 쪽에서 저장예약() 을 부른다
   let 저장타이머 = null
+  const 저장실패 = ref(false)
   function 저장() {
     clearTimeout(저장타이머)
     저장타이머 = null
-    저장소쓰기(어시스턴트저장키, 직렬화({ 탭목록: 탭목록.value, 활성탭ID: 활성탭ID.value }))
+    // 저장 공간이 가득 차는 등 실패하면 입력창 아래 안내를 바꿔 알린다 (조용히 잃지 않게)
+    저장실패.value = !저장소쓰기(어시스턴트저장키, 직렬화({ 탭목록: 탭목록.value, 활성탭ID: 활성탭ID.value }))
   }
   function 저장예약() {
     if (폐기됨 || 저장타이머) return
@@ -98,6 +100,18 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   if (typeof window !== 'undefined') {
     window.addEventListener('pagehide', 즉시저장)
     정리등록(() => window.removeEventListener('pagehide', 즉시저장))
+    // 다른 브라우저 탭이 대화를 저장하면 이 탭도 그 내용으로 바꾼다. 그러지 않으면 이 탭의 옛 목록이 다음 저장 때 덮어쓴다.
+    // 이 탭이 응답을 받는 중이면 끝난 뒤 저장이 이기도록 그대로 둔다
+    const 다른탭변경 = (e) => {
+      if (e.key !== 어시스턴트저장키 || 전송중.value) return
+      const 새것 = 복원(e.newValue)
+      clearTimeout(저장타이머)
+      저장타이머 = null
+      탭목록.value = 새것?.탭목록 ?? [새탭()]
+      활성탭ID.value = 탭목록.value.some((탭) => 탭.id === 활성탭ID.value) ? 활성탭ID.value : (새것?.활성탭ID ?? 탭목록.value[0].id)
+    }
+    window.addEventListener('storage', 다른탭변경)
+    정리등록(() => window.removeEventListener('storage', 다른탭변경))
   }
   // 정리 순서: 먼저 진행 중 요청을 끊고 폐기 표시를 한 뒤, 예약된 저장을 바로 쓴다 (끊긴 요청의 finally 가 옛 상태를 다시 저장하지 않게)
   정리등록(() => {
@@ -219,7 +233,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     탭목록, 활성탭ID, 활성탭, 탭선택, 새탭추가, 탭삭제, 모든대화삭제,
     ...설정상태, // 제공자·모델·키 (useAssistantSettings). 화면 쪽에서 한 번에 꺼내 쓰도록 펼쳐 둔다
     전송중, 응답중탭ID, 활성탭응답중, 전송, 중단, 재시도,
-    알림, 알림열기, 알림닫기, 불러오기실패알림,
+    알림, 알림열기, 알림닫기, 불러오기실패알림, 저장실패,
   }
 })
 

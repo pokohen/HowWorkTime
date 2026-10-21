@@ -4,7 +4,7 @@ import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
 const emit = defineEmits(['보냄', '설정열기'])
-const { 키있음, 전송중, 활성탭응답중, 전송, 중단 } = useAssistant()
+const { 키있음, 전송중, 활성탭응답중, 전송, 중단, 저장실패 } = useAssistant()
 
 const 입력창 = ref(null)
 const 입력 = ref('')
@@ -89,7 +89,8 @@ defineExpose({ 포커스, 채우기 })
         </svg>
       </button>
     </div>
-    <p class="composer-hint">Enter 전송 · Shift+Enter 줄바꿈 · 대화는 이 브라우저에 저장돼요</p>
+    <p v-if="저장실패" class="composer-hint composer-hint--warn" role="status">⚠ 브라우저 저장 공간이 가득 차 대화가 저장되지 않아요. 설정에서 오래된 대화를 지워 주세요</p>
+    <p v-else class="composer-hint">Enter 전송 · Shift+Enter 줄바꿈 · 대화는 이 브라우저에 저장돼요</p>
   </footer>
 </template>
 
@@ -174,12 +175,13 @@ defineExpose({ 포커스, 채우기 })
 .send-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
 .send-btn--stop { background: var(--accent-red); }
 .send-btn--stop:hover { background: var(--accent-red-deep); }
+.composer-hint--warn { color: var(--tint-red-text); }
 .composer-hint {
   margin: 8px 2px 0;
   font-size: 0.74rem;
   color: var(--hint);
 }
 @media (max-width: 640px) {
-  .composer-hint { display: none; }
+  .composer-hint:not(.composer-hint--warn) { display: none; }
 }
 </style>

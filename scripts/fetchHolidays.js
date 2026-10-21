@@ -96,14 +96,21 @@ async function 쪽가져오기(연도, 쪽) {
     본문 = JSON.parse(글);
   } catch {
     const 요약 = 글.replace(/\s+/g, " ").slice(0, 160);
-    throw Object.assign(new Error(`JSON 이 아닌 응답 — 서비스 키를 확인하세요 (${연도}년): ${요약}`), { status: 400 });
+    // 키 문제(SERVICE_KEY…)면 다시 보내도 같다. 그 밖의 XML 오류 페이지(일시 장애)는 재시도한다
+    const 키문제 = /SERVICE_KEY|NOT_REGISTERED|UNAUTHORIZED/i.test(글);
+    throw Object.assign(
+      new Error(`JSON 이 아닌 응답${키문제 ? " — 서비스 키를 확인하세요" : ""} (${연도}년): ${요약}`),
+      키문제 ? { status: 400 } : {},
+    );
   }
 
   const 결과코드 = 본문?.response?.header?.resultCode;
   if (결과코드 && 결과코드 !== "00") {
     const 메시지 = 본문?.response?.header?.resultMsg ?? "알 수 없는 오류";
-    // 키 미등록·파라미터 오류처럼 다시 보내도 같은 답이 오는 오류. 재시도 없이 바로 알린다
-    throw Object.assign(new Error(`API 오류 ${결과코드}: ${메시지} (${연도}년)`), { status: 400 });
+    // 일시 오류(01 애플리케이션 · 04 HTTP · 05 시간 초과 · 22 요청 한도)는 잠시 뒤 다시 시도한다.
+    // 키 미등록·파라미터 오류처럼 다시 보내도 같은 답이 오는 나머지는 재시도 없이 바로 알린다
+    const 일시오류 = ["01", "04", "05", "22"].includes(String(결과코드));
+    throw Object.assign(new Error(`API 오류 ${결과코드}: ${메시지} (${연도}년)`), 일시오류 ? {} : { status: 400 });
   }
 
   const 본체 = 본문?.response?.body;

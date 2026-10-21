@@ -3,15 +3,20 @@ import { ref, computed } from 'vue'
 import { 제공자목록, 제공자ID목록 } from '../ai/providers'
 import { useAssistant } from '../composables/useAssistant'
 
-const { 제공자, 제공자정보, 모델, 저장된키, 키있음, 개발용키사용중, 탭목록, 모든대화삭제, 설정초기화, 설정열림 } = useAssistant()
+const { 제공자, 제공자정보, 모델, 저장된키, 키있음, 개발용키사용중, 탭목록, 모든대화삭제, 설정초기화, 설정열림, 설정저장실패 } = useAssistant()
 
 const 키보이기 = ref(false)
 const 삭제확인중 = ref(false)
+const 초기화확인중 = ref(false)
 const 모델목록ID = 'assistant-model-options'
 const 대화수 = computed(() => 탭목록.value.filter((탭) => 탭.메시지.length > 0).length)
 
 function 모델예시선택(값) {
   모델.value = 값
+}
+function 설정초기화확정() {
+  설정초기화()
+  초기화확인중.value = false
 }
 function 모든대화삭제확정() {
   모든대화삭제()
@@ -107,20 +112,26 @@ function 모든대화삭제확정() {
         </button>
       </div>
       <div class="danger-row">
-        <span class="danger-text">제공자·모델·키 설정</span>
-        <button type="button" class="ghost-btn" @click="설정초기화">초기화</button>
+        <span class="danger-text">제공자·모델·키 설정 (저장된 API 키도 지워져요)</span>
+        <template v-if="초기화확인중">
+          <button type="button" class="ghost-btn" @click="초기화확인중 = false">취소</button>
+          <button type="button" class="danger-btn" @click="설정초기화확정">정말 초기화</button>
+        </template>
+        <button v-else type="button" class="ghost-btn ghost-btn--danger" @click="초기화확인중 = true">초기화</button>
       </div>
     </section>
 
     <!-- 설정은 바꾸는 즉시 저장되므로 '완료'는 대화 화면으로 돌아가기만 한다 -->
     <div class="settings-foot">
-      <p class="settings-hint">바꾼 내용은 바로 저장돼요.</p>
+      <p v-if="설정저장실패" class="settings-hint settings-hint--warn" role="status">⚠ 브라우저 저장 공간이 가득 차 설정이 저장되지 않았어요. 오래된 대화를 지운 뒤 다시 넣어 주세요.</p>
+      <p v-else class="settings-hint">바꾼 내용은 바로 저장돼요.</p>
       <button type="button" class="primary-btn" @click="설정열림 = false">완료 · 대화로 돌아가기</button>
     </div>
   </div>
 </template>
 
 <style scoped>
+.settings-hint--warn { color: var(--tint-red-text); }
 .settings {
   display: flex;
   flex-direction: column;

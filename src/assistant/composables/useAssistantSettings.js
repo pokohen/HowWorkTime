@@ -18,9 +18,19 @@ function 개발용키(제공자) {
 }
 
 /** 쉬는 날 플래너의 제공자·모델·API 키. 이 브라우저 localStorage 에만 남는다 */
-const 상태 = 모듈상태(import.meta.hot, () => {
+const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const 설정 = ref(설정복원(저장소읽기(어시스턴트설정키)))
-  watch(설정, () => 저장소쓰기(어시스턴트설정키, 설정직렬화(설정.value)), { deep: true })
+  const 설정저장실패 = ref(false)
+  watch(설정, () => { 설정저장실패.value = !저장소쓰기(어시스턴트설정키, 설정직렬화(설정.value)) }, { deep: true })
+  // 다른 브라우저 탭에서 설정을 바꾸면 따라간다. 그러지 않으면 이 탭의 옛 설정이 다음 저장 때 새 키를 덮어쓴다
+  if (typeof window !== 'undefined') {
+    const 다른탭변경 = (e) => {
+      if (e.key !== 어시스턴트설정키 || e.newValue == null) return
+      if (e.newValue !== 설정직렬화(설정.value)) 설정.value = 설정복원(e.newValue)
+    }
+    window.addEventListener('storage', 다른탭변경)
+    정리등록(() => window.removeEventListener('storage', 다른탭변경))
+  }
 
   const 제공자 = computed({
     get: () => 설정.value.제공자,
@@ -40,7 +50,7 @@ const 상태 = 모듈상태(import.meta.hot, () => {
   const 개발용키사용중 = computed(() => !저장된키.value && 개발용키(제공자.value).length > 0)
   function 설정초기화() { 설정.value = 기본설정() }
 
-  return { 설정, 제공자, 제공자정보, 모델, 저장된키, 현재키, 키있음, 개발용키사용중, 설정초기화 }
+  return { 설정, 설정저장실패, 제공자, 제공자정보, 모델, 저장된키, 현재키, 키있음, 개발용키사용중, 설정초기화 }
 })
 
 export function useAssistantSettings() {

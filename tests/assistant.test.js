@@ -104,18 +104,18 @@ describe('시스템프롬프트', () => {
   it('앱이 아는 날짜·공휴일·연휴·근무일 정보를 담는다', () => {
     const 글 = 시스템프롬프트(기본)
     expect(글).toContain('2026년 2월 10일 화요일')
-    expect(글).toContain('2월 16일 (월) 설날')
+    expect(글).toContain('2026년 2월 16일 (월) 설날')
     expect(글).toContain('2026년 3월 공휴일: 없음')
-    expect(글).toContain('2026년 2월 남은 공휴일: 2월 16일 (월) 설날')
+    expect(글).toContain('2026년 2월 남은 공휴일: 2026년 2월 16일 (월) 설날')
     expect(글).toContain('2026년 2월 남은 근무일 10일')
     expect(글).not.toContain('보고 있는 달')
     expect(글).toContain('출근 예정 8일')
     expect(글).toContain('연차 1일')
     expect(글).toContain('내일은 재택근무')
     expect(글).toContain('"3월 1일 (일)"') // 날짜는 숫자·점 꼴로 쓰지 않게 (목록 번호로 보인다)
-    expect(글).toMatch(/2월 14일 \(토\)~2월 18일 \(수\) 5일/)
+    expect(글).toMatch(/2026년 2월 14일 \(토\)~2026년 2월 18일 \(수\) 5일/)
     // 연휴 줄은 '연휴 후보' 머리줄 아래 들여 쓴 묶음이다
-    expect(글).toMatch(/- 연휴 후보 \(.*\):\n  - 2월 14일/)
+    expect(글).toMatch(/- 연휴 후보 \(.*\):\n  - 2026년 2월 14일/)
   })
 
   it('연휴가 없으면 없음으로, 급여주면 표시한다', () => {

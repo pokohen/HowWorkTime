@@ -42,6 +42,8 @@ const 문자코드종류 = {
   overloaded_error: 'server',
   // Anthropic 의 error.type (HTTP 오류와 스트림 도중 오류 모두)
   rate_limit_error: 'rate',
+  billing_error: 'quota',
+  timeout_error: 'server',
   api_error: 'server',
   not_found_error: 'request',
   request_too_large: 'request',
@@ -144,8 +146,11 @@ export function 오류정리(예외) {
   // 본문만 갖는다: { type: 'error', error: { type: 'overloaded_error', message } }. 둘 다 본문의 type 으로 가린다
   const 본문오류 = 예외?.error?.error ?? 예외?.error
   if (typeof 예외?.status === 'number' || typeof 본문오류?.type === 'string') {
-    const 종류 = 종류추정({ status: 예외.status, type: 본문오류?.type, code: 본문오류?.code, reason: 이유추출(본문오류), 상세: 예외.message })
-    return new 어시스턴트오류(종류, 종류메시지(종류, 예외.message), 예외)
+    // SDK 의 message 는 '404 {"type":"error",…}' 처럼 본문 JSON 을 통째로 담는다. 사람에게는 본문의 message 를 보인다
+    const 상세 = 본문오류?.message ?? 예외.message
+    let 종류 = 종류추정({ status: 예외.status, type: 본문오류?.type, code: 본문오류?.code, reason: 이유추출(본문오류), 상세 })
+    if (종류 === 'unknown' && typeof 예외?.status !== 'number') 종류 = 'server' // 스트림 도중 온 정체 모를 오류는 스트림오류와 같이 제공자 쪽 문제로
+    return new 어시스턴트오류(종류, 종류메시지(종류, 상세), 예외)
   }
   // fetch 가 TypeError 를 던지는 경우: 오프라인, DNS, CORS 차단 등.
   // 메시지로 가려서 제공자 모듈 안의 일반 프로그래밍 오류(undefined 접근 등)가 '네트워크 문제'로 둔갑하지 않게 한다

@@ -11,7 +11,8 @@ const 상한캐시 = new Map()
 
 /** max_tokens 가 모델 상한을 넘어 거부된 400 인지 */
 function 상한초과여부(예외) {
-  return 예외?.status === 400 && /max_tokens/i.test(예외?.message ?? '')
+  // "max_tokens: 64000 > 32000, which is the maximum allowed number of output tokens for …" 꼴만 (다른 max_tokens 오류는 아님)
+  return 예외?.status === 400 && /max_tokens:?\s*\d+\s*>\s*\d+|maximum allowed number of output tokens/i.test(예외?.message ?? '')
 }
 
 async function 모델상한(client, Anthropic, 모델, 신호) {

@@ -102,3 +102,16 @@ describe('오류정리 — Anthropic SDK', () => {
     expect(오류정리(한도).종류).toBe('rate')
   })
 })
+
+describe('오류정리 — Anthropic SDK 문구', () => {
+  const SDK오류 = (status, 본문) => Object.assign(new Error(`${status ?? ''} ${JSON.stringify(본문)}`), { status, error: 본문 })
+  it('본문 JSON 대신 본문의 message 를 보인다', () => {
+    const 정리 = 오류정리(SDK오류(404, { type: 'error', error: { type: 'not_found_error', message: 'model: claude-foo' } }))
+    expect(정리.message).toBe('요청이 거부됐어요: model: claude-foo')
+  })
+  it('결제·시간 초과 type 을 분류하고, 스트림 도중 정체 모를 오류는 서버 문제로', () => {
+    expect(오류정리(SDK오류(402, { type: 'error', error: { type: 'billing_error', message: 'x' } })).종류).toBe('quota')
+    expect(오류정리(SDK오류(undefined, { type: 'error', error: { type: 'timeout_error', message: 'x' } })).종류).toBe('server')
+    expect(오류정리(SDK오류(undefined, { type: 'error', error: { type: 'brand_new_error', message: 'x' } })).종류).toBe('server')
+  })
+})
