@@ -281,7 +281,7 @@ describe('다른 창이 받는 중인 답', () => {
     잠금들.request(잠금('x'), () => new Promise((r) => { 놓기 = r }))
     await Promise.resolve()
     받는중저장(Date.now())
-    localStorage.setItem('how-work-time:assistant-live', JSON.stringify({ x: Date.now() })) // 가장 옛 판의 한 키 형식
+    localStorage.setItem('how-work-time:assistant-live', JSON.stringify({ x: Date.now() })) // 가장 옛 판의 한 키 형식 (15초 유효)
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
     const a = useAssistant()
     await nextTick()
@@ -297,5 +297,17 @@ describe('다른 창이 받는 중인 답', () => {
     localStorage.setItem('how-work-time:assistant-live:f', String(Date.now() + 60 * 60_000))
     await import('../src/assistant/composables/useAssistant').then((m) => m.useAssistant())
     expect(localStorage.getItem('how-work-time:assistant-live:f')).toBeNull()
+  })
+
+  it('한 키 형식의 예전 신호는 15초가 지나면 죽은 것으로 본다', async () => {
+    vi.stubGlobal('navigator', { ...navigator, locks: 가짜잠금관리자(), onLine: true })
+    받는중저장(Date.now())
+    localStorage.setItem('how-work-time:assistant-live', JSON.stringify({ x: Date.now() - 20_000 }))
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(4_000)
+    expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
+    expect(localStorage.getItem('how-work-time:assistant-live')).toBeNull()
   })
 })
