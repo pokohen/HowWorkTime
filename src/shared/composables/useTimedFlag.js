@@ -5,21 +5,25 @@ import { ref } from 'vue'
  * 타이머는 정리등록에 넘긴 정리 때 지운다 (모듈 상태는 HMR 정리, 컴포넌트는 onBeforeUnmount)
  * @param {(fn: () => void) => void} 정리등록
  * @param {number} 시간 켜져 있는 시간(ms)
+ * @param {{ 꺼질때?: () => void }} [옵션] 꺼질때: 시간이 다 되거나 끌 때 (붙잡은 것을 놓는 데)
  */
-export function 잠시표시상태(정리등록, 시간) {
+export function 잠시표시상태(정리등록, 시간, { 꺼질때 } = {}) {
   const 값 = ref(false)
   let 타이머 = null
   정리등록(() => clearTimeout(타이머))
+  const 끄기 = () => {
+    clearTimeout(타이머)
+    if (!값.value) return
+    값.value = false
+    꺼질때?.()
+  }
   return {
     값,
     켜기() {
       값.value = true
       clearTimeout(타이머)
-      타이머 = setTimeout(() => { 값.value = false }, 시간)
+      타이머 = setTimeout(끄기, 시간)
     },
-    끄기() {
-      값.value = false
-      clearTimeout(타이머)
-    },
+    끄기,
   }
 }

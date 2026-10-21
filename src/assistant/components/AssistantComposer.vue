@@ -1,28 +1,18 @@
 <script setup>
 import WarnIcon from '../../shared/components/WarnIcon.vue'
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
 const emit = defineEmits(['보냄', '설정열기'])
-const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 일부합치기실패, 전체합치기실패, 새판감지, 덮어쓰기확인중, 덮어쓰기확인시작, 덮어쓰기확인취소, 이창으로덮어쓰기, 덮어쓸대화있음 } = useAssistant()
+const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 일부합치기실패, 전체합치기실패, 새판감지, 덮어쓰기확인중, 저장본바뀜, 덮어쓰기확인시작, 덮어쓰기확인취소, 이창으로덮어쓰기, 덮어쓸대화있음 } = useAssistant()
 
 const 입력창 = ref(null)
 const 입력 = ref('')
 const 보낼수있음 = computed(() => 키있음.value && !새판감지.value && !전송중.value && !활성탭다른창받는중.value && 입력.value.trim().length > 0)
 
 // 덮어쓰기는 저장된 새 버전 대화를 지우므로(이 창에 없는 대화도) 설정의 '모든 대화 삭제'처럼 한 번 더 확인한다.
-// 확인의 수명(만료·거둠)은 composable 이 다룬다. 여기서는 '바뀌어 덮지 않았다'는 안내만 둔다
-/** 확정하려는데 저장본이 다른 새 버전 값으로 바뀌어 덮지 않았다 (다시 확인을 받는다) */
-const 저장본바뀜 = ref(false)
-function 덮어쓰기확인켜기() {
-  저장본바뀜.value = false
-  덮어쓰기확인시작()
-}
-watch(새판감지, (켜짐) => { if (!켜짐) 저장본바뀜.value = false })
-function 덮어쓰기확정() {
-  저장본바뀜.value = 이창으로덮어쓰기() === '바뀜'
-}
+// 확인의 수명(만료·거둠)과 '바뀌어 덮지 않았다'는 안내는 composable 이 다룬다
 
 function 높이맞춤() {
   const el = 입력창.value
@@ -120,12 +110,12 @@ defineExpose({ 포커스, 채우기 })
       <WarnIcon />플래너가 새 버전으로 저장한 대화가 있어 이 창에서는 저장하거나 보내지 않아요. 새로고침해 주세요.
       <template v-if="덮어쓰기확인중">
         저장된 새 버전 대화는 지워져요.
-        <button type="button" class="hint-action" @click="덮어쓰기확정">{{ 덮어쓸대화있음 ? '정말 덮어쓰기' : '정말 지우고 새로 시작' }}</button>
+        <button type="button" class="hint-action" @click="이창으로덮어쓰기">{{ 덮어쓸대화있음 ? '정말 덮어쓰기' : '정말 지우고 새로 시작' }}</button>
         <button type="button" class="hint-action" @click="덮어쓰기확인취소">취소</button>
       </template>
       <template v-else>
         <template v-if="저장본바뀜">그 사이 다른 새 버전 저장본으로 바뀌어 덮어쓰지 않았어요. 다시 확인해 주세요.</template>
-        <button type="button" class="hint-action" @click="덮어쓰기확인켜기">{{ 덮어쓸대화있음 ? '이 창의 대화로 덮어쓰기' : '저장된 대화를 지우고 이 창에서 새로 시작' }}</button>
+        <button type="button" class="hint-action" @click="덮어쓰기확인시작">{{ 덮어쓸대화있음 ? '이 창의 대화로 덮어쓰기' : '저장된 대화를 지우고 이 창에서 새로 시작' }}</button>
       </template>
     </p>
     <p v-else-if="저장실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>

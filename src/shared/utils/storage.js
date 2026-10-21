@@ -38,7 +38,8 @@ export function 저장소접두사삭제(접두사, 저장소 = 기본저장소(
 }
 
 /**
- * 다른 브라우저 탭(창)이 이 키를 저장하면 새 값을 넘겨준다. 같은 창의 저장에는 불리지 않는다 (storage 이벤트의 성질).
+ * 다른 브라우저 탭(창)이 이 키를 바꾸면 알린다. 같은 창의 저장에는 불리지 않는다 (storage 이벤트의 성질).
+ * 이벤트가 담은 값이 아니라 지금 저장소 값을 넘긴다: 이벤트가 닿기 전에 이 창이 다시 썼을 수 있어서다 (늦게 닿은 옛 값으로 판단하지 않게)
  * @param {string} 키
  * @param {(새값: string|null) => void} 콜백
  * 다른 창이 localStorage 를 통째로 비웠을 때(clear, 이벤트 key 가 null)도 지금 값을 다시 읽어 알린다
@@ -49,8 +50,7 @@ export function 다른창저장감시(키, 콜백) {
   if (typeof window === 'undefined') return () => {}
   const 받기 = (e) => {
     if (e.storageArea && e.storageArea !== 기본저장소()) return
-    if (e.key === 키) 콜백(e.newValue)
-    else if (e.key === null) 콜백(저장소읽기(키))
+    if (e.key === 키 || e.key === null) 콜백(저장소읽기(키))
   }
   window.addEventListener('storage', 받기)
   return () => window.removeEventListener('storage', 받기)

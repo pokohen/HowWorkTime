@@ -417,7 +417,10 @@ describe('다른 창이 받는 중인 답', () => {
 
   it('깨진 값·비어 있는 저장본은 합칠 것이 없는 것으로 건너뛴다 (기록만, 안내 없음)', async () => {
     const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const 이벤트 = (값) => window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 값 }))
+    const 이벤트 = (값) => {
+      localStorage.setItem(저장키, 값) // 다른 창이 쓴 값 (감시는 지금 저장소 값을 읽는다)
+      window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 값 }))
+    }
     try {
       const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
@@ -447,6 +450,7 @@ describe('다른 창이 받는 중인 답', () => {
     expect(a.덮어쓰기확인중.value).toBe(true)
     localStorage.setItem(저장키, '{"버전":3}')
     expect(a.이창으로덮어쓰기()).toBe('바뀜')
+    expect(a.저장본바뀜.value).toBe(true)
     expect(localStorage.getItem(저장키)).toBe('{"버전":3}')
     a.덮어쓰기확인시작() // 다시 확인하면(이번엔 바뀐 값) 덮는다
     expect(a.이창으로덮어쓰기()).toBe('덮음')
@@ -461,7 +465,7 @@ describe('다른 창이 받는 중인 답', () => {
     window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: '{"버전":2}' }))
     a.덮어쓰기확인시작()
     받는중저장(Date.now(), { id: 'n', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() }) // 이벤트는 아직 안 닿음
-    expect(a.이창으로덮어쓰기()).toBe('덮음')
+    expect(a.이창으로덮어쓰기()).toBe('합침')
     expect(a.새판감지.value).toBe(false)
     expect(JSON.parse(localStorage.getItem(저장키)).탭목록.some((t) => t.id === 'x')).toBe(true) // 남의 대화를 합쳐 지켰다
   })
@@ -526,6 +530,7 @@ describe('다른 창이 받는 중인 답', () => {
     try {
       const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
+      localStorage.setItem(저장키, '{"버전":2}')
       window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: '{"버전":2}' }))
       expect(a.새판감지.value).toBe(true)
       받는중저장(Date.now())
@@ -569,26 +574,23 @@ describe('설정 감시', () => {
     expect(localStorage.getItem('how-work-time:assistant-settings')).toBeNull() // 지운 값을 곧바로 다시 쓰지 않는다
   })
 
-  it('다른 창이 설정을 지우면, 방금 고쳐 아직 쓰지 않은 것은 지키고 쓴다 (저장 대기 중 지움)', async () => {
-    vi.resetModules()
-    const { useAssistantSettings } = await import('../src/assistant/composables/useAssistantSettings')
-    const s = useAssistantSettings()
-    s.모델.value = '새-모델' // 아직 watch 가 돌기 전
-    localStorage.clear()
-    window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage }))
-    await nextTick()
-    expect(s.모델.value).toBe('새-모델')
-    expect(JSON.parse(localStorage.getItem('how-work-time:assistant-settings')).모델.anthropic).toBe('새-모델')
-  })
 
-  it('지움 이벤트가 닿기 전에 이 창이 다시 썼으면 지금 저장소 값으로 판단한다 (지움으로 보지 않는다)', async () => {
+  it('이벤트가 닿기 전에 이 창이 다시 썼으면 늦게 닿은 이벤트 값이 아니라 지금 저장소 값으로 판단한다', async () => {
     vi.resetModules()
-    localStorage.setItem('how-work-time:assistant-settings', JSON.stringify({ 버전: 1, 제공자: 'anthropic', 키: { anthropic: 'sk-test' } }))
+    const 키 = 'how-work-time:assistant-settings'
+    localStorage.setItem(키, JSON.stringify({ 버전: 1, 제공자: 'anthropic', 키: { anthropic: 'sk-test' } }))
     const { useAssistantSettings } = await import('../src/assistant/composables/useAssistantSettings')
     const s = useAssistantSettings()
-    window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage })) // 저장소엔 아직 값이 있다
+    // 늦게 닿은 지움(키 하나) 이벤트: 저장소엔 이미 이 창의 값이 있다
+    window.dispatchEvent(new StorageEvent('storage', { key: 키, newValue: null, storageArea: localStorage }))
     await nextTick()
     expect(s.현재키.value).toBe('sk-test')
+    // 늦게 닿은 옛 값 이벤트: 지금 저장소 값(이 창의 새 수정)을 따른다
+    s.모델.value = '새-모델'
+    await nextTick()
+    window.dispatchEvent(new StorageEvent('storage', { key: 키, newValue: JSON.stringify({ 버전: 1, 제공자: 'anthropic', 모델: { anthropic: '옛-모델' } }), storageArea: localStorage }))
+    await nextTick()
+    expect(s.모델.value).toBe('새-모델')
   })
 
   it('다른 창이 설정을 지우면 이 창이 저장하지 못한 필드도 버리고 기본으로 (다음 수정 때 지운 키가 되살아나지 않게)', async () => {
