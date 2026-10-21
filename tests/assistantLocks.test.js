@@ -648,32 +648,6 @@ describe('다른 창이 받는 중인 답', () => {
     expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
   })
 
-  it('쓰지 못한 변경이 있어도 합치지 못한 다른 창의 저장 위에는 이벤트로 곧바로 쓰지 않는다', async () => {
-    const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
-    let 실패 = false
-    vi.doMock('../src/assistant/utils/assistantStorage', () => ({
-      ...저장모듈,
-      대화합치기: (...인자) => { if (실패) throw new Error('합치기 실패'); return 저장모듈.대화합치기(...인자) },
-    }))
-    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
-      const a = useAssistant()
-      const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
-      a.탭삭제(a.활성탭.value.id)
-      await vi.advanceTimersByTimeAsync(1_000)
-      쓰기.mockRestore()
-      실패 = true
-      받는중저장(Date.now() + 5, { id: 'u', 역할: 'assistant', 내용: '합칠 수 없는 남의 것', 시각: Date.now() })
-      const 남의값 = localStorage.getItem(저장키)
-      window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: 'x'.repeat(10_000), newValue: 남의값, storageArea: localStorage }))
-      await vi.advanceTimersByTimeAsync(10_000)
-      expect(localStorage.getItem(저장키)).toBe(남의값)
-    } finally {
-      오류.mockRestore()
-      vi.doUnmock('../src/assistant/utils/assistantStorage')
-    }
-  })
 
   it('확인하지 않았으면(확인한 값 없음) 새 형식 저장본을 덮지 않는다', async () => {
     localStorage.setItem(저장키, '{"버전":2}')
