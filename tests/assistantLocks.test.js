@@ -253,7 +253,7 @@ describe('다른 창이 받는 중인 답', () => {
   it('예전 생존 신호 키는 오래된 것만 지운다 (옛 판 창이 아직 쓰는 신호는 남긴다)', async () => {
     localStorage.setItem('how-work-time:assistant-live:old', String(Date.now() - 10 * 60_000))
     localStorage.setItem('how-work-time:assistant-live:fresh', String(Date.now()))
-    localStorage.setItem('how-work-time:assistant-live', 'x')
+    localStorage.setItem('how-work-time:assistant-live', JSON.stringify({ y: Date.now() - 10 * 60_000 }))
     await import('../src/assistant/composables/useAssistant').then((m) => m.useAssistant())
     expect(localStorage.getItem('how-work-time:assistant-live:old')).toBeNull()
     expect(localStorage.getItem('how-work-time:assistant-live')).toBeNull()
@@ -272,5 +272,30 @@ describe('다른 창이 받는 중인 답', () => {
     localStorage.removeItem('how-work-time:assistant-live:x') // 예전 판 창이 끝나 신호를 지웠다
     await vi.advanceTimersByTimeAsync(20_000)
     expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
+  })
+
+  it('예전 판 신호가 끝나면 잠금으로 다시 확인한다 (새 판 창이 잠금을 쥐고 받는 중이면 중단됨으로 만들지 않는다)', async () => {
+    const 잠금들 = 가짜잠금관리자()
+    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
+    let 놓기
+    잠금들.request(잠금('x'), () => new Promise((r) => { 놓기 = r }))
+    await Promise.resolve()
+    받는중저장(Date.now())
+    localStorage.setItem('how-work-time:assistant-live', JSON.stringify({ x: Date.now() })) // 가장 옛 판의 한 키 형식
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    await nextTick()
+    localStorage.removeItem('how-work-time:assistant-live')
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(a.탭목록.value[0].메시지.at(-1).다른창받는중).toBe(true) // 잠금이 쥐여 있다
+    놓기()
+    await vi.advanceTimersByTimeAsync(4_000)
+    expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
+  })
+
+  it('미래 시각의 예전 신호는 죽은 것으로 보고 지운다', async () => {
+    localStorage.setItem('how-work-time:assistant-live:f', String(Date.now() + 60 * 60_000))
+    await import('../src/assistant/composables/useAssistant').then((m) => m.useAssistant())
+    expect(localStorage.getItem('how-work-time:assistant-live:f')).toBeNull()
   })
 })
