@@ -23,7 +23,13 @@ async function 보내기() {
   await nextTick()
   높이맞춤()
   emit('보냄')
-  await 전송(내용)
+  // 그 사이 상황이 바뀌어(다른 창이 이 대화를 받기 시작 등) 보내지 못했으면 적은 글을 되살린다
+  const 보냄 = await 전송(내용)
+  if (보냄 === false && !입력.value) {
+    입력.value = 내용
+    await nextTick()
+    높이맞춤()
+  }
 }
 function 키입력(e) {
   // Enter 는 전송, Shift+Enter 는 줄바꿈. 한글 조합 중에는 보내지 않는다.
@@ -81,7 +87,7 @@ defineExpose({ 포커스, 채우기 })
         class="send-btn"
         :disabled="!보낼수있음"
         aria-label="보내기"
-        :title="전송중 ? '다른 대화의 응답을 받는 중이에요' : '보내기 (Enter)'"
+        :title="활성탭다른창받는중 ? '다른 창에서 이 대화의 답을 받는 중이에요' : 전송중 ? '다른 대화의 응답을 받는 중이에요' : '보내기 (Enter)'"
         @click="보내기"
       >
         <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">
