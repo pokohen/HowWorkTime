@@ -19,11 +19,17 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     window.removeEventListener('keydown', Esc취소)
     닫기()
   }
-  if (typeof window !== 'undefined') 정리등록(() => window.removeEventListener('keydown', Esc취소))
+  const Esc연결 = (켜기) => {
+    if (typeof window === 'undefined') return
+    window.removeEventListener('keydown', Esc취소)
+    if (켜기) window.addEventListener('keydown', Esc취소)
+  }
+  정리등록(() => Esc연결(false))
   async function 불러오기() {
-    if (모달.value || 불러오는중.value) return
+    if (모달.value) return
+    Esc연결(true) // 받는 중에 취소했다 다시 열어도 Esc 가 다시 듣는다
+    if (불러오는중.value) return
     불러오는중.value = true
-    if (typeof window !== 'undefined') window.addEventListener('keydown', Esc취소)
     try {
       모달.value = markRaw((await import('../components/AssistantModal.vue')).default)
     } catch {
@@ -34,7 +40,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       }
     } finally {
       불러오는중.value = false
-      if (typeof window !== 'undefined') window.removeEventListener('keydown', Esc취소)
+      Esc연결(false)
     }
   }
   // 즉시(sync) 실행: 여는 순간 '받는 중'이 되어야 바로 이어지는 두 번째 클릭이 여는 것을 취소하지 않는다

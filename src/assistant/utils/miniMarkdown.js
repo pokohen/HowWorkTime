@@ -14,23 +14,31 @@ const md = new MarkdownIt({ html: false, linkify: false, breaks: true, typograph
   // 글 줄 바로 아래 "---" 를 그 줄의 제목으로 만드는 규칙(setext)도 끈다: 모델은 그 자리에 구분선을 뜻한다
   .disable(['table', 'code', 'lheading'])
 
-// "2026. 상반기에는…" 처럼 연도로 시작하는 줄은 CommonMark 상 2026 번부터의 번호 목록이 된다. 표준 규칙은 그대로 두고,
-// 세 자리 이상 번호가 섞인 목록은 모든 항목에 적힌 번호를 그대로 보여 준다 (다시 매기면 연도가 사라진다).
-// 넓은 번호가 말풍선 밖으로 나가지 않게 class 를 달아 번호를 글 안쪽에 둔다
-md.core.ruler.push('적힌번호유지', (state) => {
-  const 열린목록 = [] // 열린 ordered_list_open 토큰과 그 항목들
-  for (const 토큰 of state.tokens) {
-    if (토큰.type === 'ordered_list_open') 열린목록.push({ 토큰, 항목들: [] })
-    else if (토큰.type === 'list_item_open' && 열린목록.length && 토큰.markup !== '-' && 토큰.markup !== '*' && 토큰.markup !== '+') {
-      열린목록[열린목록.length - 1].항목들.push(토큰)
-    } else if (토큰.type === 'ordered_list_close') {
-      const { 토큰: 여는, 항목들 } = 열린목록.pop()
-      if (!항목들.some((항목) => /^\d{3,}$/.test(항목.info))) continue
-      여는.attrJoin('class', '적힌번호')
-      for (const 항목 of 항목들) 항목.attrSet('value', 항목.info)
-    }
-  }
-})
+// 연도·날짜로 시작하는 줄("2026. 상반기에는…", "2026. 1. 1. 신정")은 CommonMark 상 번호 목록(날짜면 계단식 중첩 목록)이 된다.
+// 세 자리 이상 번호로 시작하는 줄은 실제 목록일 일이 거의 없으므로, 목록 규칙보다 먼저 도는 블록 규칙이 문단으로 가져간다.
+// 열린 목록의 다음 항목 자리에 와도 이 규칙이 목록을 끝내므로(alt 에 list) 연도는 늘 글 그대로 남는다.
+// 코드 블록 안은 펜스 규칙이 먼저 가져가므로 이 규칙이 닿지 않는다 (공개 API: ruler.before 와 블록 상태만 쓴다)
+const 연도줄 = /^\d{3,}[.)](\s|$)/
+/** 이 줄이 문단을 끊고 새 블록을 시작하는 줄인지 (빈 줄·글머리·1. 목록·제목·코드·구분선·인용) */
+const 블록시작줄 = /^(\s*$|[-*+]\s|1[.)]\s|#{1,6}\s|```|~~~|([-*_])(\s*\2){2,}\s*$|>)/
+md.block.ruler.before('list', '연도문단', (state, 시작줄, 끝줄, silent) => {
+  if (state.sCount[시작줄] - state.blkIndent >= 4) return false
+  const 줄글 = (줄) => state.src.slice(state.bMarks[줄] + state.tShift[줄], state.eMarks[줄])
+  if (!연도줄.test(줄글(시작줄))) return false
+  if (silent) return true
+  let 다음줄 = 시작줄 + 1
+  while (다음줄 < 끝줄 && state.sCount[다음줄] >= state.blkIndent && !블록시작줄.test(줄글(다음줄))) 다음줄++
+  const 글 = state.getLines(시작줄, 다음줄, state.blkIndent, false).trim()
+  const 여는 = state.push('paragraph_open', 'p', 1)
+  여는.map = [시작줄, 다음줄]
+  const 인라인 = state.push('inline', '', 0)
+  인라인.content = 글
+  인라인.map = [시작줄, 다음줄]
+  인라인.children = []
+  state.push('paragraph_close', 'p', -1)
+  state.line = 다음줄
+  return true
+}, { alt: ['paragraph', 'reference', 'blockquote', 'list'] })
 
 // 제목은 말풍선 안에서 한 단계 크기만 쓴다
 md.renderer.rules.heading_open = () => '<h4>'
@@ -70,7 +78,9 @@ export function 마크다운HTML(텍스트) {
 }
 
 /** 주소에서 풀어 보여 줄 글자: 왼쪽에서 오른쪽으로 쓰는 문자(한글·한자·가나·라틴·키릴·그리스)와 숫자 */
-const 읽는글자 = /^[\p{Script=Hangul}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{Nd}]$/u
+const 읽는글자문자 = /^[\p{Script=Hangul}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{Nd}]$/u
+/** 보이지 않는 글자(한글 채움 문자 U+3164 등)는 문자 범위에 들어 있어도 풀지 않는다 */
+const 읽는글자 = { test: (글자) => 읽는글자문자.test(글자) && !/\p{Default_Ignorable_Code_Point}/u.test(글자) }
 
 /**
  * 사람이 읽는 주소. 파서가 퍼센트 인코딩한 한글 같은 글자만 한 글자씩 되돌린다.
@@ -115,7 +125,7 @@ function 인라인글(토큰들, { 주소 = true } = {}) {
       case 'text': case 'code_inline': 글 += 토큰.content; break
       case 'softbreak': case 'hardbreak': 글 += '\n'; break
       case 'image': {
-        const 설명 = 인라인글(토큰.children) || '이미지'
+        const 설명 = 이미지설명(토큰) // 화면과 같은 설명 (안쪽 링크 주소는 붙이지 않는다)
         글 += 링크 ? 설명 : 설명 + 주소붙이기(설명, 토큰.attrGet('src')) // 링크 안의 이미지는 바깥 링크 주소만 붙인다
         break
       }
@@ -173,8 +183,6 @@ export function 마크다운텍스트(텍스트) {
         break
       case 'list_item_open': {
         const 목록 = 목록들[목록들.length - 1]
-        const 적힌번호 = 토큰.attrGet('value') // 화면의 <li value> 와 같게
-        if (목록.번호 != null && 적힌번호) 목록.번호 = Number(적힌번호)
         항목머리 = 들여 + (목록.번호 == null ? '• ' : `${목록.번호++}. `)
         들여 += '  '
         블록끝 = false
