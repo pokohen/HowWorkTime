@@ -803,9 +803,8 @@ describe('설정 감시', () => {
     await nextTick()
     expect(s.설정저장실패.value).toBe(true)
     쓰기.mockRestore()
-    const 시계 = vi.spyOn(performance, 'now').mockReturnValue(performance.now() + 6_000) // 실패 뒤 간격이 지났다
     window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', oldValue: 'xxxx', newValue: null, storageArea: localStorage }))
-    시계.mockRestore()
+    await new Promise((r) => setTimeout(r, 0)) // 공간이 생겼다: 간격 없이 다음 틈에 다시 쓴다
     expect(s.설정저장실패.value).toBe(false)
     expect(JSON.parse(localStorage.getItem('how-work-time:assistant-settings')).키.anthropic).toBe('sk-다시')
   })

@@ -38,11 +38,11 @@ export function 저장소접두사삭제(접두사, 저장소 = 기본저장소(
 }
 
 /**
- * 다른 창의 localStorage 변경 이벤트를 받는다 (sessionStorage 이벤트는 거른다). 아래 두 감시가 함께 쓴다
+ * 다른 창의 localStorage 변경 이벤트를 받는다 (sessionStorage 이벤트는 거른다). 아래 감시들과 쓰기재시도가 함께 쓴다
  * @param {(e: StorageEvent) => void} 받기
  * @returns {() => void} 감시 해제
  */
-function 저장이벤트감시(받기) {
+export function 저장이벤트감시(받기) {
   if (typeof window === 'undefined') return () => {}
   const 걸러받기 = (e) => {
     if (e.storageArea && e.storageArea !== 기본저장소()) return
@@ -64,16 +64,6 @@ export function 다른창저장감시(키, 콜백) {
   // 값이 클 수 있어도 다시 읽는다: 이벤트 값을 쓰면 이 창이 그 뒤에 쓴 값을 옛 값으로 덮는다(앞선 회차의 결함).
   // 다른 창의 저장은 묶어서(수백 ms 간격) 오므로 비용은 작다
   return 저장이벤트감시((e) => { if (e.key === 키 || e.key === null) 콜백(저장소읽기(키), e) })
-}
-
-/**
- * 다른 창이 localStorage 에서 무언가를 지우거나 줄였을 때 알린다 (어떤 키든, 통째 비움 포함).
- * 공간이 비었다는 신호로 쓴다: 쓰기에 실패한 저장을 다시 해 볼 때. 늘리기만 한 변경에는 부르지 않는다 (공간이 생기지 않았다)
- * @param {(e: StorageEvent) => void} 콜백 이벤트를 받는다 (어느 키의 일인지 가려야 하는 쪽을 위해)
- * @returns {() => void} 감시 해제
- */
-export function 다른창공간생김감시(콜백) {
-  return 저장이벤트감시((e) => { if (공간생긴변경(e)) 콜백(e) })
 }
 
 /** 이 저장 이벤트로 공간이 생겼는가: 지움·줄임·통째 비움 */
