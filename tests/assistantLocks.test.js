@@ -621,14 +621,29 @@ describe('다른 창이 받는 중인 답', () => {
       a.탭삭제(a.활성탭.value.id)
       await vi.advanceTimersByTimeAsync(1_000)
       const 처음 = 쓰기.mock.calls.length
-      for (let i = 0; i < 5; i++) { // 다른 창이 답을 받으며 400ms 마다 씀
-        window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', oldValue: 'xx', newValue: 'x', storageArea: localStorage }))
+      for (let i = 0; i < 5; i++) { // 다른 창이 답을 받으며 400ms 마다 이 키를 씀(늘림)
+        window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: null, newValue: 'x', storageArea: localStorage }))
         await vi.advanceTimersByTimeAsync(400)
       }
-      expect(쓰기.mock.calls.length - 처음).toBeLessThanOrEqual(1) // 5초 간격 안에서는 많아야 한 번
+      expect(쓰기.mock.calls.length - 처음).toBe(0) // 간격 안: 미뤄 둔다
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(쓰기.mock.calls.length - 처음).toBe(1) // 간격이 끝나면 한 번 다시 써 본다 (버리지 않는다)
     } finally {
       쓰기.mockRestore()
     }
+  })
+
+  it('쓰기에 실패한 직후라도 다른 창이 공간을 비우면(지움) 간격 없이 바로 다시 쓴다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    const 지운ID = a.활성탭.value.id
+    a.탭삭제(지운ID)
+    await vi.advanceTimersByTimeAsync(500)
+    쓰기.mockRestore()
+    window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage }))
+    await vi.advanceTimersByTimeAsync(500)
+    expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
   })
 
   it('확인하지 않았으면(확인한 값 없음) 새 형식 저장본을 덮지 않는다', async () => {
@@ -775,5 +790,19 @@ describe('설정 감시', () => {
     s.모델.value = '다른-모델' // 다음 수정: 지운 키가 함께 저장되지 않는다
     await nextTick()
     expect(JSON.parse(localStorage.getItem('how-work-time:assistant-settings')).키.anthropic).toBe('')
+  })
+
+  it('쓰지 못한 설정은 다른 창이 다른 키를 지워 공간이 생기면 다시 쓴다', async () => {
+    vi.resetModules()
+    const { useAssistantSettings } = await import('../src/assistant/composables/useAssistantSettings')
+    const s = useAssistantSettings()
+    const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    s.저장된키.value = 'sk-다시'
+    await nextTick()
+    expect(s.설정저장실패.value).toBe(true)
+    쓰기.mockRestore()
+    window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', oldValue: 'xxxx', newValue: null, storageArea: localStorage }))
+    expect(s.설정저장실패.value).toBe(false)
+    expect(JSON.parse(localStorage.getItem('how-work-time:assistant-settings')).키.anthropic).toBe('sk-다시')
   })
 })

@@ -2,7 +2,7 @@ import { ref, computed, watch } from 'vue'
 import { 어시스턴트설정키 } from '../../shared/constants'
 import { 제공자목록, 제공자여부 } from '../ai/providers'
 import { 기본설정, 설정직렬화, 설정복원, 설정합치기 } from '../utils/assistantStorage'
-import { 저장소읽기, 저장소쓰기, 다른창저장감시 } from '../../shared/utils/storage'
+import { 저장소읽기, 저장소쓰기, 다른창저장감시, 다른창공간생김감시 } from '../../shared/utils/storage'
 import { 모듈상태 } from '../../shared/composables/moduleState'
 
 // 로컬 개발 편의용. 빌드에서는 import.meta.env.DEV 가 false 로 치환돼 이 분기가 사라진다.
@@ -32,6 +32,17 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     설정저장실패.value = !저장소쓰기(어시스턴트설정키, 설정직렬화(설정.value))
     // 저장에 실패했으면 '이 창에서 바꾼 값'으로 남겨 둬 다른 창의 저장이 덮어쓰지 않게 한다
     if (!설정저장실패.value) 마지막저장 = 설정복원(설정직렬화(설정.value))
+  }
+  // 쓰지 못한 설정(API 키 등)은 다른 창이 공간을 비우거나(다른 키를 지움·줄임) 이 창을 떠날 때 다시 써 본다 (메모리에만 남아 잃지 않게).
+  // 설정 키를 지우거나 통째로 비운 일은 아래 감시가 다룬다 (지움은 비밀을 없애려는 뜻일 수 있어 다시 쓰지 않는다)
+  const 실패한설정다시쓰기 = () => { if (설정저장실패.value) 설정쓰기() }
+  정리등록(다른창공간생김감시((e) => {
+    if (e.key === 어시스턴트설정키 || e.key === null) return
+    실패한설정다시쓰기()
+  }))
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', 실패한설정다시쓰기)
+    정리등록(() => window.removeEventListener('pagehide', 실패한설정다시쓰기))
   }
   watch(설정, () => {
     const 건너뜀 = 쓰지않을설정 !== null && 설정직렬화(설정.value) === 쓰지않을설정

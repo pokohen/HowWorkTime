@@ -69,14 +69,12 @@ export function 다른창저장감시(키, 콜백) {
 /**
  * 다른 창이 localStorage 에서 무언가를 지우거나 줄였을 때 알린다 (어떤 키든, 통째 비움 포함).
  * 공간이 비었다는 신호로 쓴다: 쓰기에 실패한 저장을 다시 해 볼 때. 늘리기만 한 변경에는 부르지 않는다 (공간이 생기지 않았다)
- * @param {() => void} 콜백
- * @param {{ 뺄키?: string }} [옵션] 뺄키: 따로 감시하는 키 (같은 이벤트로 두 번 부르지 않게)
+ * @param {(e: StorageEvent) => void} 콜백 이벤트를 받는다 (어느 키의 일인지 가려야 하는 쪽을 위해)
  * @returns {() => void} 감시 해제
  */
-export function 다른창공간생김감시(콜백, { 뺄키 } = {}) {
+export function 다른창공간생김감시(콜백) {
   return 저장이벤트감시((e) => {
-    if (뺄키 && e.key === 뺄키) return
     const 줄었음 = e.key === null || e.newValue == null || (e.oldValue != null && e.newValue.length < e.oldValue.length)
-    if (줄었음) 콜백()
+    if (줄었음) 콜백(e)
   })
 }
