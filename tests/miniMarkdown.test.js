@@ -69,13 +69,16 @@ describe('마크다운HTML (화면)', () => {
     expect(화면('1897. 10. 12. 대한제국 선포')).toBe('<p>1897. 10. 12. 대한제국 선포</p>')
     expect(화면('2200. 먼 미래')).toBe('<p>2200. 먼 미래</p>')
     expect(화면('98. a\n99. b\n100. c\n101. d')).toBe('<ol start="98"><li>a</li><li>b</li><li>c</li><li>d</li></ol>')
-    // 앞 번호에 바로 이어지는 네 자리 번호는 목록으로 둔다
-    expect(화면('999. a\n1000. b\n1001. c')).toBe('<ol start="999"><li>a</li><li>b</li><li>c</li></ol>')
+    // 연도 줄이 이어지면 한 문단으로
+    expect(화면('2025. 결산\n2026. 계획')).toBe('<p>2025. 결산<br>2026. 계획</p>')
+    expect(화면('1999. a\n2000. b')).toBe('<p>1999. a<br>2000. b</p>')
     // 연도 문단은 다음 번호 항목을 삼키지 않는다
     expect(화면('2026. 하반기\n3. 추석')).toBe('<p>2026. 하반기</p><ol start="3"><li>추석</li></ol>')
     expect(화면('1. a\n2. b\n2026. c\n3. d')).toBe('<ol><li>a</li><li>b</li></ol><p>2026. c</p><ol start="3"><li>d</li></ol>')
     // 전각 공백은 목록 표시 뒤 공백이 아니다 (표준처럼 항목 안 이어지는 줄)
     expect(화면('1. a\n2026.\u3000상반기')).toBe('<ol><li>a<br>2026.\u3000상반기</li></ol>')
+    // 중첩 목록 안에서도 연도 문단은 다음 번호 항목 앞에서 끊긴다
+    expect(화면('1. x\n   - 2026. a\n     3. b')).toBe('<ol><li>x<ul><li>2026. a<ol start="3"><li>b</li></ol></li></ul></li></ol>')
     expect(복사('98. a\n99. b\n100. c\n101. d')).toBe('98. a\n99. b\n100. c\n101. d')
     // 번호 목록 뒤의 연도 줄은 목록을 끝내고 문단이 되며, 그 뒤 번호는 적힌 번호로 다시 시작한다
     expect(화면('1. 예:\n\n2026. 상반기')).toBe('<ol><li>예:</li></ol><p>2026. 상반기</p>')
@@ -135,7 +138,10 @@ describe('마크다운텍스트 (복사)', () => {
     expect(복사('[x](https://a.com/%D7%90%D7%91?q=1)')).toBe('x (https://a.com/%D7%90%D7%91?q=1)')
     expect(복사('[x](https://a.com/%EA%B0%EB%A6%89)')).toBe('x (https://a.com/%EA%B0릉)')
     expect(복사('[x](https://a.com/%E3%85%A4b)')).toBe('x (https://a.com/%E3%85%A4b)') // 보이지 않는 한글 채움 문자
-    expect(복사('[x](https://x.com/e%CC%81)')).toBe('x (https://x.com/e\u0301)') // 결합 문자는 앞 글자와 함께 푼다
+    // 결합 문자·보이지 않는 글자는 인코딩된 채로 (인코딩 조각을 깨뜨리지 않게)
+    expect(복사('[x](https://x.com/e%CC%81)')).toBe('x (https://x.com/e%CC%81)')
+    expect(복사('[x](https://x.com/a%2F%CC%81)')).toBe('x (https://x.com/a%2F%CC%81)')
+    expect(복사('[x](https://x.com/a%EF%B8%8F)')).toBe('x (https://x.com/a%EF%B8%8F)')
     expect(복사('첫째 날\n---\n\n둘째 날')).toBe('첫째 날\n\n둘째 날')
     expect(복사('')).toBe('')
     expect(복사(null)).toBe('')
