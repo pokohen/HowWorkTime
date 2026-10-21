@@ -38,7 +38,7 @@ export function 저장소접두사삭제(접두사, 저장소 = 기본저장소(
 }
 
 /**
- * 다른 창의 localStorage 변경 이벤트를 받는다 (sessionStorage 이벤트는 거른다). 아래 감시들과 쓰기재시도가 함께 쓴다
+ * 다른 창의 localStorage 변경 이벤트를 받는다 (sessionStorage 이벤트는 거른다). 다른창저장감시와 쓰기재시도가 함께 쓴다
  * @param {(e: StorageEvent) => void} 받기
  * @returns {() => void} 감시 해제
  */
