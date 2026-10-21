@@ -311,7 +311,7 @@ describe('다른 창이 받는 중인 답', () => {
     expect(localStorage.getItem('how-work-time:assistant-live')).toBeNull()
   })
 
-  it('합칠 수 없는 저장본 위에는 쓰지 않고(저장 실패로 알림), 보내기는 잠금을 놓친 채 끝나지 않는다', async () => {
+  it('합칠 수 없는 저장본 위에는 바로 쓰지 않고(따로 알림), 거듭 실패하면 덮어쓰며, 보내기는 잠금을 놓친 채 끝나지 않는다', async () => {
     const 잠금들 = 가짜잠금관리자()
     vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
     vi.doMock('../src/assistant/ai/client', () => ({ 대화요청: async ({ 조각 }) => { 조각('답'); return {} } }))
@@ -330,8 +330,11 @@ describe('다른 창이 받는 중인 답', () => {
       expect(await a.전송('질문')).toBe(true)
       expect(a.활성탭.value.메시지.at(-1).내용).toBe('답')
       expect(await 잠금들.request(잠금(탭ID), { ifAvailable: true }, (l) => Boolean(l))).toBe(true) // 잠금을 놓았다
-      expect(localStorage.getItem(저장키)).toBe(남의저장본) // 다른 창의 저장을 덮지 않았다
-      expect(a.저장실패.value).toBe(true)
+      expect(localStorage.getItem(저장키)).toBe(남의저장본) // 다른 창의 저장을 바로 덮지 않았다
+      expect(a.합치기실패.value).toBe(true)
+      await vi.advanceTimersByTimeAsync(20_000) // 같은 저장본으로 거듭 실패하면 이 창의 상태를 쓴다
+      expect(JSON.parse(localStorage.getItem(저장키)).탭목록.some((t) => t.id === 탭ID)).toBe(true)
+      expect(a.합치기실패.value).toBe(false)
     } finally {
       오류.mockRestore()
       vi.doUnmock('../src/assistant/utils/assistantStorage')
