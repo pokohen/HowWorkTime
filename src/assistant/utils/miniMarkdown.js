@@ -16,22 +16,36 @@ const md = new MarkdownIt({ html: false, linkify: false, breaks: true, typograph
 
 // 연도·날짜로 시작하는 줄("2026. 상반기에는…", "2026. 1. 1. 신정", "1592. 임진왜란")은 CommonMark 상 번호 목록
 // (날짜면 계단식 중첩 목록)이 된다. 목록 규칙보다 먼저 도는 규칙이 그런 줄을 markdown-it 의 원래 문단 규칙에 넘긴다.
-// - 네 자리 번호만 본다: 98·99·100 같은 실제 목록은 건드리지 않는다 (천 개 넘는 목록은 없다고 본다)
-// - 문단이 어디서 끝나는지는 원래 문단 규칙이 정한다. 문단 안에 이어지는 연도 줄은 같은 문단으로 남는다
-// - 목록 바로 뒤에 오면 표준의 다른 번호 줄("3. …")처럼 그 목록을 끝낸다. 번호 목록의 다음 항목이 되어 번호가
+// - 네 자리 번호만 본다: 98·99·100 같은 목록은 건드리지 않는다. 바로 앞 번호에 이어지는 번호("999. → 1000.")도 목록으로 둔다
+// - 문단은 원래 규칙대로 이어지되, 다음 번호 줄("3. …") 앞에서 끊는다. 연도 줄이 뒤 목록 항목을 글로 삼키지 않게
+// - 목록 바로 뒤에 오면 표준의 다른 번호 줄처럼 그 목록을 끝낸다. 번호 목록의 다음 항목이 되어 번호가
 //   다시 매겨지면 연도가 사라지므로, 끝낸 자리에서 문단이 된다
 // - 코드 블록 안은 펜스 규칙이 먼저 가져가므로 닿지 않는다
-// 원래 문단 규칙은 공개 API(getRules)로 가져온다. 기본 블록 규칙 사슬의 마지막이 문단 규칙이다
+// 원래 문단 규칙은 공개 API(getRules)로 가져온다. 기본 블록 규칙 사슬의 마지막이 문단 규칙이다 (아래 점검 참고)
 const 문단규칙 = md.block.ruler.getRules('').at(-1)
-const 연도줄 = /^\d{4}[.)](\s|$)/
+// 목록 표시 뒤는 CommonMark 처럼 스페이스·탭·줄 끝만 (전각 공백 등은 표시로 치지 않는다)
+const 연도줄 = /^(\d{4})[.)]([ \t]|$)/
+const 번호줄 = /^ {0,3}(\d{1,9})[.)]([ \t]|$)/
 
 md.block.ruler.before('list', '연도문단', (state, 시작줄, 끝줄, silent) => {
   if (state.sCount[시작줄] - state.blkIndent >= 4) return false
-  const 줄 = state.src.slice(state.bMarks[시작줄] + state.tShift[시작줄], state.eMarks[시작줄])
-  if (!연도줄.test(줄)) return false
+  const 줄글 = (줄) => state.src.slice(state.bMarks[줄] + state.tShift[줄], state.eMarks[줄])
+  const 연도 = 연도줄.exec(줄글(시작줄))
+  if (!연도) return false
+  // 바로 위 줄이 "앞 번호." 항목이면 실제로 이어지는 목록이다
+  const 위 = 시작줄 > 0 ? /^(\d{1,9})[.)]/.exec(줄글(시작줄 - 1)) : null
+  if (위 && Number(위[1]) + 1 === Number(연도[1])) return false
   if (silent) return true // 목록이 이 줄에서 끝나야 하는지 묻는 자리 (alt 'list')
-  return 문단규칙(state, 시작줄, 끝줄)
+  // 문단이 다음 번호 줄을 삼키지 않도록 그 앞까지만 넘긴다
+  let 문단끝 = 시작줄 + 1
+  while (문단끝 < 끝줄 && !번호줄.test(state.src.slice(state.bMarks[문단끝], state.eMarks[문단끝]))) 문단끝++
+  return 문단규칙(state, 시작줄, 문단끝)
 }, { alt: ['list'] })
+
+// 문단 규칙을 잘못 집었으면(markdown-it 이 규칙 순서를 바꾼 경우) 연도 줄이 다시 목록이 된다. 개발 중에 바로 드러나게 한다
+if (import.meta.env?.DEV && !md.render('2026. 점검').startsWith('<p>')) {
+  console.error('[miniMarkdown] 연도 줄 보호가 동작하지 않습니다. getRules(\'\').at(-1) 이 문단 규칙인지 확인하세요')
+}
 
 // 제목은 말풍선 안에서 한 단계 크기만 쓴다
 md.renderer.rules.heading_open = () => '<h4>'
@@ -81,7 +95,8 @@ const 읽는글자 = /^(?!\p{Default_Ignorable_Code_Point})[\p{Script=Hangul}\p{
  * 풀면 붙여 넣었을 때 주소가 끊기거나 뒤집혀 보인다
  */
 function 읽는주소(주소) {
-  return String(주소 ?? '').replace(/(?:%[0-9A-Fa-f]{2})+/g, (조각) => {
+  return String(주소 ?? '').replace(/(?:%[0-9A-Fa-f]{2})+/g, (조각, 위치, 전체) => {
+    const 앞글자 = 전체.slice(0, 위치).slice(-1) // 인코딩 구간 바로 앞 글자 (결합 문자가 붙을 대상일 수 있다)
     const 바이트들 = 조각.match(/%[0-9A-Fa-f]{2}/g)
     let 결과 = ''
     for (let i = 0; i < 바이트들.length;) {
@@ -96,7 +111,9 @@ function 읽는주소(주소) {
       if (길이 === 기대길이 && 길이 > 1) {
         try { 글자 = decodeURIComponent(묶음) } catch { /* 깨진 바이트는 그대로 */ }
       }
-      결과 += 글자 && 읽는글자.test(글자) ? 글자 : 묶음
+      // 결합 문자(é = e + ◌́ 등)는 바로 앞 글자가 글자로 남았을 때만 함께 푼다
+      const 풀기 = 글자 && (읽는글자.test(글자) || (/^\p{M}$/u.test(글자) && /[\p{L}\p{N}]$/u.test(결과 || 앞글자)))
+      결과 += 풀기 ? 글자 : 묶음
       i += 길이
     }
     return 결과
