@@ -124,7 +124,7 @@ function 모든대화삭제확정() {
 
     <!-- 설정은 바꾸는 즉시 저장되므로 '완료'는 대화 화면으로 돌아가기만 한다 -->
     <div class="settings-foot">
-      <p v-if="설정저장실패" class="settings-hint settings-hint--warn" role="status"><WarnIcon />설정을 이 브라우저에 저장하지 못했어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요. 새로고침하면 키가 사라질 수 있어요.</p>
+      <p v-if="설정저장실패" class="settings-hint settings-hint--warn" role="status"><WarnIcon />설정을 이 브라우저에 저장하지 못했어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요. 고친 설정이 남지 않았을 수 있으니 확인해 주세요.</p>
       <p v-else class="settings-hint">바꾼 내용은 바로 저장돼요.</p>
       <button type="button" class="primary-btn" @click="설정열림 = false">완료 · 대화로 돌아가기</button>
     </div>
