@@ -1,8 +1,8 @@
 import { ref, computed, watch } from 'vue'
 import { 어시스턴트설정키 } from '../../shared/constants'
 import { 제공자목록, 제공자여부 } from '../ai/providers'
-import { 기본설정, 설정직렬화, 설정복원 } from '../utils/assistantStorage'
-import { 저장소읽기, 저장소쓰기 } from '../../shared/utils/storage'
+import { 기본설정, 설정직렬화, 설정복원, 설정합치기 } from '../utils/assistantStorage'
+import { 저장소읽기, 저장소쓰기, 다른창저장감시 } from '../../shared/utils/storage'
 import { 모듈상태 } from '../../shared/composables/moduleState'
 
 // 로컬 개발 편의용. 빌드에서는 import.meta.env.DEV 가 false 로 치환돼 이 분기가 사라진다.
@@ -21,16 +21,20 @@ function 개발용키(제공자) {
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const 설정 = ref(설정복원(저장소읽기(어시스턴트설정키)))
   const 설정저장실패 = ref(false)
-  watch(설정, () => { 설정저장실패.value = !저장소쓰기(어시스턴트설정키, 설정직렬화(설정.value)) }, { deep: true })
-  // 다른 브라우저 탭에서 설정을 바꾸면 따라간다. 그러지 않으면 이 탭의 옛 설정이 다음 저장 때 새 키를 덮어쓴다
-  if (typeof window !== 'undefined') {
-    const 다른탭변경 = (e) => {
-      if (e.key !== 어시스턴트설정키 || e.newValue == null) return
-      if (e.newValue !== 설정직렬화(설정.value)) 설정.value = 설정복원(e.newValue)
-    }
-    window.addEventListener('storage', 다른탭변경)
-    정리등록(() => window.removeEventListener('storage', 다른탭변경))
-  }
+  /** 이 창이 마지막으로 저장했거나 받아들인 설정. 다른 창의 변경을 필드 단위로 합칠 때 '이 창에서 바꾼 것'을 가리는 기준 */
+  let 마지막저장 = 설정복원(설정직렬화(설정.value))
+  watch(설정, () => {
+    설정저장실패.value = !저장소쓰기(어시스턴트설정키, 설정직렬화(설정.value))
+    마지막저장 = 설정복원(설정직렬화(설정.value))
+  }, { deep: true })
+  // 다른 창에서 설정을 바꾸면 이 창에서 안 바꾼 필드만 따라간다 (고치던 키·모델은 지키고, 옛 설정이 새 키를 덮어쓰지 않게)
+  정리등록(다른창저장감시(어시스턴트설정키, (새값) => {
+    if (새값 == null) return
+    const 남의설정 = 설정복원(새값)
+    const 합친 = 설정합치기(설정.value, 마지막저장, 남의설정)
+    마지막저장 = 남의설정
+    if (설정직렬화(합친) !== 설정직렬화(설정.value)) 설정.value = 합친
+  }))
 
   const 제공자 = computed({
     get: () => 설정.value.제공자,

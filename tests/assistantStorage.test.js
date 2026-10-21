@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   새탭, 제목추출, 직렬화, 복원, 메시지최대, 탭최대,
-  기본설정, 설정직렬화, 설정복원,
+  기본설정, 설정직렬화, 설정복원, 대화합치기, 설정합치기,
 } from '../src/assistant/utils/assistantStorage'
 import { 저장소읽기, 저장소쓰기 } from '../src/shared/utils/storage'
 
@@ -44,11 +44,15 @@ describe('직렬화 → 복원', () => {
     const 저장 = JSON.parse(직렬화({ 탭목록: [탭], 활성탭ID: 탭.id }))
     expect(저장.탭목록[0].메시지).toHaveLength(5)
     expect(저장.탭목록[0].메시지.some((m) => '진행중' in m)).toBe(false)
-    expect(저장.탭목록[0].메시지[1]).toMatchObject({ 중단됨: true, 내용: '' })
+    // 받는 중이던 응답은 '받는중' 으로 저장하고, 이 창을 새로 열면 중단됨으로 본다 (그 요청은 이미 끊겼다)
+    expect(저장.탭목록[0].메시지[1]).toMatchObject({ 받는중: true, 내용: '' })
     expect(저장.탭목록[0].메시지[2]).toMatchObject({ 오류: '키 오류' })
     expect(저장.탭목록[0].메시지[3]).toMatchObject({ 중단됨: true, 내용: '일부만' })
-    expect(저장.탭목록[0].메시지[4]).toMatchObject({ 중단됨: true, 잘림: true, 내용: '받는 중' })
-    expect(복원(JSON.stringify(저장)).탭목록[0].메시지[4].잘림).toBe(true)
+    expect(저장.탭목록[0].메시지[4]).toMatchObject({ 받는중: true, 잘림: true, 내용: '받는 중' })
+    const 다시연 = 복원(JSON.stringify(저장)).탭목록[0].메시지
+    expect(다시연[1]).toMatchObject({ 중단됨: true })
+    expect(다시연[4]).toMatchObject({ 중단됨: true, 잘림: true })
+    expect(다시연.some((m) => m.다른창받는중)).toBe(false)
   })
 
   it('상한을 넘는 오래된 메시지·탭은 잘라낸다', () => {
@@ -119,5 +123,49 @@ describe('저장소 보호', () => {
     const 정상 = { getItem: (k) => 메모리.get(k) ?? null, setItem: (k, v) => 메모리.set(k, v) }
     expect(저장소쓰기('k', 'v', 정상)).toBe(true)
     expect(저장소읽기('k', 정상)).toBe('v')
+  })
+})
+
+describe('여러 창 합치기', () => {
+  const 탭 = (id, 수정시각, 내용 = id) => ({ id, 제목: id, 생성시각: 수정시각, 수정시각, 메시지: [메시지('user', 내용)] })
+
+  it('다른 창의 저장본을 받으면 다른 창이 받는 중인 답은 받는 중으로 (다시 시도 대상이 아님)', () => {
+    const 저장 = 직렬화({ 탭목록: [{ ...탭('a', Date.now()), 메시지: [메시지('user', 'q'), 메시지('assistant', '', { 진행중: true })] }], 활성탭ID: 'a' })
+    const 받은 = 복원(저장, { 다른창: true }).탭목록[0].메시지[1]
+    expect(받은.다른창받는중).toBe(true)
+    expect(받은.중단됨).toBeUndefined()
+    // 오래전에 저장된 받는중은 그 창이 닫힌 것으로 보고 중단됨
+    const 옛것 = 직렬화({ 탭목록: [{ ...탭('a', 0), 메시지: [메시지('assistant', '', { 진행중: true })] }], 활성탭ID: 'a' })
+    expect(복원(옛것, { 다른창: true, 지금: 60 * 60 * 1000 }).탭목록[0].메시지[0].중단됨).toBe(true)
+  })
+
+  it('대화 id 별로 더 최근 쪽을 쓰고, 한 창의 옛 목록이 다른 창의 새 대화를 지우지 않는다', () => {
+    const 내것 = { 탭목록: [탭('a', 10, '내 a'), 탭('b', 5, '내 b')], 삭제기록: {} }
+    const 남의것 = { 탭목록: [탭('a', 3, '남 a'), 탭('b', 9, '남 b'), 탭('c', 7)], 삭제기록: {} }
+    const 결과 = 대화합치기(내것, 남의것)
+    expect(결과.탭목록.map((t) => t.메시지[0].내용)).toEqual(['c', '남 b', '내 a']) // 만든 순서대로
+    expect(결과.탭목록.find((t) => t.id === 'a')).toBe(내것.탭목록[0]) // 내가 이기면 내 객체 그대로
+  })
+
+  it('지운 대화는 되살아나지 않고, 지운 뒤 다시 바뀐 대화는 남는다', () => {
+    const 내것 = { 탭목록: [], 삭제기록: { a: 10 } }
+    const 남의것 = { 탭목록: [탭('a', 8), 탭('b', 12)], 삭제기록: { b: 11 } }
+    expect(대화합치기(내것, 남의것).탭목록.map((t) => t.id)).toEqual(['b'])
+  })
+
+  it('이 창에서 받는 중인 대화는 늘 내 것', () => {
+    const 내것 = { 탭목록: [탭('a', 1, '받는 중')] }
+    const 남의것 = { 탭목록: [탭('a', 99, '옛')], 삭제기록: { a: 50 } }
+    expect(대화합치기(내것, 남의것, { 고정ID: 'a' }).탭목록[0].메시지[0].내용).toBe('받는 중')
+  })
+
+  it('설정은 이 창에서 안 바꾼 필드만 다른 창 값으로', () => {
+    const 마지막 = 기본설정()
+    const 내설정 = { ...기본설정(), 키: { ...기본설정().키, anthropic: '고치던 키' } }
+    const 남의설정 = { ...기본설정(), 제공자: 'openai', 키: { ...기본설정().키, anthropic: '남의 키', openai: 'sk-남' } }
+    const 결과 = 설정합치기(내설정, 마지막, 남의설정)
+    expect(결과.제공자).toBe('openai')
+    expect(결과.키.anthropic).toBe('고치던 키')
+    expect(결과.키.openai).toBe('sk-남')
   })
 })

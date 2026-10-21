@@ -7,7 +7,7 @@
 export function 이력만들기(메시지들, 최대 = Infinity) {
   const 결과 = []
   for (const m of 메시지들) {
-    if (m.역할 === 'assistant' && (!m.내용 || m.오류)) continue
+    if (m.역할 === 'assistant' && (!m.내용 || m.오류 || m.다른창받는중)) continue // 다른 창이 아직 받는 중인 답은 덜 끝났다
     if (!m.내용) continue
     const 마지막 = 결과[결과.length - 1]
     if (마지막 && 마지막.역할 === m.역할) 마지막.내용 += `\n\n${m.내용}`

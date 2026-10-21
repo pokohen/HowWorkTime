@@ -104,9 +104,9 @@ describe('시스템프롬프트', () => {
   it('앱이 아는 날짜·공휴일·연휴·근무일 정보를 담는다', () => {
     const 글 = 시스템프롬프트(기본)
     expect(글).toContain('2026년 2월 10일 화요일')
-    expect(글).toContain('2026년 2월 16일 (월) 설날')
+    expect(글).toContain('2월 16일 (월) 설날')
     expect(글).toContain('2026년 3월 공휴일: 없음')
-    expect(글).toContain('2026년 2월 남은 공휴일: 2026년 2월 16일 (월) 설날')
+    expect(글).toContain('2026년 2월 남은 공휴일: 2월 16일 (월) 설날')
     expect(글).toContain('2026년 2월 남은 근무일 10일')
     expect(글).not.toContain('보고 있는 달')
     expect(글).toContain('출근 예정 8일')

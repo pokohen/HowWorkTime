@@ -3,8 +3,8 @@ import { 어시스턴트저장키 } from '../../shared/constants'
 import { 대화요청 } from '../ai/client'
 import { 시스템프롬프트 } from '../utils/systemPrompt'
 import { 이력만들기 } from '../utils/history'
-import { 새탭, 새ID, 제목추출, 탭이름, 직렬화, 복원, 탭최대 } from '../utils/assistantStorage'
-import { 저장소읽기, 저장소쓰기 } from '../../shared/utils/storage'
+import { 새탭, 새ID, 제목추출, 탭이름, 직렬화, 복원, 탭최대, 대화합치기 } from '../utils/assistantStorage'
+import { 저장소읽기, 저장소쓰기, 다른창저장감시 } from '../../shared/utils/storage'
 import { 모듈상태 } from '../../shared/composables/moduleState'
 import { useAssistantSettings } from './useAssistantSettings'
 import { usePlannerContext } from './usePlannerContext'
@@ -33,6 +33,11 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const 탭목록 = ref(저장본?.탭목록 ?? [새탭()])
   const 활성탭ID = ref(저장본?.활성탭ID ?? 탭목록.value[0].id)
   const 활성탭 = computed(() => 탭목록.value.find((탭) => 탭.id === 활성탭ID.value) ?? 탭목록.value[0])
+  /** 지운 대화의 id → 지운 시각. 여러 창의 저장본을 합칠 때 지운 대화가 되살아나지 않게 한다 */
+  const 삭제기록 = ref(저장본?.삭제기록 ?? {})
+  /** 대화를 바꿨다고 표시한다. 여러 창의 저장본을 합칠 때 더 최근 쪽을 가리는 기준이다 */
+  const 고침 = (탭) => { 탭.수정시각 = Date.now() }
+  const 지움기록 = (id) => { 삭제기록.value = { ...삭제기록.value, [id]: Date.now() } }
 
   function 탭선택(id) {
     if (탭목록.value.some((탭) => 탭.id === id)) {
@@ -51,6 +56,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       while (탭목록.value.length >= 탭최대) {
         const 가장오래된 = 탭목록.value.findIndex((t) => t.id !== 응답중탭ID.value)
         if (가장오래된 === -1) break
+        지움기록(탭목록.value[가장오래된].id)
         탭목록.value.splice(가장오래된, 1)
       }
       탭목록.value.push(탭)
@@ -64,14 +70,16 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     if (색인 === -1) return
     // 지우는 탭이 응답을 받는 중이면 그 요청만 끊는다 (보고 있는 탭과는 무관)
     if (응답중탭ID.value === id) 중단()
+    지움기록(id)
     탭목록.value.splice(색인, 1)
     if (탭목록.value.length === 0) 탭목록.value.push(새탭())
     if (활성탭ID.value === id) 활성탭ID.value = 탭목록.value[Math.min(색인, 탭목록.value.length - 1)].id
     저장예약()
   }
-  /** 모든 대화를 지우고 빈 탭 하나로 돌아간다. 저장은 watcher 가 빈 탭 상태로 덮어쓴다 */
+  /** 모든 대화를 지우고 빈 탭 하나로 돌아간다. 다른 창에 남은 같은 대화도 지워지도록 모두 삭제 기록에 남긴다 */
   function 모든대화삭제() {
     if (전송중.value) 중단()
+    for (const 탭 of 탭목록.value) 지움기록(탭.id)
     탭목록.value = [새탭()]
     활성탭ID.value = 탭목록.value[0].id
     저장예약()
@@ -81,11 +89,25 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   // 탭 전체를 깊게 감시하면 조각마다 모든 메시지를 다시 훑게 되므로, 바꾸는 쪽에서 저장예약() 을 부른다
   let 저장타이머 = null
   const 저장실패 = ref(false)
+  /** 합친 결과를 이 창 상태로. 내 쪽이 이긴 대화는 같은 객체라 받는 중인 응답의 참조가 그대로다 */
+  function 합친것적용(합친) {
+    탭목록.value = 합친.탭목록.length ? 합친.탭목록 : [새탭()]
+    삭제기록.value = 합친.삭제기록
+    if (!탭목록.value.some((탭) => 탭.id === 활성탭ID.value)) 활성탭ID.value = 탭목록.value[탭목록.value.length - 1].id
+  }
+  /** 다른 창의 저장본과 대화 단위로 합친다 (통째로 바꿔치지 않는다) */
+  function 다른창것과합치기(문자열) {
+    const 남의것 = 복원(문자열, { 다른창: true })
+    if (!남의것) return
+    합친것적용(대화합치기({ 탭목록: 탭목록.value, 삭제기록: 삭제기록.value }, 남의것, { 고정ID: 응답중탭ID.value }))
+  }
   function 저장() {
     clearTimeout(저장타이머)
     저장타이머 = null
-    // 저장 공간이 가득 차는 등 실패하면 입력창 아래 안내를 바꿔 알린다 (조용히 잃지 않게)
-    저장실패.value = !저장소쓰기(어시스턴트저장키, 직렬화({ 탭목록: 탭목록.value, 활성탭ID: 활성탭ID.value }))
+    // 쓰기 전에 저장소의 최신본(다른 창이 쓴 것)과 먼저 합친다. 오래 받던 창이 끝나며 다른 창의 새 대화를 지우지 않게
+    다른창것과합치기(저장소읽기(어시스턴트저장키))
+    // 저장하지 못하면(공간이 가득 찼거나 브라우저가 막음) 입력창 아래 안내를 바꿔 알린다 (조용히 잃지 않게)
+    저장실패.value = !저장소쓰기(어시스턴트저장키, 직렬화({ 탭목록: 탭목록.value, 활성탭ID: 활성탭ID.value, 삭제기록: 삭제기록.value }))
   }
   function 저장예약() {
     if (폐기됨 || 저장타이머) return
@@ -100,18 +122,8 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   if (typeof window !== 'undefined') {
     window.addEventListener('pagehide', 즉시저장)
     정리등록(() => window.removeEventListener('pagehide', 즉시저장))
-    // 다른 브라우저 탭이 대화를 저장하면 이 탭도 그 내용으로 바꾼다. 그러지 않으면 이 탭의 옛 목록이 다음 저장 때 덮어쓴다.
-    // 이 탭이 응답을 받는 중이면 끝난 뒤 저장이 이기도록 그대로 둔다
-    const 다른탭변경 = (e) => {
-      if (e.key !== 어시스턴트저장키 || 전송중.value) return
-      const 새것 = 복원(e.newValue)
-      clearTimeout(저장타이머)
-      저장타이머 = null
-      탭목록.value = 새것?.탭목록 ?? [새탭()]
-      활성탭ID.value = 탭목록.value.some((탭) => 탭.id === 활성탭ID.value) ? 활성탭ID.value : (새것?.활성탭ID ?? 탭목록.value[0].id)
-    }
-    window.addEventListener('storage', 다른탭변경)
-    정리등록(() => window.removeEventListener('storage', 다른탭변경))
+    // 다른 창이 대화를 저장하면 대화 단위로 합친다. 이 창의 아직 저장 안 한 변경(예약된 저장)은 그대로 살아 있다
+    정리등록(다른창저장감시(어시스턴트저장키, 다른창것과합치기))
   }
   // 정리 순서: 먼저 진행 중 요청을 끊고 폐기 표시를 한 뒤, 예약된 저장을 바로 쓴다 (끊긴 요청의 finally 가 옛 상태를 다시 저장하지 않게)
   정리등록(() => {
@@ -166,6 +178,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     const 탭 = 활성탭.value
     if (!탭.제목) 탭.제목 = 제목추출(내용)
     탭.메시지.push({ id: 새ID(), 역할: 'user', 내용, 시각: Date.now() })
+    고침(탭)
     저장예약()
     await 응답받기(탭)
   }
@@ -174,6 +187,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   async function 응답받기(탭) {
     const 이력 = 이력만들기(탭.메시지, 이력최대)
     탭.메시지.push({ id: 새ID(), 역할: 'assistant', 내용: '', 시각: Date.now(), 진행중: true })
+    고침(탭)
     const 응답 = 탭.메시지[탭.메시지.length - 1]
     저장예약()
 
@@ -200,6 +214,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       else 응답.오류 = 오류.message
     } finally {
       응답.진행중 = false
+      고침(탭)
       전송중.value = false
       중단컨트롤러 = null
       응답중탭ID.value = null
@@ -222,7 +237,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     if (전송중.value) return
     const 탭 = 활성탭.value
     const 마지막 = 탭.메시지[탭.메시지.length - 1]
-    if (마지막?.역할 === 'assistant' && (마지막.오류 || 마지막.중단됨)) { 탭.메시지.pop(); 저장예약() }
+    if (마지막?.역할 === 'assistant' && (마지막.오류 || 마지막.중단됨)) { 탭.메시지.pop(); 고침(탭); 저장예약() }
     if (탭.메시지[탭.메시지.length - 1]?.역할 !== 'user') return
     await 응답받기(탭)
   }

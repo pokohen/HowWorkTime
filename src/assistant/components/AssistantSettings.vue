@@ -123,7 +123,7 @@ function 모든대화삭제확정() {
 
     <!-- 설정은 바꾸는 즉시 저장되므로 '완료'는 대화 화면으로 돌아가기만 한다 -->
     <div class="settings-foot">
-      <p v-if="설정저장실패" class="settings-hint settings-hint--warn" role="status">⚠ 브라우저 저장 공간이 가득 차 설정이 저장되지 않았어요. 오래된 대화를 지운 뒤 다시 넣어 주세요.</p>
+      <p v-if="설정저장실패" class="settings-hint settings-hint--warn" role="status">⚠ 설정을 이 브라우저에 저장하지 못했어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요. 새로고침하면 키가 사라질 수 있어요.</p>
       <p v-else class="settings-hint">바꾼 내용은 바로 저장돼요.</p>
       <button type="button" class="primary-btn" @click="설정열림 = false">완료 · 대화로 돌아가기</button>
     </div>
@@ -131,7 +131,6 @@ function 모든대화삭제확정() {
 </template>
 
 <style scoped>
-.settings-hint--warn { color: var(--tint-red-text); }
 .settings {
   display: flex;
   flex-direction: column;
@@ -157,6 +156,7 @@ function 모든대화삭제확정() {
   line-height: 1.5;
   color: var(--hint);
 }
+.settings-hint.settings-hint--warn { color: var(--tint-red-text); } /* 기본 힌트 색보다 뒤·더 구체적으로 */
 .settings-hint a {
   color: var(--accent-blue);
   font-weight: 600;

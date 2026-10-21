@@ -89,7 +89,7 @@ defineExpose({ 포커스, 채우기 })
         </svg>
       </button>
     </div>
-    <p v-if="저장실패" class="composer-hint composer-hint--warn" role="status">⚠ 브라우저 저장 공간이 가득 차 대화가 저장되지 않아요. 설정에서 오래된 대화를 지워 주세요</p>
+    <p v-if="저장실패" class="composer-hint composer-hint--warn" role="status">⚠ 대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>
     <p v-else class="composer-hint">Enter 전송 · Shift+Enter 줄바꿈 · 대화는 이 브라우저에 저장돼요</p>
   </footer>
 </template>
@@ -175,12 +175,12 @@ defineExpose({ 포커스, 채우기 })
 .send-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
 .send-btn--stop { background: var(--accent-red); }
 .send-btn--stop:hover { background: var(--accent-red-deep); }
-.composer-hint--warn { color: var(--tint-red-text); }
 .composer-hint {
   margin: 8px 2px 0;
   font-size: 0.74rem;
   color: var(--hint);
 }
+.composer-hint.composer-hint--warn { color: var(--tint-red-text); } /* 기본 힌트 색보다 뒤·더 구체적으로 */
 @media (max-width: 640px) {
   .composer-hint:not(.composer-hint--warn) { display: none; }
 }

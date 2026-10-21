@@ -15,7 +15,7 @@ const { 전송중, 재시도 } = useAssistant()
 const 응답 = computed(() => props.메시지.역할 === 'assistant')
 const 재시도가능 = computed(() => props.마지막 && (props.메시지.오류 || props.메시지.중단됨))
 /** 답변이 끝났고 내용이 있을 때만 복사 버튼을 보여 준다 */
-const 복사가능 = computed(() => 응답.value && !props.메시지.진행중 && !props.메시지.오류 && Boolean(props.메시지.내용?.trim()))
+const 복사가능 = computed(() => 응답.value && !props.메시지.진행중 && !props.메시지.다른창받는중 && !props.메시지.오류 && Boolean(props.메시지.내용?.trim()))
 
 // ── 렌더 ──────────────────────────────────────────────────
 // 조각이 올 때마다 전체 글을 다시 파싱하면 긴 답변에서 O(n²) 이 된다.
@@ -57,7 +57,8 @@ const 복사문구 = computed(() => ({ done: '복사됨', fail: '복사 실패' 
     <div v-if="!응답" class="bubble">{{ 메시지.내용 }}</div>
     <div v-else class="bubble">
       <div v-if="렌더HTML" class="md" v-html="렌더HTML" />
-      <span v-if="메시지.진행중" class="typing" aria-label="응답 작성 중"><i /><i /><i /></span>
+      <span v-if="메시지.진행중 || 메시지.다른창받는중" class="typing" aria-label="응답 작성 중"><i /><i /><i /></span>
+      <p v-if="메시지.다른창받는중" class="msg-note">다른 창에서 답을 받는 중이에요. 끝나면 여기에도 보여요.</p>
       <p v-if="메시지.오류" class="msg-error">{{ 메시지.오류 }}</p>
       <p v-else-if="메시지.중단됨" class="msg-note">응답을 중단했어요.</p>
       <p v-else-if="메시지.잘림" class="msg-note">답변이 길어서 여기서 잘렸어요. 이어서 써 달라고 요청해 보세요.</p>
