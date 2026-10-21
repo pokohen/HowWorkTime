@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   새탭, 제목추출, 직렬화, 복원, 메시지최대, 탭최대,
-  기본설정, 설정직렬화, 설정복원, 대화합치기, 메시지합치기, 설정합치기, 상한맞추기,
+  기본설정, 설정직렬화, 설정복원, 저장본읽기, 대화합치기, 메시지합치기, 설정합치기, 상한맞추기,
 } from '../src/assistant/utils/assistantStorage'
 import { 저장소읽기, 저장소쓰기 } from '../src/shared/utils/storage'
 
@@ -308,6 +308,16 @@ describe('여러 창 합치기', () => {
       expect(결과.탭목록[0].메시지.map((m) => m.id)).toEqual(['q', 'a', 'q2', 'a2'])
       expect(남탭.메시지.map((m) => m.id)).toEqual(['q', 'a'])
     })
+  })
+
+  it('저장본읽기: 정상·새 판·깨짐·없음을 가린다 (비어 있는 이 판의 저장본은 깨짐)', () => {
+    expect(저장본읽기(null).종류).toBe('없음')
+    expect(저장본읽기('{').종류).toBe('깨짐')
+    expect(저장본읽기('{"버전":1,"탭목록":[]}').종류).toBe('깨짐')
+    expect(저장본읽기('{"버전":2}').종류).toBe('새판')
+    const 정상 = 저장본읽기(직렬화({ 탭목록: [탭('a', 1)], 활성탭ID: 'a' }))
+    expect(정상.종류).toBe('정상')
+    expect(정상.상태.탭목록[0].id).toBe('a')
   })
 
   it('설정은 이 창에서 안 바꾼 필드만 다른 창 값으로', () => {
