@@ -23,10 +23,10 @@ export function 저장소삭제(키, 저장소 = 기본저장소()) {
   try { 저장소?.removeItem(키) } catch { /* 무시 */ }
 }
 /**
- * 접두사로 시작하는 키를 지운다 (예전 판이 남긴 키 정리 등)
+ * 접두사로 시작하는 키를 지운다 (예전 판이 남긴 키 정리 등). 저장소는 다른 함수들처럼 두 번째 인자다
  * @param {(키: string, 값: string|null) => boolean} [지울까] 키마다 지울지 고른다. 없으면 모두
  */
-export function 저장소접두사삭제(접두사, 지울까 = () => true, 저장소 = 기본저장소()) {
+export function 저장소접두사삭제(접두사, 저장소 = 기본저장소(), 지울까 = () => true) {
   try {
     const 키들 = []
     for (let i = 0; i < (저장소?.length ?? 0); i++) {

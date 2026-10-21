@@ -259,4 +259,18 @@ describe('다른 창이 받는 중인 답', () => {
     expect(localStorage.getItem('how-work-time:assistant-live')).toBeNull()
     expect(localStorage.getItem('how-work-time:assistant-live:fresh')).not.toBeNull()
   })
+
+  it('예전 판 창이 살아 있는 신호를 남긴 대화는 잠금이 비어도 중단됨으로 만들지 않는다', async () => {
+    vi.stubGlobal('navigator', { ...navigator, locks: 가짜잠금관리자(), onLine: true })
+    받는중저장(Date.now() - 10 * 60_000)
+    localStorage.setItem('how-work-time:assistant-live:x', String(Date.now()))
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(a.탭목록.value[0].메시지.at(-1).다른창받는중).toBe(true)
+    localStorage.removeItem('how-work-time:assistant-live:x') // 예전 판 창이 끝나 신호를 지웠다
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
+  })
 })
