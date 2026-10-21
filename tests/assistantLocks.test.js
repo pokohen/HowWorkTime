@@ -463,9 +463,17 @@ describe('다른 창이 받는 중인 답', () => {
     window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 새판 }))
     expect(a.새판감지.value).toBe(true)
     expect(await a.전송('질문')).toBe(false) // 저장할 수 없으니 보내지 않는다
-    expect(a.덮어쓸대화있음.value).toBe(false) // 빈 창은 덮어쓰기를 내밀지 않는다
-    localStorage.removeItem(저장키)
-    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: null }))
+    expect(a.덮어쓸대화있음.value).toBe(false) // 빈 창: 버튼은 '지우고 새로 시작' 문구로 내민다
+    localStorage.clear()
+    window.dispatchEvent(new StorageEvent('storage', { key: null, newValue: null })) // 다른 창이 저장소를 통째로 비움
+    expect(a.새판감지.value).toBe(false)
+    // 같은 새 형식 값이 다시 오면 (캐시가 풀렸으므로) 다시 막는다
+    localStorage.setItem(저장키, 새판)
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 새판 }))
+    expect(a.새판감지.value).toBe(true)
+    // 읽을 수 있는 값이 오면 풀린다
+    받는중저장(Date.now(), { id: 'k', 역할: 'assistant', 내용: '답', 시각: Date.now() })
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: localStorage.getItem(저장키) }))
     expect(a.새판감지.value).toBe(false)
   })
 })

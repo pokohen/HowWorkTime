@@ -105,7 +105,7 @@ defineExpose({ 포커스, 채우기 })
     </div>
     <p v-if="새판감지" class="composer-hint composer-hint--warn" role="status">
       <WarnIcon />플래너가 새 버전으로 저장한 대화가 있어 이 창에서는 저장하거나 보내지 않아요. 새로고침해 주세요.
-      <button v-if="덮어쓸대화있음" type="button" class="hint-action" @click="이창으로덮어쓰기">이 창의 대화로 덮어쓰기</button>
+      <button type="button" class="hint-action" @click="이창으로덮어쓰기">{{ 덮어쓸대화있음 ? '이 창의 대화로 덮어쓰기' : '저장된 대화를 지우고 이 창에서 새로 시작' }}</button>
     </p>
     <p v-else-if="저장실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>
     <p v-else-if="전체합치기실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />다른 창에서 저장한 대화를 합치지 못해 이 창의 내용으로 저장했어요. 다른 창에만 있던 대화는 빠졌을 수 있어요</p>

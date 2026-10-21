@@ -41,11 +41,15 @@ export function 저장소접두사삭제(접두사, 저장소 = 기본저장소(
  * 다른 브라우저 탭(창)이 이 키를 저장하면 새 값을 넘겨준다. 같은 창의 저장에는 불리지 않는다 (storage 이벤트의 성질).
  * @param {string} 키
  * @param {(새값: string|null) => void} 콜백
+ * @param {{ 전체비움도?: boolean }} [옵션] 전체비움도: 다른 창이 저장소를 통째로 비웠을 때(clear, 이벤트 key 가 null)도 null 로 알린다
  * @returns {() => void} 감시 해제
  */
-export function 다른창저장감시(키, 콜백) {
+export function 다른창저장감시(키, 콜백, { 전체비움도 = false } = {}) {
   if (typeof window === 'undefined') return () => {}
-  const 받기 = (e) => { if (e.key === 키) 콜백(e.newValue) }
+  const 받기 = (e) => {
+    if (e.key === 키) 콜백(e.newValue)
+    else if (전체비움도 && e.key === null) 콜백(null)
+  }
   window.addEventListener('storage', 받기)
   return () => window.removeEventListener('storage', 받기)
 }

@@ -10,7 +10,7 @@ const props = defineProps({
   /** 탭의 마지막 메시지인지. 실패·중단된 마지막 응답에만 '다시 시도'를 붙인다 */
   마지막: Boolean,
 })
-const { 전송중, 재시도 } = useAssistant()
+const { 전송중, 활성탭다른창받는중, 새판감지, 재시도 } = useAssistant()
 
 const 응답 = computed(() => props.메시지.역할 === 'assistant')
 const 재시도가능 = computed(() => props.마지막 && (props.메시지.오류 || props.메시지.중단됨))
@@ -66,7 +66,7 @@ const 복사문구 = computed(() => ({ done: '복사됨', fail: '복사 실패' 
         v-if="재시도가능"
         type="button"
         class="retry-btn"
-        :disabled="전송중"
+        :disabled="전송중 || 활성탭다른창받는중 || 새판감지"
         @click="재시도"
       >다시 시도</button>
       <div v-if="복사가능" class="bubble-actions">
