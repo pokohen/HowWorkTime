@@ -1,4 +1,5 @@
 import MarkdownIt from 'markdown-it'
+import 문단규칙 from 'markdown-it/lib/rules_block/paragraph.mjs'
 
 /**
  * 모델 응답의 마크다운을 화면용 HTML 과 공유용 일반 텍스트로 바꾼다.
@@ -15,30 +16,19 @@ const md = new MarkdownIt({ html: false, linkify: false, breaks: true, typograph
   .disable(['table', 'code', 'lheading'])
 
 // 연도·날짜로 시작하는 줄("2026. 상반기에는…", "2026. 1. 1. 신정")은 CommonMark 상 번호 목록(날짜면 계단식 중첩 목록)이 된다.
-// 세 자리 이상 번호로 시작하는 줄은 실제 목록일 일이 거의 없으므로, 목록 규칙보다 먼저 도는 블록 규칙이 문단으로 가져간다.
-// 열린 목록의 다음 항목 자리에 와도 이 규칙이 목록을 끝내므로(alt 에 list) 연도는 늘 글 그대로 남는다.
-// 코드 블록 안은 펜스 규칙이 먼저 가져가므로 이 규칙이 닿지 않는다 (공개 API: ruler.before 와 블록 상태만 쓴다)
-const 연도줄 = /^\d{3,}[.)](\s|$)/
-/** 이 줄이 문단을 끊고 새 블록을 시작하는 줄인지 (빈 줄·글머리·1. 목록·제목·코드·구분선·인용) */
-const 블록시작줄 = /^(\s*$|[-*+]\s|1[.)]\s|#{1,6}\s|```|~~~|([-*_])(\s*\2){2,}\s*$|>)/
+// 목록 규칙보다 먼저 도는 규칙이 그런 줄을 markdown-it 의 원래 문단 규칙에 넘긴다. 문단이 어디서 끝나는지는 원래 규칙이 정한다.
+// - 연도(1900~2199)만 본다: 100번대 같은 실제 긴 목록은 건드리지 않는다
+// - alt 는 'list' 만: 열린 목록의 다음 항목 자리에 온 연도 줄은 목록을 끝내 번호가 다시 매겨지지 않게 하고,
+//   문단 안에 이어지는 연도 줄은 표준대로 같은 문단으로 남는다
+// - 코드 블록 안은 펜스 규칙이 먼저 가져가므로 닿지 않는다
+const 연도줄 = /^(19|20|21)\d{2}[.)](\s|$)/
 md.block.ruler.before('list', '연도문단', (state, 시작줄, 끝줄, silent) => {
   if (state.sCount[시작줄] - state.blkIndent >= 4) return false
-  const 줄글 = (줄) => state.src.slice(state.bMarks[줄] + state.tShift[줄], state.eMarks[줄])
-  if (!연도줄.test(줄글(시작줄))) return false
+  const 줄 = state.src.slice(state.bMarks[시작줄] + state.tShift[시작줄], state.eMarks[시작줄])
+  if (!연도줄.test(줄)) return false
   if (silent) return true
-  let 다음줄 = 시작줄 + 1
-  while (다음줄 < 끝줄 && state.sCount[다음줄] >= state.blkIndent && !블록시작줄.test(줄글(다음줄))) 다음줄++
-  const 글 = state.getLines(시작줄, 다음줄, state.blkIndent, false).trim()
-  const 여는 = state.push('paragraph_open', 'p', 1)
-  여는.map = [시작줄, 다음줄]
-  const 인라인 = state.push('inline', '', 0)
-  인라인.content = 글
-  인라인.map = [시작줄, 다음줄]
-  인라인.children = []
-  state.push('paragraph_close', 'p', -1)
-  state.line = 다음줄
-  return true
-}, { alt: ['paragraph', 'reference', 'blockquote', 'list'] })
+  return 문단규칙(state, 시작줄, 끝줄)
+}, { alt: ['list'] })
 
 // 제목은 말풍선 안에서 한 단계 크기만 쓴다
 md.renderer.rules.heading_open = () => '<h4>'
@@ -78,9 +68,8 @@ export function 마크다운HTML(텍스트) {
 }
 
 /** 주소에서 풀어 보여 줄 글자: 왼쪽에서 오른쪽으로 쓰는 문자(한글·한자·가나·라틴·키릴·그리스)와 숫자 */
-const 읽는글자문자 = /^[\p{Script=Hangul}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{Nd}]$/u
-/** 보이지 않는 글자(한글 채움 문자 U+3164 등)는 문자 범위에 들어 있어도 풀지 않는다 */
-const 읽는글자 = { test: (글자) => 읽는글자문자.test(글자) && !/\p{Default_Ignorable_Code_Point}/u.test(글자) }
+// 보이지 않는 글자(한글 채움 문자 U+3164 등)는 문자 범위에 들어 있어도 뺀다
+const 읽는글자 = /^[[\p{Script=Hangul}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{Nd}]--\p{Default_Ignorable_Code_Point}]$/v
 
 /**
  * 사람이 읽는 주소. 파서가 퍼센트 인코딩한 한글 같은 글자만 한 글자씩 되돌린다.
