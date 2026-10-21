@@ -57,3 +57,19 @@ export function 다른창저장감시(키, 콜백) {
   window.addEventListener('storage', 받기)
   return () => window.removeEventListener('storage', 받기)
 }
+
+/**
+ * 다른 창이 localStorage 의 어떤 키든 바꾸거나 지우면 알린다 (값은 넘기지 않는다).
+ * 공간이 비었을 수 있다는 신호로 쓴다: 쓰기에 실패한 저장을 다시 해 볼 때
+ * @param {() => void} 콜백
+ * @returns {() => void} 감시 해제
+ */
+export function 다른창저장소변경감시(콜백) {
+  if (typeof window === 'undefined') return () => {}
+  const 받기 = (e) => {
+    if (e.storageArea && e.storageArea !== 기본저장소()) return
+    콜백()
+  }
+  window.addEventListener('storage', 받기)
+  return () => window.removeEventListener('storage', 받기)
+}

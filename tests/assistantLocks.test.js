@@ -560,6 +560,20 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
+  it('쓰지 못한 변경은 다른 창이 다른 키를 지워도(공간이 생김) 다시 쓴다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    const 지운ID = a.활성탭.value.id
+    a.탭삭제(지운ID)
+    await vi.advanceTimersByTimeAsync(1_000)
+    쓰기.mockRestore()
+    window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', newValue: null, storageArea: localStorage }))
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
+  })
+
+
   it('쓰지 못한 변경은 다른 창이 저장소를 비우면 다시 쓰고, 떠날 때(pagehide)도 다시 써 본다', async () => {
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
     const a = useAssistant()
