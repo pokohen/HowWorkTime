@@ -297,7 +297,7 @@ describe('여러 창 합치기', () => {
       const 결과 = 대화합치기({ 탭목록: [내탭, 다른탭] }, { 탭목록: [이상한, { ...다른탭, 메시지: [질('q2', 1), 답('a2', 2)] }] })
       expect(결과.탭목록.find((t) => t.id === 't').메시지).toEqual([null])
       expect(결과.탭목록.find((t) => t.id === 'u').메시지.map((m) => m.id)).toEqual(['q2', 'a2'])
-      expect(결과.합치지못함).toEqual(['t']) // 부르는 쪽이 알릴 수 있게
+      expect(결과.합치지못함.map((f) => f.id)).toEqual(['t']) // 부르는 쪽이 기록·안내할 수 있게
       오류.mockRestore()
     })
 
