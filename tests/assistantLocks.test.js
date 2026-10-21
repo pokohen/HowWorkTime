@@ -427,4 +427,31 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
+
+  it('새 형식의 저장본은 합치지도 덮지도 않고 안내하며, 사용자가 고르면 이 창의 대화로 덮어쓴다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    const 새판 = '{"버전":2,"대화들":[]}'
+    localStorage.setItem(저장키, 새판)
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 새판 }))
+    expect(a.새판감지.value).toBe(true)
+    expect(a.전체합치기실패.value).toBe(false)
+    a.탭삭제(a.활성탭.value.id) // 저장을 부르는 변경
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(localStorage.getItem(저장키)).toBe(새판) // 덮지 않았다
+    a.이창으로덮어쓰기()
+    expect(a.새판감지.value).toBe(false)
+    expect(JSON.parse(localStorage.getItem(저장키)).버전).toBe(1)
+  })
+
+  it('시작할 때 새 형식의 저장본이면 바로 안내하고 덮지 않는다', async () => {
+    localStorage.setItem(저장키, '{"버전":9}')
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    expect(a.새판감지.value).toBe(true)
+    a.새탭추가()
+    a.탭삭제(a.활성탭.value.id)
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(localStorage.getItem(저장키)).toBe('{"버전":9}')
+  })
 })
