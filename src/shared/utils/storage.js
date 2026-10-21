@@ -50,6 +50,8 @@ export function 다른창저장감시(키, 콜백) {
   if (typeof window === 'undefined') return () => {}
   const 받기 = (e) => {
     if (e.storageArea && e.storageArea !== 기본저장소()) return
+    // 값이 클 수 있어도 다시 읽는다: 이벤트 값을 쓰면 이 창이 그 뒤에 쓴 값을 옛 값으로 덮는다(앞선 회차의 결함).
+    // 다른 창의 저장은 묶어서(수백 ms 간격) 오므로 비용은 작다
     if (e.key === 키 || e.key === null) 콜백(저장소읽기(키))
   }
   window.addEventListener('storage', 받기)

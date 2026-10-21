@@ -449,11 +449,11 @@ describe('다른 창이 받는 중인 답', () => {
     a.덮어쓰기확인시작()
     expect(a.덮어쓰기확인중.value).toBe(true)
     localStorage.setItem(저장키, '{"버전":3}')
-    expect(a.이창으로덮어쓰기()).toBe('바뀜')
+    a.이창으로덮어쓰기()
     expect(a.저장본바뀜.value).toBe(true)
     expect(localStorage.getItem(저장키)).toBe('{"버전":3}')
     a.덮어쓰기확인시작() // 다시 확인하면(이번엔 바뀐 값) 덮는다
-    expect(a.이창으로덮어쓰기()).toBe('덮음')
+    a.이창으로덮어쓰기()
     expect(a.새판감지.value).toBe(false)
     expect(JSON.parse(localStorage.getItem(저장키)).버전).toBe(1)
   })
@@ -465,22 +465,42 @@ describe('다른 창이 받는 중인 답', () => {
     window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: '{"버전":2}' }))
     a.덮어쓰기확인시작()
     받는중저장(Date.now(), { id: 'n', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() }) // 이벤트는 아직 안 닿음
-    expect(a.이창으로덮어쓰기()).toBe('합침')
+    a.이창으로덮어쓰기()
     expect(a.새판감지.value).toBe(false)
     expect(JSON.parse(localStorage.getItem(저장키)).탭목록.some((t) => t.id === 'x')).toBe(true) // 남의 대화를 합쳐 지켰다
+  })
+
+  it('확인한 덮어쓰기의 쓰기가 실패하면 막기를 되돌려 나중 저장이 묻지 않고 덮지 않는다', async () => {
+    localStorage.setItem(저장키, '{"버전":2}')
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    a.덮어쓰기확인시작()
+    const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    try {
+      a.이창으로덮어쓰기()
+    } finally {
+      쓰기.mockRestore()
+    }
+    expect(a.저장실패.value).toBe(true)
+    expect(a.새판감지.value).toBe(true)
+    a.탭삭제(a.활성탭.value.id) // 공간이 생긴 뒤의 보통 저장
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(localStorage.getItem(저장키)).toBe('{"버전":2}')
   })
 
   it('확인하지 않았으면(확인한 값 없음) 새 형식 저장본을 덮지 않는다', async () => {
     localStorage.setItem(저장키, '{"버전":2}')
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
     const a = useAssistant()
-    expect(a.이창으로덮어쓰기()).toBe('확인없음')
+    a.이창으로덮어쓰기() // 확인 없음
     expect(localStorage.getItem(저장키)).toBe('{"버전":2}')
+    expect(a.저장본바뀜.value).toBe(false)
     // 확인은 10초 뒤, 막기가 풀리면 거둔다 (입력창과 무관하게)
     a.덮어쓰기확인시작()
     await vi.advanceTimersByTimeAsync(11_000)
     expect(a.덮어쓰기확인중.value).toBe(false)
-    expect(a.이창으로덮어쓰기()).toBe('확인없음')
+    a.이창으로덮어쓰기()
+    expect(localStorage.getItem(저장키)).toBe('{"버전":2}')
     a.덮어쓰기확인시작()
     localStorage.removeItem(저장키)
     window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: null }))
@@ -609,7 +629,7 @@ describe('설정 감시', () => {
     window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage }))
     await nextTick()
     expect(s.현재키.value).toBe('')
-    expect(s.설정저장실패.value).toBe(false)
+    expect(s.설정저장실패.value).toBe(true) // 버려진 수정을 다시 입력해야 함을 알린다
     s.모델.value = '다른-모델' // 다음 수정: 지운 키가 함께 저장되지 않는다
     await nextTick()
     expect(JSON.parse(localStorage.getItem('how-work-time:assistant-settings')).키.anthropic).toBe('')

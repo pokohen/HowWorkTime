@@ -110,12 +110,12 @@ defineExpose({ 포커스, 채우기 })
       <WarnIcon />플래너가 새 버전으로 저장한 대화가 있어 이 창에서는 저장하거나 보내지 않아요. 새로고침해 주세요.
       <template v-if="덮어쓰기확인중">
         저장된 새 버전 대화는 지워져요.
-        <button type="button" class="hint-action" @click="이창으로덮어쓰기">{{ 덮어쓸대화있음 ? '정말 덮어쓰기' : '정말 지우고 새로 시작' }}</button>
-        <button type="button" class="hint-action" @click="덮어쓰기확인취소">취소</button>
+        <button type="button" class="hint-action" @click="이창으로덮어쓰기()">{{ 덮어쓸대화있음 ? '정말 덮어쓰기' : '정말 지우고 새로 시작' }}</button>
+        <button type="button" class="hint-action" @click="덮어쓰기확인취소()">취소</button>
       </template>
       <template v-else>
         <template v-if="저장본바뀜">그 사이 다른 새 버전 저장본으로 바뀌어 덮어쓰지 않았어요. 다시 확인해 주세요.</template>
-        <button type="button" class="hint-action" @click="덮어쓰기확인시작">{{ 덮어쓸대화있음 ? '이 창의 대화로 덮어쓰기' : '저장된 대화를 지우고 이 창에서 새로 시작' }}</button>
+        <button type="button" class="hint-action" @click="덮어쓰기확인시작()">{{ 덮어쓸대화있음 ? '이 창의 대화로 덮어쓰기' : '저장된 대화를 지우고 이 창에서 새로 시작' }}</button>
       </template>
     </p>
     <p v-else-if="저장실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>
