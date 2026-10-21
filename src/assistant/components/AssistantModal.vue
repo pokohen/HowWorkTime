@@ -22,6 +22,7 @@ async function 열기처리() {
   if (!el) return
   if (!el.open) el.showModal()
   await nextTick()
+  if (!열림.value) return // 기다리는 사이 닫혔다 (Esc·FAB). 닫힌 대화 상자에 포커스를 옮기지 않는다
   아래로스크롤(true)
   입력부.value?.포커스()
 }

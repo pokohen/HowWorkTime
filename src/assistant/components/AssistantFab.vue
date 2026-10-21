@@ -1,19 +1,26 @@
 <script setup>
 import { useAssistant } from '../composables/useAssistant'
+import { useModalLoader } from '../composables/useModalLoader'
 import StarIcon from './StarIcon.vue'
 
 const { 열림, 토글, 전송중 } = useAssistant()
+const { 불러오는중 } = useModalLoader()
+// 모달을 받아 오는 동안 다시 누르면 여는 것을 취소하게 되므로 무시한다
+function 눌림() {
+  if (!불러오는중.value) 토글()
+}
 </script>
 
 <template>
   <button
     type="button"
     class="assistant-fab"
-    :class="{ open: 열림, busy: 전송중 }"
+    :class="{ open: 열림, busy: 전송중 || 불러오는중 }"
+    :aria-busy="불러오는중"
     aria-label="쉬는 날 플래너 열기"
     title="쉬는 날 플래너 · 휴가·주말·여행을 AI와 계획해요"
     :aria-expanded="열림"
-    @click="토글"
+    @click="눌림"
   >
     <StarIcon class="assistant-fab-icon" />
   </button>

@@ -6,7 +6,9 @@ import { useLiveAnnounce } from '../../shared/composables/useLiveAnnounce'
 // 모달을 닫아 둔 사이 응답이 끝났을 때 화면 하단에 뜨는 알림. 누르면 그 대화가 열린다.
 const { 알림, 알림열기, 알림닫기 } = useAssistant()
 
-const 제목 = (알림) => (알림.종류 === 'error' ? '답변을 받지 못했어요' : '답변이 도착했어요')
+const 제목들 = { error: '답변을 받지 못했어요', load: '플래너를 불러오지 못했어요', done: '답변이 도착했어요' }
+const 제목 = (알림) => 제목들[알림.종류] ?? 제목들.done
+const 누르면 = (알림) => (알림.종류 === 'load' ? '눌러서 새로고침' : '눌러서 보기')
 
 // live region 은 내용이 바뀌기 전에 이미 있어야 읽힌다. 토스트 요소는 v-if 로 생겼다 사라지므로
 // 항상 떠 있는 sr-only 영역에 문구를 따로 넣는다
@@ -38,10 +40,10 @@ function 전환끝() {
   <Transition name="toast" @after-leave="전환끝">
     <div v-if="알림" class="toast" :class="`toast--${알림.종류}`">
       <button type="button" class="toast-main" @click="알림열기">
-        <span class="toast-icon" aria-hidden="true">{{ 알림.종류 === 'error' ? '!' : '✦' }}</span>
+        <span class="toast-icon" aria-hidden="true">{{ 알림.종류 === 'done' ? '✦' : '!' }}</span>
         <span class="toast-text">
           <strong>{{ 제목(알림) }}</strong>
-          <span class="toast-sub">{{ 알림.제목 }} · 눌러서 보기</span>
+          <span class="toast-sub">{{ 알림.제목 }} · {{ 누르면(알림) }}</span>
         </span>
       </button>
       <button type="button" class="toast-close" aria-label="알림 닫기" @click="알림닫기">
@@ -112,7 +114,8 @@ function 전환끝() {
   background: var(--tint-amber-bg);
   color: var(--accent-amber);
 }
-.toast--error .toast-icon {
+.toast--error .toast-icon,
+.toast--load .toast-icon {
   background: var(--tint-red-bg);
   color: var(--accent-red);
 }

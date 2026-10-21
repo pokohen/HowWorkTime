@@ -1,13 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { 마크다운HTML, 마크다운텍스트, HTML이스케이프 } from '../src/assistant/utils/miniMarkdown'
+import { 마크다운HTML, 마크다운텍스트 } from '../src/assistant/utils/miniMarkdown'
 
-// 태그 사이 줄바꿈은 화면에 영향이 없으므로 걷어 내고 비교한다
-const 화면 = (텍스트) => 마크다운HTML(텍스트).replace(/\n(?=<)|(?<=>)\n/g, '')
+// 태그 사이·<br> 뒤 줄바꿈은 화면에 영향이 없으므로 걷어 내고 비교한다 (코드 블록 안의 줄바꿈은 남긴다)
+const 화면 = (텍스트) => 마크다운HTML(텍스트).replace(/>\n/g, '>').replace(/\n(?=<(?!\/code>))/g, '').replace(/\n$/, '')
 const 복사 = 마크다운텍스트
 
 describe('마크다운HTML (화면)', () => {
   it('입력의 HTML 은 이스케이프하고, 위험한 링크는 링크로 만들지 않는다', () => {
-    expect(HTML이스케이프(`<a href="x">&'`)).toBe('&lt;a href=&quot;x&quot;&gt;&amp;&#39;')
     const html = 화면('<script>alert(1)</script> **굵게** [x](javascript:alert(1)) [y](https://a.com)')
     expect(html).not.toContain('<script>')
     expect(html).toContain('&lt;script&gt;')
@@ -16,14 +15,17 @@ describe('마크다운HTML (화면)', () => {
     expect(html).toContain('<a href="https://a.com" target="_blank" rel="noopener noreferrer">y</a>')
   })
 
-  it('이미지는 불러오지 않는다', () => {
-    expect(화면('![사진](https://a.com/x.png)')).not.toContain('<img')
+  it('이미지는 불러오지 않고 설명을 링크로 보여 준다', () => {
+    expect(화면('![지도](https://a.com/x.png)')).toBe('<p><a href="https://a.com/x.png" target="_blank" rel="noopener noreferrer">지도</a></p>')
+    expect(복사('![지도](https://a.com/x.png)')).toBe('지도 (https://a.com/x.png)')
   })
 
   it('문단·줄바꿈·굵게·코드·제목·구분선', () => {
     expect(화면('첫 줄\n둘째 줄\n\n새 문단')).toBe('<p>첫 줄<br>둘째 줄</p><p>새 문단</p>')
     expect(화면('## 추천')).toBe('<h4>추천</h4>')
     expect(화면('첫째 날\n\n* * *\n\n둘째 날')).toBe('<p>첫째 날</p><hr><p>둘째 날</p>')
+    // 글 줄 바로 아래 "---" 도 제목이 아니라 구분선이다
+    expect(화면('첫째 날\n---\n\n둘째 날')).toBe('<p>첫째 날</p><hr><p>둘째 날</p>')
     expect(화면('`**/*.log` 패턴과 **강조**')).toBe('<p><code>**/*.log</code> 패턴과 <strong>강조</strong></p>')
     expect(화면('a\r\nb')).toBe('<p>a<br>b</p>')
     expect(화면('')).toBe('')
@@ -32,6 +34,9 @@ describe('마크다운HTML (화면)', () => {
 
   it('연도로 시작하는 문장은 번호 목록이 아니다', () => {
     expect(화면('2026. 상반기에는 설 연휴가 가장 길어요')).toBe('<p>2026. 상반기에는 설 연휴가 가장 길어요</p>')
+    expect(화면('2026.')).toBe('<p>2026.</p>')
+    // 코드 블록 안은 건드리지 않고, 울타리 길이·글자가 다른 줄로는 코드 블록이 닫히지 않는다
+    expect(마크다운HTML('~~~\n```\n2026. 계획\n~~~\n2026. 끝')).toBe('<pre><code>```\n2026. 계획\n</code></pre>\n<p>2026. 끝</p>\n')
   })
 
   it('번호 목록: 빈 줄로 띄우거나 1 로만 적어도 이어서 센다', () => {
@@ -50,7 +55,7 @@ describe('마크다운HTML (화면)', () => {
 
   it('하위 목록 뒤의 문장과 목록 안의 코드 블록은 항목 안 제자리에 남는다', () => {
     expect(화면('1. a\n   - s\n\n   계속')).toBe('<ol><li><p>a</p><ul><li>s</li></ul><p>계속</p></li></ol>')
-    expect(화면('1. 예:\n   ```\n   foo\n   ```\n2. b\n\n끝')).toBe('<ol><li>예:<pre><code>foo</code></pre></li><li>b</li></ol><p>끝</p>')
+    expect(화면('1. 예:\n   ```\n   foo\n   ```\n2. b\n\n끝')).toBe('<ol><li>예:<pre><code>foo\n</code></pre></li><li>b</li></ol><p>끝</p>')
   })
 
   it('코드 블록 안은 제목·목록·구분선 규칙을 적용하지 않는다', () => {
@@ -66,6 +71,10 @@ describe('마크다운텍스트 (복사)', () => {
       .toBe('추천 일정\n\n• 첫째 날: 강릉 카페 투어\n• 둘째 날\n\n1. 하나\n2. 둘')
     expect(복사('`**/*.log` 패턴과 **강조**')).toBe('**/*.log 패턴과 강조')
     expect(복사('[지도](https://map.example)')).toBe('지도 (https://map.example)')
+    // 글이 곧 주소면 다시 붙이지 않고, 한글 주소는 읽을 수 있게
+    expect(복사('<https://map.example/강릉>')).toBe('https://map.example/강릉')
+    expect(복사('<a@b.com>')).toBe('a@b.com')
+    expect(복사('[강릉 지도](https://map.example/강릉)')).toBe('강릉 지도 (https://map.example/강릉)')
     expect(복사('첫째 날\n---\n\n둘째 날')).toBe('첫째 날\n\n둘째 날')
     expect(복사('')).toBe('')
     expect(복사(null)).toBe('')

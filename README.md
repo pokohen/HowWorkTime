@@ -101,6 +101,7 @@ src/
       useAssistantSettings.js 제공자·모델·API 키
       usePlannerContext.js  플래너가 근무시간 계산기에서 읽는 값 모음 (worktime 상태를 읽는 곳은 여기만)
       useAssistant.js       모달·탭·메시지·전송·알림
+      useModalLoader.js     모달을 처음 열 때 받아 옴 (받는 중 FAB 표시, 실패 시 새로고침 안내)
     components/
       AssistantFab, AssistantToast, AssistantModal(머리·열닫기·스크롤) → AssistantTabs, AssistantEmptyState,
       AssistantMessage(말풍선·복사·재시도), AssistantComposer(입력·전송), AssistantSettings
