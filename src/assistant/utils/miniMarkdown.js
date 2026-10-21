@@ -1,5 +1,4 @@
 import MarkdownIt from 'markdown-it'
-import 문단규칙 from 'markdown-it/lib/rules_block/paragraph.mjs'
 
 /**
  * 모델 응답의 마크다운을 화면용 HTML 과 공유용 일반 텍스트로 바꾼다.
@@ -15,18 +14,22 @@ const md = new MarkdownIt({ html: false, linkify: false, breaks: true, typograph
   // 글 줄 바로 아래 "---" 를 그 줄의 제목으로 만드는 규칙(setext)도 끈다: 모델은 그 자리에 구분선을 뜻한다
   .disable(['table', 'code', 'lheading'])
 
-// 연도·날짜로 시작하는 줄("2026. 상반기에는…", "2026. 1. 1. 신정")은 CommonMark 상 번호 목록(날짜면 계단식 중첩 목록)이 된다.
-// 목록 규칙보다 먼저 도는 규칙이 그런 줄을 markdown-it 의 원래 문단 규칙에 넘긴다. 문단이 어디서 끝나는지는 원래 규칙이 정한다.
-// - 연도(1900~2199)만 본다: 100번대 같은 실제 긴 목록은 건드리지 않는다
-// - alt 는 'list' 만: 열린 목록의 다음 항목 자리에 온 연도 줄은 목록을 끝내 번호가 다시 매겨지지 않게 하고,
-//   문단 안에 이어지는 연도 줄은 표준대로 같은 문단으로 남는다
+// 연도·날짜로 시작하는 줄("2026. 상반기에는…", "2026. 1. 1. 신정", "1592. 임진왜란")은 CommonMark 상 번호 목록
+// (날짜면 계단식 중첩 목록)이 된다. 목록 규칙보다 먼저 도는 규칙이 그런 줄을 markdown-it 의 원래 문단 규칙에 넘긴다.
+// - 네 자리 번호만 본다: 98·99·100 같은 실제 목록은 건드리지 않는다 (천 개 넘는 목록은 없다고 본다)
+// - 문단이 어디서 끝나는지는 원래 문단 규칙이 정한다. 문단 안에 이어지는 연도 줄은 같은 문단으로 남는다
+// - 목록 바로 뒤에 오면 표준의 다른 번호 줄("3. …")처럼 그 목록을 끝낸다. 번호 목록의 다음 항목이 되어 번호가
+//   다시 매겨지면 연도가 사라지므로, 끝낸 자리에서 문단이 된다
 // - 코드 블록 안은 펜스 규칙이 먼저 가져가므로 닿지 않는다
-const 연도줄 = /^(19|20|21)\d{2}[.)](\s|$)/
+// 원래 문단 규칙은 공개 API(getRules)로 가져온다. 기본 블록 규칙 사슬의 마지막이 문단 규칙이다
+const 문단규칙 = md.block.ruler.getRules('').at(-1)
+const 연도줄 = /^\d{4}[.)](\s|$)/
+
 md.block.ruler.before('list', '연도문단', (state, 시작줄, 끝줄, silent) => {
   if (state.sCount[시작줄] - state.blkIndent >= 4) return false
   const 줄 = state.src.slice(state.bMarks[시작줄] + state.tShift[시작줄], state.eMarks[시작줄])
   if (!연도줄.test(줄)) return false
-  if (silent) return true
+  if (silent) return true // 목록이 이 줄에서 끝나야 하는지 묻는 자리 (alt 'list')
   return 문단규칙(state, 시작줄, 끝줄)
 }, { alt: ['list'] })
 
@@ -68,8 +71,9 @@ export function 마크다운HTML(텍스트) {
 }
 
 /** 주소에서 풀어 보여 줄 글자: 왼쪽에서 오른쪽으로 쓰는 문자(한글·한자·가나·라틴·키릴·그리스)와 숫자 */
-// 보이지 않는 글자(한글 채움 문자 U+3164 등)는 문자 범위에 들어 있어도 뺀다
-const 읽는글자 = /^[[\p{Script=Hangul}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{Nd}]--\p{Default_Ignorable_Code_Point}]$/v
+// 보이지 않는 글자(한글 채움 문자 U+3164 등)는 문자 범위에 들어 있어도 뺀다.
+// (집합 빼기 v 플래그는 Safari 16 등 구형 브라우저가 몰라 모듈째 깨지므로 u 플래그 + 부정 전방탐색으로)
+const 읽는글자 = /^(?!\p{Default_Ignorable_Code_Point})[\p{Script=Hangul}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{Nd}]$/u
 
 /**
  * 사람이 읽는 주소. 파서가 퍼센트 인코딩한 한글 같은 글자만 한 글자씩 되돌린다.
