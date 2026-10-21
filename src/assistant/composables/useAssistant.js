@@ -3,7 +3,7 @@ import { 어시스턴트저장키, 어시스턴트잠금접두사 } from '../../
 import { 대화요청 } from '../ai/client'
 import { 시스템프롬프트 } from '../utils/systemPrompt'
 import { 이력만들기 } from '../utils/history'
-import { 새탭, 새ID, 제목추출, 탭이름, 직렬화, 복원, 대화합치기, 상한맞추기 } from '../utils/assistantStorage'
+import { 새탭, 새ID, 제목추출, 탭이름, 직렬화, 복원, 대화합치기, 상한맞추기, 저장본같음 } from '../utils/assistantStorage'
 import { 저장소읽기, 저장소쓰기, 저장소접두사삭제, 다른창저장감시 } from '../../shared/utils/storage'
 import { 모듈상태 } from '../../shared/composables/moduleState'
 import { useAssistantSettings } from './useAssistantSettings'
@@ -92,6 +92,24 @@ const 다른창받는탭ID = (목록) => 다른창받는탭들(목록).map((탭)
 /** 하단 알림이 떠 있는 시간(ms) */
 const 알림표시시간 = 12_000
 
+/**
+ * 정해진 시간 동안 켜졌다 꺼지는 안내 상태. 켤 때마다 시간을 새로 센다. 타이머는 정리(HMR) 때 지운다
+ * (하단 알림은 내용과 클릭 동작이 있어 따로 둔다)
+ */
+function 잠시표시상태(정리등록, 시간 = 알림표시시간) {
+  const 값 = ref(false)
+  let 타이머 = null
+  정리등록(() => clearTimeout(타이머))
+  return {
+    값,
+    켜기() {
+      값.value = true
+      clearTimeout(타이머)
+      타이머 = setTimeout(() => { 값.value = false }, 시간)
+    },
+  }
+}
+
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const { 컨텍스트수집 } = usePlannerContext()
   const 설정상태 = useAssistantSettings()
@@ -177,30 +195,19 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   }
   /** 합치지 못한 저장본 (같은 것으로 다시 실패할 때 기록을 되풀이하지 않는다) */
   let 마지막실패본 = null
-  /** 정해진 시간 동안 켜졌다 꺼지는 안내 상태. 켤 때마다 시간을 새로 센다 */
-  function 잠시표시상태() {
-    const 값 = ref(false)
-    let 타이머 = null
-    정리등록(() => clearTimeout(타이머))
-    return {
-      값,
-      켜기() {
-        값.value = true
-        clearTimeout(타이머)
-        타이머 = setTimeout(() => { 값.value = false }, 알림표시시간)
-      },
-    }
-  }
   /**
    * 일부 대화의 메시지를 합치지 못해 더 최근 사본을 썼다 (다른 쪽에만 있던 메시지는 빠졌을 수 있다).
-   * 그런 합치기가 있을 때마다 잠시 알린다 (그동안 깨끗이 합쳐져도 이미 일어난 일이므로 일찍 거두지 않는다).
-   * 콘솔 기록은 새로 실패한 대화만 한다. 지켜보기 판단은 미루지 않는다: 그 대화는 합칠 수 없어 기다려도 나아지지 않는다
+   * 실패한 대화가 새로 생기거나, 같은 대화라도 어느 쪽이 그 뒤 바뀌어(서명이 달라짐) 새로 잃었을 수 있을 때 잠시 알린다.
+   * 그동안 깨끗이 합쳐져도 이미 일어난 일이므로 일찍 거두지 않는다. 콘솔 기록은 새로 실패한 대화만 한다.
+   * 지켜보기 판단은 미루지 않는다: 그 대화는 합칠 수 없어 기다려도 나아지지 않는다
    */
-  const 일부실패안내 = 잠시표시상태()
+  const 일부실패안내 = 잠시표시상태(정리등록)
   const 일부합치기실패 = 일부실패안내.값
-  let 합치지못한대화 = new Set() // 마지막 합치기에서 실패한 대화 (기록을 되풀이하지 않는 데만 쓴다)
+  let 합치지못한대화 = new Map() // 마지막 합치기에서 실패한 대화 id → 서명 (기록·안내를 되풀이하지 않는 데 쓴다)
+  /** 마지막으로 건너뛴 깨진 값 (같은 값을 되풀이해 기록하지 않는다) */
+  let 마지막깨진값 = null
   /** 저장본 전체를 합치지 못했다 (이 창의 상태로 저장된다). 잠시 알린다 */
-  const 전체실패안내 = 잠시표시상태()
+  const 전체실패안내 = 잠시표시상태(정리등록)
   const 전체합치기실패 = 전체실패안내.값
   /**
    * 다른 창의 저장본과 대화 단위로 합친다 (통째로 바꿔치지 않는다). 예외를 밖으로 내지 않고 성공 여부를 돌려준다
@@ -217,13 +224,17 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       const 실패들 = 합치기(문자열)
       마지막저장본 = 문자열
       마지막실패본 = null
+      if (실패들.length === 0 && 합치지못한대화.size === 0) return true
       // 목록에 남은 대화만 본다 (지운 기록·상한으로 빠진 대화는 보이지 않으므로 알리지 않는다)
-      const 남은실패 = 실패들.filter((실패) => 탭목록.value.some((탭) => 탭.id === 실패.id))
-      for (const { id, 예외 } of 남은실패) {
+      const 목록ID = new Set(탭목록.value.map((탭) => 탭.id))
+      const 남은실패 = 실패들.filter((실패) => 목록ID.has(실패.id))
+      let 새로잃음 = false
+      for (const { id, 예외, 서명 } of 남은실패) {
         if (!합치지못한대화.has(id)) console.error('[플래너] 대화의 메시지를 합치지 못해 더 최근 사본을 씀', id, 예외)
+        if (합치지못한대화.get(id) !== 서명) 새로잃음 = true
       }
-      합치지못한대화 = new Set(남은실패.map((실패) => 실패.id))
-      if (남은실패.length) 일부실패안내.켜기()
+      합치지못한대화 = new Map(남은실패.map((실패) => [실패.id, 실패.서명]))
+      if (새로잃음) 일부실패안내.켜기()
       return true
     } catch (예외) {
       if (문자열 !== 마지막실패본) console.error('[플래너] 다른 창의 저장본을 합치지 못함', 예외)
@@ -239,8 +250,12 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
    */
   function 합치기(문자열) {
     const 남의것 = 복원(문자열)
-    if (!남의것) { // 깨진 값: 합칠 것이 없다. 같은 값으로 되풀이해 기록하지 않는다
-      if (문자열 !== 마지막실패본) console.error('[플래너] 복원할 수 없는 저장본은 건너뜀')
+    if (!남의것) {
+      // 이 앱의 저장본(다른 판이 쓴 형식 등)이면 합치지 못한 것이다: 전체 실패로 알리고 지켜보기는 판단을 미룬다
+      if (저장본같음(문자열)) throw new Error('복원할 수 없는 저장본 형식')
+      // 깨진 값(이 앱의 저장본이 아님)은 합칠 것이 없다. 같은 값은 한 번만 기록한다
+      if (문자열 !== 마지막깨진값) console.error('[플래너] 저장본이 아닌 값은 건너뜀')
+      마지막깨진값 = 문자열
       return []
     }
     // 이 창이 받고 있는 대화를 다른 창에서 지웠으면 요청을 끊고 지운 쪽을 따른다 (끝난 뒤 되살아나지 않게)

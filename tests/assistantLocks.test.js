@@ -357,8 +357,9 @@ describe('다른 창이 받는 중인 답', () => {
     let 실패대화 = ['x']
     vi.doMock('../src/assistant/utils/assistantStorage', () => ({
       ...저장모듈,
-      대화합치기: (...인자) => ({ ...저장모듈.대화합치기(...인자), 합치지못함: 실패대화.map((id) => ({ id, 예외: new Error('메시지 모양') })) }),
+      대화합치기: (...인자) => ({ ...저장모듈.대화합치기(...인자), 합치지못함: 실패대화.map((id) => ({ id, 예외: new Error('메시지 모양'), 서명: 서명값 })) }),
     }))
+    let 서명값 = '1'
     const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
     const 기록수 = () => 오류.mock.calls.filter((c) => String(c[0]).includes('메시지를 합치지 못해')).length
     const 남의저장 = (n) => {
@@ -387,16 +388,21 @@ describe('다른 창이 받는 중인 답', () => {
       await vi.advanceTimersByTimeAsync(13_000)
       expect(a.일부합치기실패.value).toBe(false)
       실패대화 = ['x']
-      저장이벤트(3)
-      저장이벤트(4) // 같은 대화가 또 실패: 안내는 다시, 기록은 되풀이하지 않는다
+      저장이벤트(3) // 회복 뒤 또 실패: 다시 기록·안내
+      expect(기록수()).toBe(2)
+      await vi.advanceTimersByTimeAsync(13_000)
+      저장이벤트(4) // 같은 대화·같은 서명(새로 잃은 것 없음): 다시 알리지 않는다
+      expect(a.일부합치기실패.value).toBe(false)
+      서명값 = '2'
+      저장이벤트(5) // 같은 대화라도 어느 쪽이 바뀌었다(서명이 다름): 다시 알린다, 기록은 되풀이하지 않는다
       expect(a.일부합치기실패.value).toBe(true)
-      expect(기록수()).toBe(2) // 1회차 + 회복 뒤 3회차
+      expect(기록수()).toBe(2)
       실패대화 = ['없는대화'] // 목록에 없는 대화의 실패는 알리지 않는다
       await vi.advanceTimersByTimeAsync(13_000)
-      저장이벤트(5)
+      저장이벤트(6)
       expect(a.일부합치기실패.value).toBe(false)
       실패대화 = ['x']
-      남의저장(6) // 이벤트 없이 저장소만 바뀜: 이 창의 저장이 합치다 찾은 실패도 알린다
+      남의저장(7) // 이벤트 없이 저장소만 바뀜: 이 창의 저장이 합치다 찾은 실패도 알린다
       a.탭삭제(a.활성탭.value.id)
       await vi.advanceTimersByTimeAsync(1_000)
       expect(a.일부합치기실패.value).toBe(true)
@@ -406,14 +412,16 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
-  it('복원할 수 없는 저장본은 합칠 것이 없는 것으로 보고 안내하지 않는다 (기록만)', async () => {
+  it('저장본이 아닌 깨진 값은 건너뛰고(기록만), 복원할 수 없는 저장본 형식은 전체 실패로 알린다', async () => {
     const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
       const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
       window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: '{"이상한":1}' }))
       expect(a.전체합치기실패.value).toBe(false)
-      expect(오류).toHaveBeenCalledWith('[플래너] 복원할 수 없는 저장본은 건너뜀')
+      expect(오류).toHaveBeenCalledWith('[플래너] 저장본이 아닌 값은 건너뜀')
+      window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: '{"버전":2,"대화들":[]}' })) // 다른 판의 형식
+      expect(a.전체합치기실패.value).toBe(true)
     } finally {
       오류.mockRestore()
     }
