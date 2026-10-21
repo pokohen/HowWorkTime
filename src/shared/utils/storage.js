@@ -38,38 +38,43 @@ export function 저장소접두사삭제(접두사, 저장소 = 기본저장소(
 }
 
 /**
- * 다른 브라우저 탭(창)이 이 키를 바꾸면 알린다. 같은 창의 저장에는 불리지 않는다 (storage 이벤트의 성질).
- * 이벤트가 담은 값이 아니라 지금 저장소 값을 넘긴다: 이벤트가 닿기 전에 이 창이 다시 썼을 수 있어서다 (늦게 닿은 옛 값으로 판단하지 않게)
- * @param {string} 키
- * @param {(새값: string|null) => void} 콜백
- * 다른 창이 localStorage 를 통째로 비웠을 때(clear, 이벤트 key 가 null)도 지금 값을 다시 읽어 알린다
- * (sessionStorage 를 비운 이벤트는 무시한다)
+ * 다른 창의 localStorage 변경 이벤트를 받는다 (sessionStorage 이벤트는 거른다). 아래 두 감시가 함께 쓴다
+ * @param {(e: StorageEvent) => void} 받기
  * @returns {() => void} 감시 해제
  */
-export function 다른창저장감시(키, 콜백) {
+function 저장이벤트감시(받기) {
   if (typeof window === 'undefined') return () => {}
-  const 받기 = (e) => {
+  const 걸러받기 = (e) => {
     if (e.storageArea && e.storageArea !== 기본저장소()) return
-    // 값이 클 수 있어도 다시 읽는다: 이벤트 값을 쓰면 이 창이 그 뒤에 쓴 값을 옛 값으로 덮는다(앞선 회차의 결함).
-    // 다른 창의 저장은 묶어서(수백 ms 간격) 오므로 비용은 작다
-    if (e.key === 키 || e.key === null) 콜백(저장소읽기(키))
+    받기(e)
   }
-  window.addEventListener('storage', 받기)
-  return () => window.removeEventListener('storage', 받기)
+  window.addEventListener('storage', 걸러받기)
+  return () => window.removeEventListener('storage', 걸러받기)
 }
 
 /**
- * 다른 창이 localStorage 의 어떤 키든 바꾸거나 지우면 알린다 (값은 넘기지 않는다).
- * 공간이 비었을 수 있다는 신호로 쓴다: 쓰기에 실패한 저장을 다시 해 볼 때
+ * 다른 브라우저 탭(창)이 이 키를 바꾸면 알린다. 같은 창의 저장에는 불리지 않는다 (storage 이벤트의 성질).
+ * 이벤트가 담은 값이 아니라 지금 저장소 값을 넘긴다: 이벤트가 닿기 전에 이 창이 다시 썼을 수 있어서다 (늦게 닿은 옛 값으로 판단하지 않게).
+ * 다른 창이 localStorage 를 통째로 비웠을 때(clear, 이벤트 key 가 null)도 알린다
+ * @param {string} 키
+ * @param {(새값: string|null) => void} 콜백
+ * @returns {() => void} 감시 해제
+ */
+export function 다른창저장감시(키, 콜백) {
+  // 값이 클 수 있어도 다시 읽는다: 이벤트 값을 쓰면 이 창이 그 뒤에 쓴 값을 옛 값으로 덮는다(앞선 회차의 결함).
+  // 다른 창의 저장은 묶어서(수백 ms 간격) 오므로 비용은 작다
+  return 저장이벤트감시((e) => { if (e.key === 키 || e.key === null) 콜백(저장소읽기(키)) })
+}
+
+/**
+ * 다른 창이 localStorage 에서 무언가를 지우거나 줄였을 때 알린다 (어떤 키든, 통째 비움 포함).
+ * 공간이 비었다는 신호로 쓴다: 쓰기에 실패한 저장을 다시 해 볼 때. 늘리기만 한 변경에는 부르지 않는다 (공간이 생기지 않았다)
  * @param {() => void} 콜백
  * @returns {() => void} 감시 해제
  */
-export function 다른창저장소변경감시(콜백) {
-  if (typeof window === 'undefined') return () => {}
-  const 받기 = (e) => {
-    if (e.storageArea && e.storageArea !== 기본저장소()) return
-    콜백()
-  }
-  window.addEventListener('storage', 받기)
-  return () => window.removeEventListener('storage', 받기)
+export function 다른창공간생김감시(콜백) {
+  return 저장이벤트감시((e) => {
+    const 줄었음 = e.key === null || e.newValue == null || (e.oldValue != null && e.newValue.length < e.oldValue.length)
+    if (줄었음) 콜백()
+  })
 }

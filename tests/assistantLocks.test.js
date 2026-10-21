@@ -342,7 +342,6 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
-
   it('창을 떠날(pagehide) 때 예약된 저장을 바로 쓴다', async () => {
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
     const a = useAssistant()
@@ -432,7 +431,6 @@ describe('다른 창이 받는 중인 답', () => {
       오류.mockRestore()
     }
   })
-
 
   it('새 형식의 저장본은 합치지도 덮지도 않고 안내하며, 사용자가 고르면 이 창의 대화로 덮어쓴다', async () => {
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
@@ -526,7 +524,7 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
-  it('막히지 않았어도 저장에 실패해 있었으면 다른 창의 저장을 합칠 때 다시 해 본다', async () => {
+  it('막히지 않았어도 저장에 실패해 있었으면 다른 창이 저장본을 줄여 공간이 생길 때 다시 해 본다', async () => {
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
     const a = useAssistant()
     const 지운ID = a.활성탭.value.id
@@ -535,8 +533,8 @@ describe('다른 창이 받는 중인 답', () => {
     await vi.advanceTimersByTimeAsync(1_000)
     expect(a.저장실패.value).toBe(true)
     쓰기.mockRestore()
-    받는중저장(Date.now(), { id: 'k', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() }) // 다른 창이 공간을 비우고 씀
-    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: localStorage.getItem(저장키) }))
+    받는중저장(Date.now(), { id: 'k', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() }) // 다른 창이 대화를 줄여 공간을 비우고 씀
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: 'x'.repeat(10_000), newValue: localStorage.getItem(저장키), storageArea: localStorage }))
     await vi.advanceTimersByTimeAsync(1_000)
     expect(a.저장실패.value).toBe(false)
     expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
@@ -560,7 +558,7 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
-  it('쓰지 못한 변경은 다른 창이 다른 키를 지워도(공간이 생김) 다시 쓴다', async () => {
+  it('쓰지 못한 변경은 다른 창이 다른 키를 지우면(공간이 생김) 다시 쓰고, 늘리기만 하면 다시 쓰지 않는다', async () => {
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
     const a = useAssistant()
     const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
@@ -568,11 +566,13 @@ describe('다른 창이 받는 중인 답', () => {
     a.탭삭제(지운ID)
     await vi.advanceTimersByTimeAsync(1_000)
     쓰기.mockRestore()
-    window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', newValue: null, storageArea: localStorage }))
+    window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', oldValue: 'x', newValue: 'xx', storageArea: localStorage }))
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(localStorage.getItem(저장키)).toBeNull() // 늘리기만 했다: 다시 쓰지 않는다
+    window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', oldValue: 'x'.repeat(100), newValue: null, storageArea: localStorage }))
     await vi.advanceTimersByTimeAsync(1_000)
     expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
   })
-
 
   it('쓰지 못한 변경은 다른 창이 저장소를 비우면 다시 쓰고, 떠날 때(pagehide)도 다시 써 본다', async () => {
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
@@ -702,7 +702,6 @@ describe('설정 감시', () => {
     await nextTick()
     expect(localStorage.getItem('how-work-time:assistant-settings')).toBeNull() // 지운 값을 곧바로 다시 쓰지 않는다
   })
-
 
   it('이벤트가 닿기 전에 이 창이 다시 썼으면 늦게 닿은 이벤트 값이 아니라 지금 저장소 값으로 판단한다', async () => {
     vi.resetModules()
