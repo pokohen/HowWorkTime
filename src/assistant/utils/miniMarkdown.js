@@ -17,11 +17,21 @@ const md = new MarkdownIt({ html: false, linkify: false, breaks: true, typograph
 // 제목은 말풍선 안에서 한 단계 크기만 쓴다
 md.renderer.rules.heading_open = () => '<h4>'
 md.renderer.rules.heading_close = () => '</h4>'
-// 이미지는 불러오지 않고(사생활·추적) 설명을 링크로 보여 준다
+/** 이미지 설명 글. 설명 안의 마크다운(**굵게** 등)은 기호를 벗긴 글로 */
+const 이미지설명 = (토큰) => md.renderer.renderInlineAsText(토큰.children ?? [], md.options, {}) || '이미지'
+/** 같은 인라인 안에서 이 토큰이 링크 안에 있는지 (링크 안의 이미지 = 배지 꼴) */
+function 링크안(tokens, i) {
+  for (let j = i - 1; j >= 0; j--) {
+    if (tokens[j].type === 'link_close') return false
+    if (tokens[j].type === 'link_open') return true
+  }
+  return false
+}
+// 이미지는 불러오지 않고(사생활·추적) 설명을 보여 준다. 링크 밖이면 그림 주소로 가는 링크, 링크 안이면 바깥 링크의 글로만
 md.renderer.rules.image = (tokens, i) => {
-  const 토큰 = tokens[i]
-  const 설명 = md.utils.escapeHtml(토큰.content || '이미지')
-  return `<a href="${md.utils.escapeHtml(토큰.attrGet('src'))}" target="_blank" rel="noopener noreferrer">${설명}</a>`
+  const 설명 = md.utils.escapeHtml(이미지설명(tokens[i]))
+  if (링크안(tokens, i)) return 설명
+  return `<a href="${md.utils.escapeHtml(tokens[i].attrGet('src'))}" target="_blank" rel="noopener noreferrer">${설명}</a>`
 }
 // 링크는 새 탭에서, 이 페이지에 접근하지 못하게
 const 기본링크 = md.renderer.rules.link_open ?? ((tokens, i, options, env, self) => self.renderToken(tokens, i, options))
@@ -36,16 +46,23 @@ md.renderer.rules.link_open = (tokens, i, options, env, self) => {
  * 세 자리 이상 번호는 실제 목록일 일이 거의 없으므로 연도로 보고 점을 이스케이프한다 (코드 블록 안은 그대로).
  */
 function 연도보호(텍스트) {
-  let 울타리 = null // 열린 코드 블록의 울타리 ("```" / "~~~~" …). 같은 글자로 그 길이 이상이어야 닫힌다
+  // 열린 코드 블록의 울타리. 같은 글자로 그 길이 이상이어야 닫힌다.
+  // 목록 안에 들여 쓴 울타리는 닫히지 않았더라도 덜 들여 쓴 글이 나오면(그 항목이 끝나면) 함께 끝난다 (CommonMark 와 같다)
+  let 울타리 = null // { 표시: "```", 들여: number }
+  const 들여 = (줄) => /^\s*/.exec(줄)[0].length
   return String(텍스트 ?? '')
     .split('\n')
     .map((줄) => {
       const 표시 = /^\s*(`{3,}|~{3,})/.exec(줄)?.[1]
       if (울타리) {
-        if (표시 && 표시[0] === 울타리[0] && 표시.length >= 울타리.length && /^\s*[`~]+\s*$/.test(줄)) 울타리 = null
-        return 줄
+        if (표시 && 표시[0] === 울타리.표시[0] && 표시.length >= 울타리.표시.length && /^\s*[`~]+\s*$/.test(줄)) {
+          울타리 = null
+          return 줄
+        }
+        if (!줄.trim() || 들여(줄) >= 울타리.들여) return 줄
+        울타리 = null // 항목이 끝나 코드 블록도 끝났다. 이 줄은 아래에서 평소대로 다룬다
       }
-      if (표시) { 울타리 = 표시; return 줄 }
+      if (표시) { 울타리 = { 표시, 들여: 들여(줄) }; return 줄 }
       return 줄.replace(/^(\s*\d{3,})([.)])(\s|$)/, '$1\\$2$3')
     })
     .join('\n')
@@ -61,9 +78,17 @@ export function 마크다운HTML(텍스트) {
   return md.renderer.render(파싱(텍스트), md.options, {})
 }
 
-/** 사람이 읽는 주소. 파서가 퍼센트 인코딩한 한글 등을 되돌린다 */
+/**
+ * 사람이 읽는 주소. 파서가 퍼센트 인코딩한 한글 등 ASCII 밖 글자만 되돌린다.
+ * %20(공백)·%2F 같은 것은 그대로 둔다: 풀면 붙여 넣었을 때 주소가 그 자리에서 끊기거나 뜻이 바뀐다
+ */
 function 읽는주소(주소) {
-  try { return decodeURI(주소) } catch { return 주소 }
+  return String(주소 ?? '').replace(/(%[0-9A-Fa-f]{2})+/g, (조각) => {
+    try {
+      const 풀림 = decodeURIComponent(조각)
+      return /^[^\x00-\x7F]+$/.test(풀림) ? 풀림 : 조각
+    } catch { return 조각 }
+  })
 }
 
 /** 인라인 토큰 → 글. 굵게·기울임 기호는 벗기고, 링크·이미지는 글 뒤에 주소를 붙인다 (글이 곧 주소면 생략) */
@@ -79,7 +104,11 @@ function 인라인글(토큰들) {
     switch (토큰.type) {
       case 'text': case 'code_inline': 글 += 토큰.content; break
       case 'softbreak': case 'hardbreak': 글 += '\n'; break
-      case 'image': 글 += (토큰.content || '이미지') + 주소붙이기(토큰.content, 토큰.attrGet('src')); break
+      case 'image': {
+        const 설명 = 인라인글(토큰.children) || '이미지'
+        글 += 링크 ? 설명 : 설명 + 주소붙이기(설명, 토큰.attrGet('src')) // 링크 안의 이미지는 바깥 링크 주소만 붙인다
+        break
+      }
       case 'link_open': 링크 = { 주소: 토큰.attrGet('href'), 글시작: 글.length }; break
       case 'link_close':
         if (링크) 글 += 주소붙이기(글.slice(링크.글시작), 링크.주소)

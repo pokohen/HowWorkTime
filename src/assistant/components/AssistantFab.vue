@@ -19,7 +19,7 @@ function 눌림() {
     :aria-busy="불러오는중"
     aria-label="쉬는 날 플래너 열기"
     title="쉬는 날 플래너 · 휴가·주말·여행을 AI와 계획해요"
-    :aria-expanded="열림"
+    :aria-expanded="열림 && !불러오는중"
     @click="눌림"
   >
     <StarIcon class="assistant-fab-icon" />

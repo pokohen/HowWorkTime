@@ -33,10 +33,9 @@ export function usePlannerContext() {
     const 필요개월 = Math.max(월차이.value, 0) + 2
     const 가까운 = 연휴찾기(현재연도.value, 현재월.value, undefined, Math.min(필요개월, 최대탐색개월))
     const 보는달 = 필요개월 > 최대탐색개월 ? 연휴찾기(기준연도, 기준월, undefined, 2) : []
-    // 두 범위가 겹치면 같은 구간이 두 번 나오므로 시작~끝으로 거르고, 순서를 다시 맞춘다
-    const 키 = (구간) => `${구간.시작}~${구간.끝}`
-    const 있는키 = new Set(가까운.map(키))
-    const 합친 = [...가까운, ...보는달.filter((구간) => !있는키.has(키(구간)))]
+    // 두 범위에 같은 연휴가 나올 수 있으므로 날짜가 겹치면 같은 것으로 보고 거르고, 순서를 다시 맞춘다
+    const 겹침 = (가, 나) => 가.시작 <= 나.끝 && 나.시작 <= 가.끝
+    const 합친 = [...가까운, ...보는달.filter((구간) => !가까운.some((g) => 겹침(g, 구간)))]
       .sort((a, b) => a.시작.localeCompare(b.시작) || a.끝.localeCompare(b.끝))
     // 끝난 연휴와, 징검다리 날이 이미 지난 조합은 뺀다 (뒤쪽만 남은 부분은 따로 후보로 들어 있다). 지난 공휴일도 뺀다
     const 연휴 = 합친

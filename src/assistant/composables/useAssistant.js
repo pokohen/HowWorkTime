@@ -115,17 +115,16 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     알림타이머 = null
     알림.value = null
   }
-  function 알림띄우기(종류, 탭) {
+  /** @param {{ 종류: 'done'|'error'|'load', 탭ID: string|null, 제목: string }} 내용 */
+  function 알림띄우기(내용) {
     if (폐기됨) return
     알림닫기()
-    알림.value = { 종류, 탭ID: 탭.id, 제목: 탭이름(탭) }
+    알림.value = 내용
     알림타이머 = setTimeout(알림닫기, 알림표시시간)
   }
   /** 플래너 모달을 받아 오지 못했을 때. 눌러서 새로고침한다 */
   function 불러오기실패알림() {
-    알림닫기()
-    알림.value = { 종류: 'load', 탭ID: null, 제목: '네트워크를 확인하거나 새로고침해 주세요' }
-    알림타이머 = setTimeout(알림닫기, 알림표시시간)
+    알림띄우기({ 종류: 'load', 탭ID: null, 제목: '네트워크를 확인하거나 새로고침해 주세요' })
   }
   /** 알림을 눌러 그 대화를 연다 (불러오기 실패 알림이면 새로고침) */
   function 알림열기() {
@@ -195,7 +194,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       // (사용자가 직접 중단했거나 그 사이 탭을 지운 경우는 제외)
       const 탭남아있음 = 탭목록.value.some((t) => t.id === 탭.id)
       if (!응답.중단됨 && 탭남아있음 && (!열림.value || 활성탭ID.value !== 탭.id)) {
-        알림띄우기(응답.오류 ? 'error' : 'done', 탭)
+        알림띄우기({ 종류: 응답.오류 ? 'error' : 'done', 탭ID: 탭.id, 제목: 탭이름(탭) })
       }
     }
   }
