@@ -560,6 +560,29 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
+  it('쓰지 못한 변경은 다른 창이 저장소를 비우면 다시 쓰고, 떠날 때(pagehide)도 다시 써 본다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    let 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    const 지운ID = a.활성탭.value.id
+    a.탭삭제(지운ID)
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(a.저장실패.value).toBe(true)
+    쓰기.mockRestore()
+    window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage })) // 다른 창이 통째로 비움
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
+    // 다시 실패한 뒤 떠날 때
+    쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    const 또지운ID = a.활성탭.value.id
+    a.새탭추가()
+    a.탭삭제(또지운ID)
+    await vi.advanceTimersByTimeAsync(1_000)
+    쓰기.mockRestore()
+    window.dispatchEvent(new Event('pagehide'))
+    expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[또지운ID]).toBeGreaterThan(0)
+  })
+
   it('확인하지 않았으면(확인한 값 없음) 새 형식 저장본을 덮지 않는다', async () => {
     localStorage.setItem(저장키, '{"버전":2}')
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
