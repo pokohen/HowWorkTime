@@ -341,4 +341,35 @@ describe('다른 창이 받는 중인 답', () => {
       vi.doUnmock('../src/assistant/ai/client')
     }
   })
+
+  it('합치기로 저장을 미루다 저장본이 사라지면 경고를 거두고, 떠날 때는 미루지 않고 쓴다', async () => {
+    vi.stubGlobal('navigator', { ...navigator, locks: 가짜잠금관리자(), onLine: true })
+    const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
+    vi.doMock('../src/assistant/utils/assistantStorage', () => ({
+      ...저장모듈,
+      대화합치기: () => { throw new Error('합치기 실패') },
+    }))
+    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+      const a = useAssistant()
+      받는중저장(Date.now() + 1, { id: 'z', 역할: 'assistant', 내용: '남의 것', 시각: Date.now() })
+      a.탭삭제(a.활성탭.value.id) // 저장을 부르는 변경
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(a.합치기실패.value).toBe(true)
+      localStorage.removeItem(저장키) // 다른 창의 저장본이 사라졌다
+      await vi.advanceTimersByTimeAsync(6_000)
+      expect(a.합치기실패.value).toBe(false)
+      expect(localStorage.getItem(저장키)).not.toBeNull()
+      // 다시 합칠 수 없는 저장본: 떠날 때(pagehide)는 미루지 않고 쓴다
+      받는중저장(Date.now() + 2, { id: 'y', 역할: 'assistant', 내용: '또 남의 것', 시각: Date.now() })
+      const 남의저장본 = localStorage.getItem(저장키)
+      a.탭삭제(a.활성탭.value.id)
+      window.dispatchEvent(new Event('pagehide'))
+      expect(localStorage.getItem(저장키)).not.toBe(남의저장본)
+    } finally {
+      오류.mockRestore()
+      vi.doUnmock('../src/assistant/utils/assistantStorage')
+    }
+  })
 })
