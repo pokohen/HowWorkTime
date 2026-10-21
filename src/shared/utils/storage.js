@@ -57,13 +57,13 @@ function 저장이벤트감시(받기) {
  * 이벤트가 담은 값이 아니라 지금 저장소 값을 넘긴다: 이벤트가 닿기 전에 이 창이 다시 썼을 수 있어서다 (늦게 닿은 옛 값으로 판단하지 않게).
  * 다른 창이 localStorage 를 통째로 비웠을 때(clear, 이벤트 key 가 null)도 알린다
  * @param {string} 키
- * @param {(새값: string|null) => void} 콜백
+ * @param {(새값: string|null, e: StorageEvent) => void} 콜백 이벤트도 넘긴다 (줄었는지 등을 가려야 하는 쪽을 위해)
  * @returns {() => void} 감시 해제
  */
 export function 다른창저장감시(키, 콜백) {
   // 값이 클 수 있어도 다시 읽는다: 이벤트 값을 쓰면 이 창이 그 뒤에 쓴 값을 옛 값으로 덮는다(앞선 회차의 결함).
   // 다른 창의 저장은 묶어서(수백 ms 간격) 오므로 비용은 작다
-  return 저장이벤트감시((e) => { if (e.key === 키 || e.key === null) 콜백(저장소읽기(키)) })
+  return 저장이벤트감시((e) => { if (e.key === 키 || e.key === null) 콜백(저장소읽기(키), e) })
 }
 
 /**
@@ -73,8 +73,10 @@ export function 다른창저장감시(키, 콜백) {
  * @returns {() => void} 감시 해제
  */
 export function 다른창공간생김감시(콜백) {
-  return 저장이벤트감시((e) => {
-    const 줄었음 = e.key === null || e.newValue == null || (e.oldValue != null && e.newValue.length < e.oldValue.length)
-    if (줄었음) 콜백(e)
-  })
+  return 저장이벤트감시((e) => { if (공간생긴변경(e)) 콜백(e) })
+}
+
+/** 이 저장 이벤트로 공간이 생겼는가: 지움·줄임·통째 비움 */
+export function 공간생긴변경(e) {
+  return e.key === null || e.newValue == null || (e.oldValue != null && e.newValue.length < e.oldValue.length)
 }

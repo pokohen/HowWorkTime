@@ -633,7 +633,7 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
-  it('쓰기에 실패한 직후라도 다른 창이 공간을 비우면(지움) 간격 없이 바로 다시 쓴다', async () => {
+  it('쓰기에 실패한 직후라도 다른 창이 이 키를 줄이면(공간이 생김) 간격 없이 바로 다시 쓴다', async () => {
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
     const a = useAssistant()
     const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
@@ -641,7 +641,9 @@ describe('다른 창이 받는 중인 답', () => {
     a.탭삭제(지운ID)
     await vi.advanceTimersByTimeAsync(500)
     쓰기.mockRestore()
-    window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage }))
+    const 줄인값 = JSON.stringify({ 버전: 1, 활성탭ID: 'k', 삭제기록: {}, 탭목록: [{ id: 'k', 제목: '', 생성시각: 1, 수정시각: 1, 메시지: [{ id: 'q', 역할: 'user', 내용: 'q', 시각: 1 }] }] })
+    localStorage.setItem(저장키, 줄인값)
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: 'x'.repeat(5_000), newValue: 줄인값, storageArea: localStorage }))
     await vi.advanceTimersByTimeAsync(500)
     expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
   })
@@ -801,8 +803,27 @@ describe('설정 감시', () => {
     await nextTick()
     expect(s.설정저장실패.value).toBe(true)
     쓰기.mockRestore()
+    const 시계 = vi.spyOn(performance, 'now').mockReturnValue(performance.now() + 6_000) // 실패 뒤 간격이 지났다
     window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', oldValue: 'xxxx', newValue: null, storageArea: localStorage }))
+    시계.mockRestore()
     expect(s.설정저장실패.value).toBe(false)
     expect(JSON.parse(localStorage.getItem('how-work-time:assistant-settings')).키.anthropic).toBe('sk-다시')
   })
+
+  it('다른 창이 설정을 지운 뒤에는 공간이 생겨도 기본 설정을 다시 쓰지 않고 실패 안내를 남긴다', async () => {
+    vi.resetModules()
+    const { useAssistantSettings } = await import('../src/assistant/composables/useAssistantSettings')
+    const s = useAssistantSettings()
+    const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    s.저장된키.value = 'sk-지울것'
+    await nextTick()
+    쓰기.mockRestore()
+    localStorage.clear()
+    window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage }))
+    await nextTick()
+    window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', oldValue: 'xxxx', newValue: null, storageArea: localStorage }))
+    expect(localStorage.getItem('how-work-time:assistant-settings')).toBeNull()
+    expect(s.설정저장실패.value).toBe(true)
+  })
 })
+
