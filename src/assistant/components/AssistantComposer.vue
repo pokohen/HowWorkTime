@@ -5,12 +5,11 @@ import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
 const emit = defineEmits(['보냄', '설정열기'])
-const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 일부합치기실패, 전체합치기실패, 새판감지 } = useAssistant()
+const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 일부합치기실패, 전체합치기실패 } = useAssistant()
 
 const 입력창 = ref(null)
 const 입력 = ref('')
-// 새 판이 저장한 뒤에는 보내지 않는다 (이 창은 저장하지 않으므로 받은 답을 잃는다. 새로고침 안내)
-const 보낼수있음 = computed(() => 키있음.value && !새판감지.value && !전송중.value && !활성탭다른창받는중.value && 입력.value.trim().length > 0)
+const 보낼수있음 = computed(() => 키있음.value && !전송중.value && !활성탭다른창받는중.value && 입력.value.trim().length > 0)
 
 function 높이맞춤() {
   const el = 입력창.value
@@ -104,8 +103,7 @@ defineExpose({ 포커스, 채우기 })
         </svg>
       </button>
     </div>
-    <p v-if="새판감지" class="composer-hint composer-hint--warn" role="status"><WarnIcon />플래너가 새 버전으로 바뀌었어요. 이 창에서는 더 저장하지 않으니 새로고침해 주세요</p>
-    <p v-else-if="저장실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>
+    <p v-if="저장실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>
     <p v-else-if="전체합치기실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />다른 창에서 저장한 대화를 합치지 못해 이 창의 내용으로 저장했어요. 다른 창에만 있던 대화는 빠졌을 수 있어요</p>
     <p v-else-if="일부합치기실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />다른 창과 대화 일부를 합치지 못해, 그 대화는 더 최근에 바뀐 쪽의 내용만 남겼어요. 다른 쪽에만 있던 메시지는 빠졌을 수 있어요</p>
     <p v-else class="composer-hint">Enter 전송 · Shift+Enter 줄바꿈 · 대화는 이 브라우저에 저장돼요</p>

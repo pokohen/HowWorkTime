@@ -412,7 +412,7 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
-  it('깨진 값·비어 있는 이 판의 저장본은 건너뛰고(기록만), 새 판의 저장본이면 저장을 멈추고 새로고침을 안내한다', async () => {
+  it('깨진 값·비어 있는 저장본은 합칠 것이 없는 것으로 건너뛴다 (기록만, 안내 없음)', async () => {
     const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
     const 이벤트 = (값) => window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 값 }))
     try {
@@ -421,29 +421,10 @@ describe('다른 창이 받는 중인 답', () => {
       이벤트('{"이상한":1}')
       이벤트('{"버전":1,"탭목록":[]}')
       expect(a.전체합치기실패.value).toBe(false)
-      expect(a.새판감지.value).toBe(false)
       expect(오류).toHaveBeenCalledWith('[플래너] 복원할 수 없는 값은 건너뜀')
-      const 새판 = '{"버전":2,"대화들":[]}'
-      localStorage.setItem(저장키, 새판)
-      이벤트(새판)
-      expect(a.새판감지.value).toBe(true)
-      expect(a.전체합치기실패.value).toBe(false)
-      a.탭삭제(a.활성탭.value.id) // 저장을 부르는 변경
-      await vi.advanceTimersByTimeAsync(1_000)
-      expect(localStorage.getItem(저장키)).toBe(새판) // 새 판의 저장본 위에 쓰지 않았다
     } finally {
       오류.mockRestore()
     }
   })
 
-  it('시작할 때 새 판의 저장본이면 바로 안내하고 저장하지 않는다', async () => {
-    localStorage.setItem(저장키, '{"버전":9}')
-    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
-    const a = useAssistant()
-    expect(a.새판감지.value).toBe(true)
-    a.새탭추가()
-    a.탭삭제(a.활성탭.value.id)
-    await vi.advanceTimersByTimeAsync(1_000)
-    expect(localStorage.getItem(저장키)).toBe('{"버전":9}')
-  })
 })
