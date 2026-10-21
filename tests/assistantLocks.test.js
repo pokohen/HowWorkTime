@@ -311,7 +311,7 @@ describe('다른 창이 받는 중인 답', () => {
     expect(localStorage.getItem('how-work-time:assistant-live')).toBeNull()
   })
 
-  it('합칠 수 없는 저장본 위에는 바로 쓰지 않고(따로 알림), 거듭 실패하면 덮어쓰며, 보내기는 잠금을 놓친 채 끝나지 않는다', async () => {
+  it('합칠 수 없는 저장본은 기록하고 이 창의 상태를 쓰며, 보내기는 잠금을 놓친 채 끝나지 않는다', async () => {
     const 잠금들 = 가짜잠금관리자()
     vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
     vi.doMock('../src/assistant/ai/client', () => ({ 대화요청: async ({ 조각 }) => { 조각('답'); return {} } }))
@@ -325,16 +325,12 @@ describe('다른 창이 받는 중인 답', () => {
       const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
       받는중저장(Date.now() + 1, { id: 'z', 역할: 'assistant', 내용: '남의 것', 시각: Date.now() })
-      const 남의저장본 = localStorage.getItem(저장키)
       const 탭ID = a.활성탭.value.id
       expect(await a.전송('질문')).toBe(true)
       expect(a.활성탭.value.메시지.at(-1).내용).toBe('답')
-      expect(localStorage.getItem(저장키)).toBe(남의저장본) // 다른 창의 저장을 바로 덮지 않았다
-      expect(a.합치기실패.value).toBe(true)
-      await vi.advanceTimersByTimeAsync(20_000) // 같은 저장본으로 거듭 실패하면 이 창의 상태를 쓴다
-      expect(JSON.parse(localStorage.getItem(저장키)).탭목록.some((t) => t.id === 탭ID)).toBe(true)
-      expect(a.합치기실패.value).toBe(false)
-      expect(await 잠금들.request(잠금(탭ID), { ifAvailable: true }, (l) => Boolean(l))).toBe(true) // 쓴 뒤 잠금을 놓았다
+      expect(await 잠금들.request(잠금(탭ID), { ifAvailable: true }, (l) => Boolean(l))).toBe(true) // 잠금을 놓았다
+      expect(JSON.parse(localStorage.getItem(저장키)).탭목록.some((t) => t.id === 탭ID)).toBe(true) // 저장했다
+      expect(오류).toHaveBeenCalled() // 실패는 기록한다
     } finally {
       오류.mockRestore()
       vi.doUnmock('../src/assistant/utils/assistantStorage')
@@ -342,96 +338,4 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
-  it('합치기로 저장을 미루다 저장본이 사라지면 경고를 거두고, 떠날 때는 미루지 않고 쓴다', async () => {
-    vi.stubGlobal('navigator', { ...navigator, locks: 가짜잠금관리자(), onLine: true })
-    const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
-    vi.doMock('../src/assistant/utils/assistantStorage', () => ({
-      ...저장모듈,
-      대화합치기: () => { throw new Error('합치기 실패') },
-    }))
-    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
-      const a = useAssistant()
-      받는중저장(Date.now() + 1, { id: 'z', 역할: 'assistant', 내용: '남의 것', 시각: Date.now() })
-      a.탭삭제(a.활성탭.value.id) // 저장을 부르는 변경
-      await vi.advanceTimersByTimeAsync(1_000)
-      expect(a.합치기실패.value).toBe(true)
-      localStorage.removeItem(저장키) // 다른 창의 저장본이 사라졌다
-      await vi.advanceTimersByTimeAsync(6_000)
-      expect(a.합치기실패.value).toBe(false)
-      expect(localStorage.getItem(저장키)).not.toBeNull()
-      // 다시 합칠 수 없는 저장본: 떠날 때(pagehide)는 미루지 않고 쓴다
-      받는중저장(Date.now() + 2, { id: 'y', 역할: 'assistant', 내용: '또 남의 것', 시각: Date.now() })
-      const 남의저장본 = localStorage.getItem(저장키)
-      a.탭삭제(a.활성탭.value.id)
-      window.dispatchEvent(new Event('pagehide'))
-      expect(localStorage.getItem(저장키)).not.toBe(남의저장본)
-    } finally {
-      오류.mockRestore()
-      vi.doUnmock('../src/assistant/utils/assistantStorage')
-    }
-  })
-
-  it('미루던 중 다른 창의 저장을 합치면 경고와 미룸 시각을 지운다 (다음 실패는 처음부터 센다)', async () => {
-    vi.stubGlobal('navigator', { ...navigator, locks: 가짜잠금관리자(), onLine: true })
-    const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
-    let 실패 = true
-    vi.doMock('../src/assistant/utils/assistantStorage', () => ({
-      ...저장모듈,
-      대화합치기: (...인자) => { if (실패) throw new Error('합치기 실패'); return 저장모듈.대화합치기(...인자) },
-    }))
-    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const 저장이벤트 = (값) => window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 값 }))
-    try {
-      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
-      const a = useAssistant()
-      받는중저장(Date.now() + 1, { id: 'z', 역할: 'assistant', 내용: '남의 것', 시각: Date.now() })
-      a.탭삭제(a.활성탭.value.id)
-      await vi.advanceTimersByTimeAsync(14_000)
-      expect(a.합치기실패.value).toBe(true)
-      실패 = false
-      받는중저장(Date.now() + 2, { id: 'w', 역할: 'assistant', 내용: '합칠 수 있는 것', 시각: Date.now() })
-      저장이벤트(localStorage.getItem(저장키))
-      expect(a.합치기실패.value).toBe(false)
-      // 곧바로 새 실패: 미룸 시각을 처음부터 세므로 바로 덮어쓰지 않는다
-      실패 = true
-      받는중저장(Date.now() + 3, { id: 'v', 역할: 'assistant', 내용: '또 실패', 시각: Date.now() })
-      const 남의저장본 = localStorage.getItem(저장키)
-      a.탭삭제(a.활성탭.value.id)
-      await vi.advanceTimersByTimeAsync(6_000)
-      expect(localStorage.getItem(저장키)).toBe(남의저장본)
-      expect(a.합치기실패.value).toBe(true)
-    } finally {
-      오류.mockRestore()
-      vi.doUnmock('../src/assistant/utils/assistantStorage')
-    }
-  })
-
-  it('끝난 답의 저장이 미뤄지면 실제로 쓸 때까지 잠금을 쥔다', async () => {
-    const 잠금들 = 가짜잠금관리자()
-    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
-    vi.doMock('../src/assistant/ai/client', () => ({ 대화요청: async ({ 조각 }) => { 조각('답'); return {} } }))
-    const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
-    vi.doMock('../src/assistant/utils/assistantStorage', () => ({
-      ...저장모듈,
-      대화합치기: () => { throw new Error('합치기 실패') },
-    }))
-    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
-      const a = useAssistant()
-      받는중저장(Date.now() + 1, { id: 'z', 역할: 'assistant', 내용: '남의 것', 시각: Date.now() })
-      const 탭ID = a.활성탭.value.id
-      expect(await a.전송('질문')).toBe(true)
-      const 비었나 = () => 잠금들.request(잠금(탭ID), { ifAvailable: true }, (l) => Boolean(l))
-      expect(await 비었나()).toBe(false) // 아직 쓰지 못해 쥐고 있다
-      await vi.advanceTimersByTimeAsync(20_000) // 한도가 지나 덮어쓰면 놓는다
-      expect(await 비었나()).toBe(true)
-    } finally {
-      오류.mockRestore()
-      vi.doUnmock('../src/assistant/utils/assistantStorage')
-      vi.doUnmock('../src/assistant/ai/client')
-    }
-  })
 })
