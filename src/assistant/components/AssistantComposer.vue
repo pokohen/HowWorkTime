@@ -4,7 +4,7 @@ import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
 const emit = defineEmits(['보냄', '설정열기'])
-const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 합치기실패 } = useAssistant()
+const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 합치지못한대화, 전체합치기실패 } = useAssistant()
 
 const 입력창 = ref(null)
 const 입력 = ref('')
@@ -103,7 +103,8 @@ defineExpose({ 포커스, 채우기 })
       </button>
     </div>
     <p v-if="저장실패" class="composer-hint composer-hint--warn" role="status">⚠ 대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>
-    <p v-else-if="합치기실패" class="composer-hint composer-hint--warn" role="status">⚠ 다른 창과 대화 일부를 합치지 못해, 그 대화는 더 최근에 바뀐 쪽의 내용만 남겼어요. 다른 쪽에만 있던 메시지는 빠졌을 수 있어요</p>
+    <p v-else-if="전체합치기실패" class="composer-hint composer-hint--warn" role="status">⚠ 다른 창에서 저장한 대화를 합치지 못해 이 창의 내용으로 저장했어요. 다른 창에만 있던 대화는 빠졌을 수 있어요</p>
+    <p v-else-if="합치지못한대화.size" class="composer-hint composer-hint--warn" role="status">⚠ 다른 창과 대화 {{ 합치지못한대화.size }}개를 합치지 못해, 그 대화는 더 최근에 바뀐 쪽의 내용만 남기고 있어요. 다른 쪽에만 있던 메시지는 빠졌을 수 있어요</p>
     <p v-else class="composer-hint">Enter 전송 · Shift+Enter 줄바꿈 · 대화는 이 브라우저에 저장돼요</p>
   </footer>
 </template>

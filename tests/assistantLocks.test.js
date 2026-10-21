@@ -331,7 +331,7 @@ describe('다른 창이 받는 중인 답', () => {
       expect(await 잠금들.request(잠금(탭ID), { ifAvailable: true }, (l) => Boolean(l))).toBe(true) // 잠금을 놓았다
       expect(JSON.parse(localStorage.getItem(저장키)).탭목록.some((t) => t.id === 탭ID)).toBe(true) // 저장했다
       expect(오류).toHaveBeenCalledWith('[플래너] 다른 창의 저장본을 합치지 못함', expect.any(Error)) // 실패는 기록·안내한다
-      expect(a.합치기실패.value).toBe(true)
+      expect(a.전체합치기실패.value).toBe(true)
     } finally {
       오류.mockRestore()
       vi.doUnmock('../src/assistant/utils/assistantStorage')
@@ -352,7 +352,7 @@ describe('다른 창이 받는 중인 답', () => {
     expect(저장본.삭제기록[지운ID]).toBeGreaterThan(0)
   })
 
-  it('일부 대화만 합치지 못하면 성공으로 보고, 같은 대화는 한 번만 알리며, 모두 합치면 경고를 거둔다', async () => {
+  it('일부 대화만 합치지 못하면 나머지는 합치고, 실패하는 동안 알리며, 다시 합쳐지면 거둔다 (또 실패하면 다시 기록)', async () => {
     const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
     let 실패대화 = ['x']
     vi.doMock('../src/assistant/utils/assistantStorage', () => ({
@@ -360,21 +360,33 @@ describe('다른 창이 받는 중인 답', () => {
       대화합치기: (...인자) => ({ ...저장모듈.대화합치기(...인자), 합치지못함: 실패대화.map((id) => ({ id, 예외: new Error('메시지 모양') })) }),
     }))
     const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const 기록수 = () => 오류.mock.calls.filter((c) => String(c[0]).includes('메시지를 합치지 못해')).length
     const 저장이벤트 = (n) => {
-      받는중저장(Date.now() + n, { id: `m${n}`, 역할: 'assistant', 내용: `답 ${n}`, 시각: Date.now() })
+      const 시각 = Date.now() + n
+      localStorage.setItem(저장키, JSON.stringify({
+        버전: 1, 활성탭ID: 'x', 삭제기록: {},
+        탭목록: [
+          { id: 'x', 제목: 'x', 생성시각: 1, 수정시각: 시각, 메시지: [{ id: `qx${n}`, 역할: 'user', 내용: 'q', 시각 }] },
+          { id: `y${n}`, 제목: 'y', 생성시각: 2, 수정시각: 시각, 메시지: [{ id: `qy${n}`, 역할: 'user', 내용: 'q', 시각 }] },
+        ],
+      }))
       window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: localStorage.getItem(저장키) }))
     }
     try {
       const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
       저장이벤트(1)
-      expect(a.합치기실패.value).toBe(true)
-      expect(a.탭목록.value.some((t) => t.id === 'x')).toBe(true) // 나머지는 합쳤다
-      저장이벤트(2) // 같은 대화가 또 실패: 다시 기록하지 않는다
-      expect(오류.mock.calls.filter((c) => String(c[0]).includes('메시지를 합치지 못해'))).toHaveLength(1)
+      expect([...a.합치지못한대화.value]).toEqual(['x'])
+      expect(a.탭목록.value.some((t) => t.id === 'y1')).toBe(true) // 다른 대화는 합쳤다
+      저장이벤트(2) // 같은 대화가 또 실패: 다시 기록하지 않고, 알림은 실패하는 동안 그대로
+      expect(기록수()).toBe(1)
+      expect(a.합치지못한대화.value.size).toBe(1)
       실패대화 = []
       저장이벤트(3)
-      expect(a.합치기실패.value).toBe(false)
+      expect(a.합치지못한대화.value.size).toBe(0)
+      실패대화 = ['x']
+      저장이벤트(4) // 회복 뒤 또 실패하면 다시 기록한다
+      expect(기록수()).toBe(2)
     } finally {
       오류.mockRestore()
       vi.doUnmock('../src/assistant/utils/assistantStorage')
