@@ -524,7 +524,7 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
-  it('막히지 않았어도 저장에 실패해 있었으면 다른 창이 저장본을 줄여 공간이 생길 때 다시 해 본다', async () => {
+  it('막히지 않았어도 저장에 실패해 있었으면 다른 창이 이 키를 쓸 때(늘려도) 다시 해 본다', async () => {
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
     const a = useAssistant()
     const 지운ID = a.활성탭.value.id
@@ -534,7 +534,7 @@ describe('다른 창이 받는 중인 답', () => {
     expect(a.저장실패.value).toBe(true)
     쓰기.mockRestore()
     받는중저장(Date.now(), { id: 'k', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() }) // 다른 창이 대화를 줄여 공간을 비우고 씀
-    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: 'x'.repeat(10_000), newValue: localStorage.getItem(저장키), storageArea: localStorage }))
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: null, newValue: localStorage.getItem(저장키), storageArea: localStorage })) // 늘림: 그래도 그 창이 썼으니 공간이 있다
     await vi.advanceTimersByTimeAsync(1_000)
     expect(a.저장실패.value).toBe(false)
     expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
