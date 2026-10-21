@@ -92,11 +92,14 @@ src/
       openai.js / gemini.js fetch + SSE 스트리밍
       sse.js / errors.js    SSE 파서, 어시스턴트오류
     utils/
-      assistantContext.js   연휴·징검다리 탐지, AI 시스템 프롬프트 (순수 함수)
+      longWeekends.js       연휴·징검다리 후보 탐지 (순수 함수)
+      systemPrompt.js       AI 시스템 프롬프트 (순수 함수)
+      history.js            모델에 보낼 대화 이력 정리
       assistantStorage.js   대화·설정 직렬화/복원
       miniMarkdown.js       응답용 가벼운 마크다운 → HTML / 공유용 일반 텍스트
     composables/
       useAssistantSettings.js 제공자·모델·API 키
+      usePlannerContext.js  플래너가 근무시간 계산기에서 읽는 값 모음 (worktime 상태를 읽는 곳은 여기만)
       useAssistant.js       모달·탭·메시지·전송·알림
     components/
       AssistantFab, AssistantToast, AssistantModal(머리·열닫기·스크롤) → AssistantTabs, AssistantEmptyState,

@@ -1,18 +1,13 @@
 import { ref, computed, watch } from 'vue'
 import { 어시스턴트저장키 } from '../../shared/constants'
 import { 대화요청 } from '../ai/client'
-import { 연휴찾기, 시스템프롬프트, 이력만들기 } from '../utils/assistantContext'
-import { 날짜키, 다음달 as 다음달계산, 월표시 } from '../../worktime/utils/workDays'
-import { 월공휴일 } from '../../worktime/utils/holidays'
-import { 남은연차문장 } from '../../worktime/utils/leaveBalance'
+import { 시스템프롬프트 } from '../utils/systemPrompt'
+import { 이력만들기 } from '../utils/history'
 import { 새탭, 새ID, 제목추출, 탭이름, 직렬화, 복원, 탭최대 } from '../utils/assistantStorage'
 import { 저장소읽기, 저장소쓰기 } from '../../shared/utils/storage'
 import { 모듈상태 } from '../../shared/composables/moduleState'
 import { useAssistantSettings } from './useAssistantSettings'
-import { useToday } from '../../worktime/composables/useToday'
-import { useMonth } from '../../worktime/composables/useMonth'
-import { useWorkResult } from '../../worktime/composables/useWorkResult'
-import { useLeave } from '../../worktime/composables/useLeave'
+import { usePlannerContext } from './usePlannerContext'
 
 /** 모델에 보낼 최근 대화 수 (사용자+응답 합산). 오래된 것은 잘라 요청 크기를 억제한다 */
 const 이력최대 = 40
@@ -22,10 +17,7 @@ const 저장지연 = 400
 const 알림표시시간 = 12_000
 
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
-  const { 오늘, 오늘표시, 재택안내, 급여주여부, 현재연도, 현재월 } = useToday()
-  const { 선택월표시, 남은근무일, 선택연도, 선택월, 월차이, 이번달여부 } = useMonth()
-  const { 출근남은일 } = useWorkResult()
-  const { 연차일수환산, 남은연차조회 } = useLeave()
+  const { 컨텍스트수집 } = usePlannerContext()
   const 설정상태 = useAssistantSettings()
   const { 제공자, 모델, 현재키 } = 설정상태
 
@@ -147,43 +139,6 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const 응답중탭ID = ref(null)
   /** 보고 있는 탭이 응답을 받는 중인지 (중단 버튼은 이 탭에만) */
   const 활성탭응답중 = computed(() => 전송중.value && 응답중탭ID.value === 활성탭ID.value)
-
-  function 컨텍스트수집() {
-    // 계획은 앞날에 대한 것이다. 지난 달을 보고 있으면 그 달이 아니라 오늘이 속한 달부터 본다
-    const 지난달보는중 = 월차이.value < 0
-    const 기준연도 = 지난달보는중 ? 현재연도.value : 선택연도.value
-    const 기준월 = 지난달보는중 ? 현재월.value : 선택월.value
-    const { 연도: 다음연도, 월: 다음월 } = 다음달계산(기준연도, 기준월)
-    // 기준 달과 다음 달을 한 번에 찾는다 (따로 찾아 합치면 경계에 걸친 구간이 잘리거나 겹친다). 이미 끝난 연휴는 뺀다
-    const 오늘키 = 날짜키(오늘.value)
-    // 끝난 연휴와, 징검다리 날이 이미 지난 조합은 뺀다 (뒤쪽만 남은 부분은 따로 후보로 들어 있다). 지난 공휴일도 뺀다
-    const 연휴 = 연휴찾기(기준연도, 기준월, undefined, 2)
-      .filter((구간) => 구간.끝 >= 오늘키 && 구간.징검다리.every((날) => 날 > 오늘키)) // 오늘 쓸 연차는 제안할 수 없다
-    const 앞날만 = (목록) => 목록.filter((h) => h.날짜 >= 오늘키)
-    // 남은 연차는 연도별 값이라, 오늘·기준 달·다음 달이 걸친 해를 모두 준다 (12월에 1월을 계획하면 두 해가 필요하다)
-    const 연도들 = [...new Set([현재연도.value, 기준연도, 다음연도])].sort()
-    const 남은연차목록 = 연도들
-      .map((연도) => ({ 연도, 남은: 남은연차문장(남은연차조회(연도)) }))
-      .filter((항목) => 항목.남은)
-    return {
-      오늘표시: 오늘표시.value,
-      이번달표시: 월표시(기준연도, 기준월),
-      보는달이오늘달: 이번달여부.value,
-      지난달보는중,
-      보는달표시: 선택월표시.value,
-      다음달표시: 월표시(다음연도, 다음월),
-      이번달공휴일: 앞날만(월공휴일(기준연도, 기준월)),
-      다음달공휴일: 앞날만(월공휴일(다음연도, 다음월)),
-      연휴,
-      // 근무일·연차 숫자는 보고 있는 달의 것이라, 지난 달을 보는 중에는 오늘 달과 섞이지 않게 뺀다
-      남은근무일: 지난달보는중 ? null : 남은근무일.value,
-      출근남은일: 지난달보는중 ? null : 출근남은일.value,
-      연차일수: 지난달보는중 ? 0 : 연차일수환산.value,
-      남은연차목록,
-      재택안내: 재택안내.value,
-      급여주여부: 급여주여부.value,
-    }
-  }
 
   async function 전송(텍스트) {
     const 내용 = String(텍스트 ?? '').trim()

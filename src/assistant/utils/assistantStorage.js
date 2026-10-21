@@ -16,6 +16,14 @@ export function 새탭(시각 = Date.now()) {
   return { id: 새ID(), 제목: '', 생성시각: 시각, 메시지: [] }
 }
 
+/** 문자열을 보이는 글자(grapheme) 단위로 나눈다. Intl.Segmenter 가 없으면 코드 포인트 단위로 */
+function 글자단위(문자열) {
+  if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+    return Array.from(new Intl.Segmenter('ko', { granularity: 'grapheme' }).segment(문자열), (조각) => 조각.segment)
+  }
+  return Array.from(문자열)
+}
+
 /** 화면에 보일 탭 이름. 아직 질문이 없으면 '새 대화' */
 export function 탭이름(탭) {
   return 탭?.제목 || '새 대화'
@@ -25,7 +33,7 @@ export function 탭이름(탭) {
 export function 제목추출(텍스트, 최대 = 제목최대길이) {
   const 한줄 = String(텍스트 ?? '').split('\n').map((줄) => 줄.trim()).find(Boolean) ?? ''
   const 정리 = 한줄.replace(/\s+/g, ' ')
-  const 글자들 = Array.from(정리) // 코드 포인트 단위. slice 로 자르면 이모지(서로게이트 쌍) 가운데가 잘린다
+  const 글자들 = 글자단위(정리) // 보이는 글자 단위. 코드 단위로 자르면 이모지·국기·가족 이모지 가운데가 잘린다
   return 글자들.length > 최대 ? `${글자들.slice(0, 최대).join('').trimEnd()}…` : 정리
 }
 

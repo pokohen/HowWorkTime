@@ -127,6 +127,15 @@ const 복사문구 = computed(() => ({ done: '복사됨', fail: '복사 실패' 
 .md :deep(ul), .md :deep(ol) { margin: 4px 0 8px; padding-left: 20px; }
 .md :deep(li) { margin: 2px 0; }
 .md :deep(hr) { margin: 10px 0; border: 0; border-top: 1px solid var(--hairline); }
+.md :deep(pre) {
+  margin: 6px 0 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  overflow-x: auto;
+  white-space: pre;
+}
+.md :deep(pre code) { padding: 0; background: none; font-size: 0.82em; }
 .md :deep(code) {
   font-size: 0.85em;
   padding: 1px 5px;

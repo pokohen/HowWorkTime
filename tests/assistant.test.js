@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { 연휴찾기, 시스템프롬프트, 이력만들기 } from '../src/assistant/utils/assistantContext'
+import { 연휴찾기 } from '../src/assistant/utils/longWeekends'
+import { 시스템프롬프트 } from '../src/assistant/utils/systemPrompt'
+import { 이력만들기 } from '../src/assistant/utils/history'
 import { 날짜키 } from '../src/worktime/utils/workDays'
 
 // 공휴일은 tests/setup.js 가 2026년 픽스처로 고정한다
