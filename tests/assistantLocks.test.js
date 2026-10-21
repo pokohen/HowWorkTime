@@ -310,4 +310,27 @@ describe('다른 창이 받는 중인 답', () => {
     expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
     expect(localStorage.getItem('how-work-time:assistant-live')).toBeNull()
   })
+
+  it('합칠 수 없는 저장본은 한 번만 건너뛰고, 보내기는 잠금을 놓치지 않으며 저장도 계속한다', async () => {
+    const 잠금들 = 가짜잠금관리자()
+    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
+    vi.doMock('../src/assistant/ai/client', () => ({ 대화요청: async ({ 조각 }) => { 조각('답'); return {} } }))
+    const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
+    vi.doMock('../src/assistant/utils/assistantStorage', () => ({
+      ...저장모듈,
+      대화합치기: () => { throw new Error('합치기 실패') },
+    }))
+    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    받는중저장(Date.now() + 1, { id: 'z', 역할: 'assistant', 내용: '남의 것', 시각: Date.now() })
+    const 탭ID = a.활성탭.value.id
+    expect(await a.전송('질문')).toBe(true)
+    expect(a.활성탭.value.메시지.at(-1).내용).toBe('답')
+    expect(await 잠금들.request(잠금(탭ID), { ifAvailable: true }, (l) => Boolean(l))).toBe(true) // 잠금을 놓았다
+    expect(JSON.parse(localStorage.getItem(저장키)).탭목록.some((t) => t.id === 탭ID)).toBe(true) // 저장했다
+    오류.mockRestore()
+    vi.doUnmock('../src/assistant/utils/assistantStorage')
+    vi.doUnmock('../src/assistant/ai/client')
+  })
 })
