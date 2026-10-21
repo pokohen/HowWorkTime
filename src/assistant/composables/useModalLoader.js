@@ -8,12 +8,13 @@ import { useAssistant } from './useAssistant'
  * 우리 쪽에서는 실패를 기억하지 않아 다음에 열면 다시 시도한다. 다만 브라우저가 실패한 모듈을 기억해 바로 다시 실패할 수 있어,
  * 실패 안내는 늘 새로고침을 권한다. 받는 동안은 대화 상자가 없으므로 Esc 로 여는 것을 취소할 수 있게 한다.
  */
-const 상태 = 모듈상태(import.meta.hot, () => {
+const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const { 열림, 닫기, 불러오기실패알림 } = useAssistant()
   const 모달 = shallowRef(null)
   const 불러오는중 = ref(false)
 
   const Esc취소 = (e) => { if (e.key === 'Escape') 닫기() }
+  if (typeof window !== 'undefined') 정리등록(() => window.removeEventListener('keydown', Esc취소))
   async function 불러오기() {
     if (모달.value || 불러오는중.value) return
     불러오는중.value = true
@@ -21,8 +22,11 @@ const 상태 = 모듈상태(import.meta.hot, () => {
     try {
       모달.value = markRaw((await import('../components/AssistantModal.vue')).default)
     } catch {
-      닫기()
-      불러오기실패알림()
+      // 받는 사이 사용자가 취소(Esc)했으면 실패를 알리지 않는다. 다음에 열 때 다시 시도한다
+      if (열림.value) {
+        닫기()
+        불러오기실패알림()
+      }
     } finally {
       불러오는중.value = false
       if (typeof window !== 'undefined') window.removeEventListener('keydown', Esc취소)

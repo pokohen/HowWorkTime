@@ -14,11 +14,28 @@ const md = new MarkdownIt({ html: false, linkify: false, breaks: true, typograph
   // 글 줄 바로 아래 "---" 를 그 줄의 제목으로 만드는 규칙(setext)도 끈다: 모델은 그 자리에 구분선을 뜻한다
   .disable(['table', 'code', 'lheading'])
 
+// CommonMark 는 "2026. 상반기에는…" 을 2026 번부터 시작하는 번호 목록으로 읽는다. 세 자리 이상 번호로 시작하는 줄은
+// 실제 목록일 일이 거의 없으므로 목록 규칙이 받지 않게 한다 (그 줄은 문단이 된다). 글을 미리 고치지 않고 규칙에 조건만 더하므로
+// 코드 블록 안은 애초에 이 규칙이 닿지 않는다
+const { fn: 원래목록, alt: 목록대신 } = md.block.ruler.__rules__[md.block.ruler.__find__('list')] // at() 이 규칙 객체를 고치므로 먼저 떼어 둔다
+md.block.ruler.at('list', (state, 시작줄, 끝줄, silent) => {
+  const 줄 = state.src.slice(state.bMarks[시작줄] + state.tShift[시작줄], state.eMarks[시작줄])
+  if (/^\d{3,}[.)](\s|$)/.test(줄)) return false
+  return 원래목록(state, 시작줄, 끝줄, silent)
+}, { alt: [...목록대신] })
+// 이미 열린 번호 목록 바로 뒤의 "2026. …" 은 CommonMark 상 그 목록의 다음 항목이 된다 (위 조건이 닿지 않는 곳).
+// 번호를 새로 매기면 연도가 사라지므로, 세 자리 이상 번호의 항목은 적힌 번호를 그대로 보여 준다 (<li value>)
+md.core.ruler.push('적힌번호유지', (state) => {
+  for (const 토큰 of state.tokens) {
+    if (토큰.type === 'list_item_open' && /^\d{3,}$/.test(토큰.info)) 토큰.attrSet('value', 토큰.info)
+  }
+})
+
 // 제목은 말풍선 안에서 한 단계 크기만 쓴다
 md.renderer.rules.heading_open = () => '<h4>'
 md.renderer.rules.heading_close = () => '</h4>'
 /** 이미지 설명 글. 설명 안의 마크다운(**굵게** 등)은 기호를 벗긴 글로 */
-const 이미지설명 = (토큰) => md.renderer.renderInlineAsText(토큰.children ?? [], md.options, {}) || '이미지'
+const 이미지설명 = (토큰) => 인라인글(토큰.children) || '이미지' // 복사 글과 같은 규칙 (코드 글자도 남는다)
 /** 같은 인라인 안에서 이 토큰이 링크 안에 있는지 (링크 안의 이미지 = 배지 꼴) */
 function 링크안(tokens, i) {
   for (let j = i - 1; j >= 0; j--) {
@@ -41,34 +58,7 @@ md.renderer.rules.link_open = (tokens, i, options, env, self) => {
   return 기본링크(tokens, i, options, env, self)
 }
 
-/**
- * CommonMark 는 "2026. 상반기에는…" 을 2026 번부터 시작하는 번호 목록으로 읽는다.
- * 세 자리 이상 번호는 실제 목록일 일이 거의 없으므로 연도로 보고 점을 이스케이프한다 (코드 블록 안은 그대로).
- */
-function 연도보호(텍스트) {
-  // 열린 코드 블록의 울타리. 같은 글자로 그 길이 이상이어야 닫힌다.
-  // 목록 안에 들여 쓴 울타리는 닫히지 않았더라도 덜 들여 쓴 글이 나오면(그 항목이 끝나면) 함께 끝난다 (CommonMark 와 같다)
-  let 울타리 = null // { 표시: "```", 들여: number }
-  const 들여 = (줄) => /^\s*/.exec(줄)[0].length
-  return String(텍스트 ?? '')
-    .split('\n')
-    .map((줄) => {
-      const 표시 = /^\s*(`{3,}|~{3,})/.exec(줄)?.[1]
-      if (울타리) {
-        if (표시 && 표시[0] === 울타리.표시[0] && 표시.length >= 울타리.표시.length && /^\s*[`~]+\s*$/.test(줄)) {
-          울타리 = null
-          return 줄
-        }
-        if (!줄.trim() || 들여(줄) >= 울타리.들여) return 줄
-        울타리 = null // 항목이 끝나 코드 블록도 끝났다. 이 줄은 아래에서 평소대로 다룬다
-      }
-      if (표시) { 울타리 = { 표시, 들여: 들여(줄) }; return 줄 }
-      return 줄.replace(/^(\s*\d{3,})([.)])(\s|$)/, '$1\\$2$3')
-    })
-    .join('\n')
-}
-
-const 파싱 = (텍스트) => md.parse(연도보호(텍스트), {})
+const 파싱 = (텍스트) => md.parse(String(텍스트 ?? ''), {})
 
 /**
  * @param {string} 텍스트
@@ -79,15 +69,23 @@ export function 마크다운HTML(텍스트) {
 }
 
 /**
- * 사람이 읽는 주소. 파서가 퍼센트 인코딩한 한글 등 ASCII 밖 글자만 되돌린다.
- * %20(공백)·%2F 같은 것은 그대로 둔다: 풀면 붙여 넣었을 때 주소가 그 자리에서 끊기거나 뜻이 바뀐다
+ * 사람이 읽는 주소. 파서가 퍼센트 인코딩한 한글 같은 글자·숫자만 한 글자씩 되돌린다.
+ * 공백·제어·방향 바꿈 글자(%20, %C2%A0, %E2%80%AE …)와 ASCII 는 그대로 둔다: 풀면 붙여 넣었을 때 주소가 끊기거나 뒤집혀 보인다
  */
 function 읽는주소(주소) {
-  return String(주소 ?? '').replace(/(%[0-9A-Fa-f]{2})+/g, (조각) => {
-    try {
-      const 풀림 = decodeURIComponent(조각)
-      return /^[^\x00-\x7F]+$/.test(풀림) ? 풀림 : 조각
-    } catch { return 조각 }
+  return String(주소 ?? '').replace(/(?:%[0-9A-Fa-f]{2})+/g, (조각) => {
+    const 바이트들 = 조각.match(/%[0-9A-Fa-f]{2}/g)
+    let 결과 = ''
+    for (let i = 0; i < 바이트들.length;) {
+      const 첫 = parseInt(바이트들[i].slice(1), 16)
+      const 길이 = 첫 >= 0xf0 ? 4 : 첫 >= 0xe0 ? 3 : 첫 >= 0xc0 ? 2 : 1 // UTF-8 한 글자의 바이트 수
+      const 묶음 = 바이트들.slice(i, i + 길이).join('')
+      let 글자 = null
+      try { 글자 = decodeURIComponent(묶음) } catch { /* 깨진 바이트는 그대로 */ }
+      결과 += 글자 && 길이 > 1 && /^[\p{L}\p{N}\p{M}]$/u.test(글자) ? 글자 : 묶음
+      i += 길이
+    }
+    return 결과
   })
 }
 
@@ -163,6 +161,8 @@ export function 마크다운텍스트(텍스트) {
         break
       case 'list_item_open': {
         const 목록 = 목록들[목록들.length - 1]
+        const 적힌번호 = 토큰.attrGet('value') // 화면의 <li value> 와 같게, 뒤 항목은 그 다음 번호부터
+        if (목록.번호 != null && 적힌번호) 목록.번호 = Number(적힌번호)
         항목머리 = 들여 + (목록.번호 == null ? '• ' : `${목록.번호++}. `)
         들여 += '  '
         블록끝 = false
