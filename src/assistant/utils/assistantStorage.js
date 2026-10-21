@@ -60,7 +60,10 @@ export function 직렬화({ 탭목록, 활성탭ID, 삭제기록 = {} }) {
         const 저장 = { id: m.id, 역할: m.역할, 내용: m.내용, 시각: m.시각 }
         if (m.오류) 저장.오류 = m.오류
         if (m.중단됨) 저장.중단됨 = true
-        else if (m.진행중 || m.다른창받는중) 저장.받는중 = true
+        else if (m.진행중 || m.다른창받는중) {
+          저장.받는중 = true
+          if (m.잠금없이) 저장.잠금없이 = true // 받는 창이 잠금 없이 받는 중 (다른 창은 수정시각으로 판단)
+        }
         if (m.잘림) 저장.잘림 = true
         return 저장
       }),
@@ -102,7 +105,10 @@ export function 복원(문자열) {
           const 복구 = { id: typeof m.id === 'string' ? m.id : 새ID(), 역할: m.역할, 내용: m.내용, 시각: Number(m.시각) || 0 }
           if (typeof m.오류 === 'string') 복구.오류 = m.오류
           if (m.중단됨 === true) 복구.중단됨 = true
-          else if (m.받는중 === true) 복구.다른창받는중 = true
+          else if (m.받는중 === true) {
+            복구.다른창받는중 = true
+            if (m.잠금없이 === true) 복구.잠금없이 = true
+          }
           if (m.잘림 === true) 복구.잘림 = true
           return 복구
         }),

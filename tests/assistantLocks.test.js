@@ -21,7 +21,7 @@ function 가짜잠금관리자() {
     const 다음 = 줄.get(이름)?.shift()
     if (!다음) return
     쥔것.add(이름)
-    Promise.resolve().then(() => 다음.cb()).then(
+    Promise.resolve().then(() => 다음.cb({ name: 이름, mode: 'exclusive' })).then(
       (값) => { 쥔것.delete(이름); 다음.resolve(값); 넘기기(이름) },
       (오류) => { 쥔것.delete(이름); 다음.reject(오류); 넘기기(이름) },
     )
@@ -125,8 +125,9 @@ describe('다른 창이 받는 중인 답', () => {
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
     const a = useAssistant()
     await nextTick()
-    const 보냄 = await a.전송('안녕')
-    expect(보냄).toBe(false)
+    const 보냄 = a.전송('안녕')
+    await vi.advanceTimersByTimeAsync(1_500) // 받는 중이라는 저장이 없어 잠깐 기다려 본 뒤 포기한다
+    expect(await 보냄).toBe(false)
     expect(a.탭목록.value[0].메시지).toHaveLength(0)
     expect(a.전송중.value).toBe(false)
     놓기()
@@ -151,5 +152,62 @@ describe('다른 창이 받는 중인 답', () => {
     a.중단()
     await 끝
     vi.doUnmock('../src/assistant/ai/client')
+  })
+
+  it('잠금이 비어 있으면 보내고, 받는 동안은 다른 요청이 잠금을 바로 얻지 못한다', async () => {
+    const 잠금들 = 가짜잠금관리자()
+    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
+    vi.doMock('../src/assistant/ai/client', () => ({
+      대화요청: ({ 신호 }) => new Promise((_, 실패) => {
+        신호.addEventListener('abort', () => 실패(Object.assign(new Error('aborted'), { name: 'AbortError' })))
+      }),
+    }))
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    const 탭ID = a.활성탭.value.id
+    const 끝 = a.전송('질문')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(a.활성탭응답중.value).toBe(true)
+    expect(a.활성탭.value.메시지.map((m) => m.역할)).toEqual(['user', 'assistant'])
+    const 남이얻음 = await 잠금들.request(잠금(탭ID), { ifAvailable: true }, (l) => Boolean(l))
+    expect(남이얻음).toBe(false)
+    a.중단()
+    expect(await 끝).toBe(true)
+    expect(a.전송중.value).toBe(false)
+    expect(await 잠금들.request(잠금(탭ID), { ifAvailable: true }, (l) => Boolean(l))).toBe(true) // 끝나면 놓는다
+    vi.doUnmock('../src/assistant/ai/client')
+  })
+
+  it('다른 창의 지켜보기가 잠깐 쥔 잠금은 잠깐 기다렸다 얻는다', async () => {
+    const 잠금들 = 가짜잠금관리자()
+    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
+    vi.doMock('../src/assistant/ai/client', () => ({ 대화요청: async ({ 조각 }) => { 조각('답'); return {} } }))
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    let 놓기
+    잠금들.request(잠금(a.활성탭.value.id), () => new Promise((r) => { 놓기 = r }))
+    await Promise.resolve()
+    const 끝 = a.전송('질문')
+    await vi.advanceTimersByTimeAsync(100)
+    놓기()
+    await vi.advanceTimersByTimeAsync(100)
+    expect(await 끝).toBe(true)
+    expect(a.활성탭.value.메시지.at(-1).내용).toBe('답')
+    vi.doUnmock('../src/assistant/ai/client')
+  })
+
+  it('잠금 없이 받는 중이라는 표시는 저장본을 거쳐 남고, 잠금을 쓰는 창도 수정시각으로 판단한다', async () => {
+    const 잠금들 = 가짜잠금관리자()
+    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
+    const 시각 = Date.now()
+    받는중저장(시각, { id: 'a', 역할: 'assistant', 내용: '', 시각, 받는중: true, 잠금없이: true })
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(10_000) // 잠금은 비어 있지만 중단됨으로 만들지 않는다
+    expect(a.탭목록.value[0].메시지.at(-1).다른창받는중).toBe(true)
+    expect(a.탭목록.value[0].메시지.at(-1).잠금없이).toBe(true)
+    await vi.advanceTimersByTimeAsync(2 * 60_000)
+    expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
   })
 })
