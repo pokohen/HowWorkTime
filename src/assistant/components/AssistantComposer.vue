@@ -5,7 +5,7 @@ import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
 const emit = defineEmits(['보냄', '설정열기'])
-const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 일부합치기실패, 전체합치기실패, 새판감지, 덮어쓰기확인중, 저장본바뀜, 덮어쓰기확인시작, 덮어쓰기확인취소, 이창으로덮어쓰기, 덮어쓸대화있음 } = useAssistant()
+const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 일부합치기실패, 전체합치기실패, 새판감지, 덮어쓰기확인중, 저장본바뀜, 덮어쓰기실패, 덮어쓰기확인시작, 덮어쓰기확인취소, 이창으로덮어쓰기, 덮어쓸대화있음 } = useAssistant()
 
 const 입력창 = ref(null)
 const 입력 = ref('')
@@ -108,7 +108,7 @@ defineExpose({ 포커스, 채우기 })
     </div>
     <p v-if="새판감지" class="composer-hint composer-hint--warn" role="status">
       <WarnIcon />플래너가 새 버전으로 저장한 대화가 있어 이 창에서는 저장하거나 보내지 않아요. 새로고침해 주세요.
-      <template v-if="저장실패">이 창의 대화를 저장하지 못해 덮어쓰지 못했어요(저장 공간이 가득 찼거나 브라우저가 막음). </template>
+      <template v-if="덮어쓰기실패">이 창의 대화를 저장하지 못해 덮어쓰지 못했어요(저장 공간이 가득 찼거나 브라우저가 막음). </template>
       <template v-if="덮어쓰기확인중">
         저장된 새 버전 대화는 지워져요.
         <button type="button" class="hint-action" @click="이창으로덮어쓰기()">{{ 덮어쓸대화있음 ? '정말 덮어쓰기' : '정말 지우고 새로 시작' }}</button>

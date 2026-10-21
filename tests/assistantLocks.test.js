@@ -483,9 +483,47 @@ describe('다른 창이 받는 중인 답', () => {
     }
     expect(a.저장실패.value).toBe(true)
     expect(a.새판감지.value).toBe(true)
+    expect(a.덮어쓰기실패.value).toBe(true)
     a.탭삭제(a.활성탭.value.id) // 공간이 생긴 뒤의 보통 저장
     await vi.advanceTimersByTimeAsync(1_000)
     expect(localStorage.getItem(저장키)).toBe('{"버전":2}')
+  })
+
+  it('막혀 있던 동안의 변경은 막기가 풀리면 저장된다 (풀림이 저장을 예약)', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    localStorage.setItem(저장키, '{"버전":2}')
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: '{"버전":2}' }))
+    const 지운ID = a.활성탭.value.id
+    a.탭삭제(지운ID) // 막혀 있어 저장되지 않는다
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(localStorage.getItem(저장키)).toBe('{"버전":2}')
+    localStorage.removeItem(저장키) // 다른 창이 지움 → 막기가 풀린다
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: null }))
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
+  })
+
+  it('덮어쓰기 저장 중 예외가 나도 막기를 되돌리고 덮어쓰기 실패로 알린다', async () => {
+    localStorage.setItem(저장키, '{"버전":2}')
+    const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
+    vi.doMock('../src/assistant/utils/assistantStorage', () => ({
+      ...저장모듈,
+      직렬화: () => { throw new Error('직렬화 실패') },
+    }))
+    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+      const a = useAssistant()
+      a.덮어쓰기확인시작()
+      a.이창으로덮어쓰기()
+      expect(a.새판감지.value).toBe(true)
+      expect(a.덮어쓰기실패.value).toBe(true)
+      expect(localStorage.getItem(저장키)).toBe('{"버전":2}')
+    } finally {
+      오류.mockRestore()
+      vi.doUnmock('../src/assistant/utils/assistantStorage')
+    }
   })
 
   it('확인하지 않았으면(확인한 값 없음) 새 형식 저장본을 덮지 않는다', async () => {
