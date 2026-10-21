@@ -4,7 +4,7 @@ import { 대화요청 } from '../ai/client'
 import { 시스템프롬프트 } from '../utils/systemPrompt'
 import { 이력만들기 } from '../utils/history'
 import { 새탭, 새ID, 제목추출, 탭이름, 직렬화, 복원, 대화합치기, 상한맞추기 } from '../utils/assistantStorage'
-import { 저장소읽기, 저장소쓰기, 다른창저장감시 } from '../../shared/utils/storage'
+import { 저장소읽기, 저장소쓰기, 저장소접두사삭제, 다른창저장감시 } from '../../shared/utils/storage'
 import { 모듈상태 } from '../../shared/composables/moduleState'
 import { useAssistantSettings } from './useAssistantSettings'
 import { usePlannerContext } from './usePlannerContext'
@@ -16,17 +16,31 @@ const 저장지연 = 400
 /**
  * '받는 중' 판단은 브라우저 Web Locks 로 한다. 받는 창이 요청 내내 그 대화 이름의 잠금을 쥐고, 다른 창은 그 잠금이 풀리기를
  * 기다린다. 창을 닫거나 비정상 종료·탭 버리기가 일어나도 브라우저가 잠금을 풀어 주고, 숨겨진 창의 타이머 지연과도 무관하다.
- * (Web Locks 가 없는 환경에서는 다른 창이 받는 중인지 알 수 없으므로 중단됨으로 본다)
+ * Web Locks 가 없는 환경(보안 컨텍스트가 아닌 http 접속 등)은 마지막 변경 뒤 일정 시간 동안 받는 중으로 본다.
  */
-const 잠금지원 = typeof navigator !== 'undefined' && typeof navigator.locks?.request === 'function'
+const 잠금지원 = () => typeof navigator !== 'undefined' && typeof navigator.locks?.request === 'function'
 const 잠금이름 = (탭ID) => `${어시스턴트잠금접두사}${탭ID}`
+/** 잠금이 풀린 뒤 받던 창의 최종 저장이 이 창에 닿기를 기다리는 시간. 잠금과 저장소는 서로 다른 길로 전달된다 */
+const 저장도착대기 = 1_500
+/** Web Locks 가 없을 때 '받는 중'으로 보는 시간 */
+const 잠금없을때유효 = 2 * 60_000
 
-/** 이 대화를 받는 동안 잠금을 쥔다. 돌려준 함수를 부르면 놓는다 */
-async function 받는동안잠그기(탭ID) {
-  if (!잠금지원) return () => {}
-  let 놓기
+/**
+ * 이 대화를 받는 동안 잠금을 쥔다. 돌려준 함수를 부르면 놓는다.
+ * 기다리는 동안 신호가 끊기면(중단) AbortError 를 던진다. 잠금 요청 자체가 실패하면 잠금 없이 진행한다
+ */
+async function 받는동안잠그기(탭ID, 신호) {
+  if (!잠금지원()) return () => {}
+  let 놓기 = () => {}
   const 끝 = new Promise((풀림) => { 놓기 = 풀림 })
-  await new Promise((얻음) => { navigator.locks.request(잠금이름(탭ID), () => { 얻음(); return 끝 }) })
+  try {
+    await new Promise((얻음, 실패) => {
+      navigator.locks.request(잠금이름(탭ID), { signal: 신호 }, () => { 얻음(); return 끝 }).catch(실패)
+    })
+  } catch (예외) {
+    if (예외?.name === 'AbortError') throw 예외
+    return () => {} // 잠금을 쓸 수 없는 경우(이름 오류·문서 비활성 등). 받는 일은 막지 않는다
+  }
   return 놓기
 }
 
@@ -214,32 +228,52 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   const 활성탭다른창받는중 = computed(() => Boolean(활성탭.value.메시지.at(-1)?.다른창받는중))
 
   // ── 다른 창이 받는 중인 답 지켜보기 ─────────────────────────
-  // 그 대화의 잠금이 풀리기를 기다렸다가(받던 창이 끝났거나 닫힘), 저장본을 다시 읽어 끝난 답이면 반영하고
-  // 아니면(닫히거나 죽음) 중단됨으로 바꿔 다시 시도할 수 있게 한다. 받던 창은 최종 저장 뒤에 잠금을 놓는다
+  // 그 대화의 잠금이 풀리기를 기다렸다가(받던 창이 끝났거나 닫힘), 받던 창의 최종 저장이 닿을 시간을 잠깐 준 뒤 저장본을 다시 읽어
+  // 끝난 답이면 반영하고, 아니면 중단됨으로 바꿔 다시 시도할 수 있게 한다.
+  // 중단됨으로 바꿀 때 수정시각은 올리지 않는다: 늦게라도 받던 창의 완성본(더 최근 수정시각)이 오면 그쪽이 이긴다.
+  // 지켜보기는 메시지 단위다 (같은 대화에서 새로 시작된 답을 앞의 기다림이 중단됨으로 만들지 않게)
+  저장소접두사삭제('how-work-time:assistant-live') // 예전 판(생존 신호)이 남긴 키
   const 지켜보는중 = new Set()
   const 지켜보기중단 = new AbortController()
-  function 끊김처리(탭ID) {
-    지켜보는중.delete(탭ID)
+  const 지켜볼키 = (탭) => `${탭.id}:${탭.메시지.at(-1)?.id}`
+  async function 끊김처리(탭ID, 메시지ID) {
     if (폐기됨) return
+    const 아직받는중 = () => {
+      const m = 탭목록.value.find((t) => t.id === 탭ID)?.메시지.at(-1)
+      return m?.id === 메시지ID && m.다른창받는중 ? m : null
+    }
     다른창것과합치기(저장소읽기(어시스턴트저장키))
-    const 탭 = 탭목록.value.find((t) => t.id === 탭ID)
-    const m = 탭?.메시지.at(-1)
-    if (!m?.다른창받는중) return
+    if (아직받는중()) {
+      await new Promise((r) => setTimeout(r, 저장도착대기))
+      if (폐기됨) return
+      다른창것과합치기(저장소읽기(어시스턴트저장키))
+    }
+    const m = 아직받는중()
+    if (!m) return
     delete m.다른창받는중
     m.중단됨 = true
-    고침(탭)
-    저장예약()
   }
   function 다른창받는답지켜보기() {
-    for (const 탭ID of 다른창받는탭ID(탭목록.value)) {
-      if (지켜보는중.has(탭ID)) continue
-      지켜보는중.add(탭ID)
-      if (!잠금지원) { 끊김처리(탭ID); continue }
-      navigator.locks.request(잠금이름(탭ID), { signal: 지켜보기중단.signal }, () => 끊김처리(탭ID))
-        .catch(() => 지켜보는중.delete(탭ID)) // 정리(HMR)로 기다림을 그만둔 경우
+    for (const 탭 of 탭목록.value) {
+      const m = 탭.메시지.at(-1)
+      if (!m?.다른창받는중) continue
+      const 키 = 지켜볼키(탭)
+      if (지켜보는중.has(키)) continue
+      지켜보는중.add(키)
+      const 끝나면 = () => { 지켜보는중.delete(키); 끊김처리(탭.id, m.id) }
+      if (!잠금지원()) {
+        // 잠금이 없으면 마지막 변경 뒤 일정 시간이 지나야 끊긴 것으로 본다
+        const 남은시간 = Math.max(0, (탭.수정시각 ?? 0) + 잠금없을때유효 - Date.now())
+        const 타이머 = setTimeout(끝나면, 남은시간)
+        지켜보기중단.signal.addEventListener('abort', () => clearTimeout(타이머))
+        continue
+      }
+      // 잠금을 얻자마자 놓고(빈 콜백), 판단은 잠금 밖에서 한다. 받던 창이 곧 다시 보내도 기다리지 않게
+      navigator.locks.request(잠금이름(탭.id), { signal: 지켜보기중단.signal }, () => {})
+        .then(끝나면, () => 지켜보는중.delete(키)) // 실패는 정리(HMR)로 그만둔 경우
     }
   }
-  watch(() => 다른창받는탭ID(탭목록.value).join(','), 다른창받는답지켜보기, { immediate: true })
+  watch(() => 탭목록.value.filter((탭) => 탭.메시지.at(-1)?.다른창받는중).map(지켜볼키).join(','), 다른창받는답지켜보기, { immediate: true })
   정리등록(() => 지켜보기중단.abort())
 
   async function 전송(텍스트) {
@@ -254,21 +288,23 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     return true
   }
 
-  /** 탭의 마지막 사용자 메시지에 대한 응답을 받는다 (전송·재시도 공용) */
+  /** 탭의 마지막 사용자 메시지에 대한 응답을 받는다 (전송·재시도 공용). 예외를 밖으로 던지지 않는다 */
   async function 응답받기(탭) {
-    const 이력 = 이력만들기(탭.메시지, 이력최대)
-    탭.메시지.push({ id: 새ID(), 역할: 'assistant', 내용: '', 시각: Date.now(), 진행중: true })
-    고침(탭)
-    const 응답 = 탭.메시지[탭.메시지.length - 1]
-    저장예약()
-
     전송중.value = true
     const 컨트롤러 = new AbortController()
     중단컨트롤러 = 컨트롤러
     응답중탭ID.value = 탭.id
-    // 받는 동안 이 대화의 잠금을 쥔다 (다른 창이 '받는 중'을 아는 기준)
-    const 잠금놓기 = await 받는동안잠그기(탭.id)
+    let 잠금놓기 = () => {}
+    let 응답 = null
     try {
+      // 잠금을 먼저 쥔 뒤에 '받는 중' 자리를 만들고 저장한다. 순서가 바뀌면 다른 창이 잠금 없는 '받는중'을 보고 끊긴 것으로 판단한다.
+      // 다른 창이 같은 대화를 받는 중이면 여기서 기다리고, 그동안 중단(또는 탭 삭제)하면 AbortError 로 빠져나간다
+      잠금놓기 = await 받는동안잠그기(탭.id, 컨트롤러.signal)
+      const 이력 = 이력만들기(탭.메시지, 이력최대)
+      탭.메시지.push({ id: 새ID(), 역할: 'assistant', 내용: '', 시각: Date.now(), 진행중: true })
+      고침(탭)
+      응답 = 탭.메시지[탭.메시지.length - 1]
+      저장예약()
       const { 잘림 } = await 대화요청({
         제공자: 제공자.value,
         키: 현재키.value,
@@ -282,18 +318,25 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       // 오류 없이 끝났는데 글자가 하나도 없으면(빈 end_turn, parts 없는 STOP) 빈 말풍선으로 두지 않고 다시 시도할 수 있게 한다
       if (!응답.내용.trim()) 응답.오류 = '모델이 빈 답을 돌려줬어요. 다시 시도해 주세요.'
     } catch (오류) {
+      if (!응답) { // 자리를 만들기 전에 끝났다 (잠금을 기다리다 중단 등). 다시 시도할 수 있게 빈 답 자리를 남긴다
+        탭.메시지.push({ id: 새ID(), 역할: 'assistant', 내용: '', 시각: Date.now() })
+        응답 = 탭.메시지[탭.메시지.length - 1]
+      }
       // 우리가 끊은 요청은 제공자가 어떤 예외를 던지든 '중단'이다
-      if (컨트롤러.signal.aborted || 오류.종류 === 'abort') 응답.중단됨 = true
-      else 응답.오류 = 오류.message
+      if (컨트롤러.signal.aborted || 오류?.종류 === 'abort' || 오류?.name === 'AbortError') 응답.중단됨 = true
+      else 응답.오류 = 오류?.message ?? String(오류)
     } finally {
-      응답.진행중 = false
-      고침(탭)
-      전송중.value = false
-      중단컨트롤러 = null
-      // 마지막 상태를 먼저 저장하고 나서 잠금을 놓는다 (기다리던 창이 저장본을 읽을 때 끝난 답이 있게)
-      저장()
-      잠금놓기()
-      응답중탭ID.value = null
+      try {
+        응답.진행중 = false
+        고침(탭)
+        전송중.value = false
+        중단컨트롤러 = null
+        // 마지막 상태를 먼저 저장하고 나서 잠금을 놓는다 (기다리던 창이 저장본을 읽을 때 끝난 답이 있게)
+        저장()
+      } finally {
+        잠금놓기() // 저장이 실패해도 잠금은 반드시 놓는다 (다른 창이 영영 '받는 중'으로 보지 않게)
+        응답중탭ID.value = null
+      }
       // 모달이 닫혀 있거나 다른 탭을 보고 있으면 끝났다고 알려 준다
       // (사용자가 직접 중단했거나 그 사이 탭을 지운 경우는 제외)
       const 탭남아있음 = 탭목록.value.some((t) => t.id === 탭.id)

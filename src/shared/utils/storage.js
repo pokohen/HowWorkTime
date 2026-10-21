@@ -22,6 +22,18 @@ export function 저장소쓰기(키, 값, 저장소 = 기본저장소()) {
 export function 저장소삭제(키, 저장소 = 기본저장소()) {
   try { 저장소?.removeItem(키) } catch { /* 무시 */ }
 }
+/** 접두사로 시작하는 키를 모두 지운다 (예전 판이 남긴 키 정리 등) */
+export function 저장소접두사삭제(접두사, 저장소 = 기본저장소()) {
+  try {
+    const 키들 = []
+    for (let i = 0; i < (저장소?.length ?? 0); i++) {
+      const 키 = 저장소.key(i)
+      if (키?.startsWith(접두사)) 키들.push(키)
+    }
+    for (const 키 of 키들) 저장소.removeItem(키)
+  } catch { /* 막힌 환경 */ }
+}
+
 /**
  * 다른 브라우저 탭(창)이 이 키를 저장하면 새 값을 넘겨준다. 같은 창의 저장에는 불리지 않는다 (storage 이벤트의 성질).
  * @param {string} 키

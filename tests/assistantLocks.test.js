@@ -1,29 +1,109 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { nextTick } from 'vue'
 
-// Web Locks 가 없는 환경(happy-dom)에서는 다른 창이 받는 중인지 알 수 없으므로, 저장본의 '받는중' 답은 곧 중단됨이 된다
-describe('다른 창이 받는 중인 답 — Web Locks 없음', () => {
+const 저장키 = 'how-work-time:assistant'
+const 잠금 = (id) => `how-work-time:assistant-receiving:${id}`
+
+function 받는중저장(수정시각, 마지막 = { id: 'a', 역할: 'assistant', 내용: '', 시각: 수정시각, 받는중: true }) {
+  localStorage.setItem(저장키, JSON.stringify({
+    버전: 1, 활성탭ID: 'x', 삭제기록: {},
+    탭목록: [{ id: 'x', 제목: 't', 생성시각: 수정시각, 수정시각, 메시지: [{ id: 'u', 역할: 'user', 내용: 'q', 시각: 수정시각 }, 마지막] }],
+  }))
+}
+
+/** 한 창 안에서 쓰는 최소한의 배타적 Web Locks 흉내 */
+function 가짜잠금관리자() {
+  const 쥔것 = new Set()
+  const 줄 = new Map()
+  const 넘기기 = (이름) => {
+    if (쥔것.has(이름)) return
+    const 다음 = 줄.get(이름)?.shift()
+    if (!다음) return
+    쥔것.add(이름)
+    Promise.resolve().then(() => 다음.cb()).then(
+      (값) => { 쥔것.delete(이름); 다음.resolve(값); 넘기기(이름) },
+      (오류) => { 쥔것.delete(이름); 다음.reject(오류); 넘기기(이름) },
+    )
+  }
+  return {
+    request(이름, 옵션, cb) {
+      if (typeof 옵션 === 'function') { cb = 옵션; 옵션 = {} }
+      return new Promise((resolve, reject) => {
+        const 항목 = { cb, resolve, reject }
+        if (!줄.has(이름)) 줄.set(이름, [])
+        줄.get(이름).push(항목)
+        옵션.signal?.addEventListener('abort', () => {
+          const 목록 = 줄.get(이름)
+          const i = 목록.indexOf(항목)
+          if (i !== -1) { 목록.splice(i, 1); reject(Object.assign(new Error('aborted'), { name: 'AbortError' })) }
+        })
+        넘기기(이름)
+      })
+    },
+  }
+}
+
+describe('다른 창이 받는 중인 답', () => {
   beforeEach(() => {
     vi.resetModules()
+    vi.useFakeTimers()
     localStorage.clear()
   })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
 
-  it('시작할 때 받는중 답은 중단됨이 되어 다시 시도할 수 있다', async () => {
-    const 지금 = Date.now()
-    localStorage.setItem('how-work-time:assistant', JSON.stringify({
-      버전: 1, 활성탭ID: 'x', 삭제기록: {},
-      탭목록: [{ id: 'x', 제목: 't', 생성시각: 지금, 수정시각: 지금, 메시지: [
-        { id: 'u', 역할: 'user', 내용: 'q', 시각: 지금 },
-        { id: 'a', 역할: 'assistant', 내용: '', 시각: 지금, 받는중: true },
-      ] }],
-    }))
+  it('Web Locks 가 없으면 마지막 변경 뒤 2분까지는 받는 중, 그 뒤엔 중단됨', async () => {
+    받는중저장(Date.now())
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
     const a = useAssistant()
     await nextTick()
+    expect(a.탭목록.value[0].메시지.at(-1).다른창받는중).toBe(true)
+    expect(a.활성탭다른창받는중.value).toBe(true)
+    await vi.advanceTimersByTimeAsync(2 * 60_000 + 2_000)
     const 마지막 = a.탭목록.value[0].메시지.at(-1)
     expect(마지막.중단됨).toBe(true)
-    expect(마지막.다른창받는중).toBeUndefined()
     expect(a.활성탭다른창받는중.value).toBe(false)
+  })
+
+  it('잠금이 풀리면 받던 창의 완성본을 반영한다 (중단됨으로 만들지 않는다)', async () => {
+    const 잠금들 = 가짜잠금관리자()
+    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
+    let 놓기
+    잠금들.request(잠금('x'), () => new Promise((r) => { 놓기 = r }))
+    await Promise.resolve()
+    받는중저장(Date.now())
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    await nextTick()
+    expect(a.탭목록.value[0].메시지.at(-1).다른창받는중).toBe(true)
+    // 받던 창: 최종 저장 뒤 잠금을 놓는다
+    받는중저장(Date.now() + 10, { id: 'a', 역할: 'assistant', 내용: '완성된 답', 시각: Date.now() })
+    놓기()
+    await vi.advanceTimersByTimeAsync(2_000)
+    const 마지막 = a.탭목록.value[0].메시지.at(-1)
+    expect(마지막.내용).toBe('완성된 답')
+    expect(마지막.중단됨).toBeUndefined()
+  })
+
+  it('최종 저장 없이 잠금이 풀리면(창이 죽음) 잠깐 기다린 뒤 중단됨, 수정시각은 그대로', async () => {
+    const 잠금들 = 가짜잠금관리자()
+    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
+    let 놓기
+    잠금들.request(잠금('x'), () => new Promise((r) => { 놓기 = r }))
+    await Promise.resolve()
+    const 시각 = Date.now()
+    받는중저장(시각)
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    await nextTick()
+    놓기()
+    await vi.advanceTimersByTimeAsync(500)
+    expect(a.탭목록.value[0].메시지.at(-1).다른창받는중).toBe(true) // 저장 도착을 기다리는 중
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
+    expect(a.탭목록.value[0].수정시각).toBe(시각) // 늦게 온 완성본이 이길 수 있게
   })
 })
