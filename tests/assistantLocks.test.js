@@ -848,8 +848,26 @@ describe('설정 감시', () => {
     window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage }))
     await nextTick()
     window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', oldValue: 'xxxx', newValue: null, storageArea: localStorage }))
+    await new Promise((r) => setTimeout(r, 10)) // 재시도가 돌 틈을 준다
     expect(localStorage.getItem('how-work-time:assistant-settings')).toBeNull()
     expect(s.설정저장실패.value).toBe(true)
+  })
+
+  it('쓰지 못한 설정은 다른 창이 설정 키를 줄여도(공간이 생김) 합친 뒤 다시 쓴다', async () => {
+    vi.resetModules()
+    const 키 = 'how-work-time:assistant-settings'
+    const { useAssistantSettings } = await import('../src/assistant/composables/useAssistantSettings')
+    const s = useAssistantSettings()
+    const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    s.저장된키.value = 'sk-줄임'
+    await nextTick()
+    쓰기.mockRestore()
+    const 남의값 = JSON.stringify({ 버전: 1, 제공자: 'anthropic' })
+    localStorage.setItem(키, 남의값)
+    window.dispatchEvent(new StorageEvent('storage', { key: 키, oldValue: 'x'.repeat(500), newValue: 남의값, storageArea: localStorage }))
+    await new Promise((r) => setTimeout(r, 10))
+    expect(JSON.parse(localStorage.getItem(키)).키.anthropic).toBe('sk-줄임')
+    expect(s.설정저장실패.value).toBe(false)
   })
 })
 
