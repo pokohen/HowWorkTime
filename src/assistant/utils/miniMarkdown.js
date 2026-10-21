@@ -14,31 +14,31 @@ const md = new MarkdownIt({ html: false, linkify: false, breaks: true, typograph
   // 글 줄 바로 아래 "---" 를 그 줄의 제목으로 만드는 규칙(setext)도 끈다: 모델은 그 자리에 구분선을 뜻한다
   .disable(['table', 'code', 'lheading'])
 
-// 연도·날짜로 시작하는 줄("2026. 상반기에는…", "2026. 1. 1. 신정", "1592. 임진왜란")은 CommonMark 상 번호 목록
-// (날짜면 계단식 중첩 목록)이 된다. 목록 규칙보다 먼저 도는 규칙이 그런 줄을 markdown-it 의 원래 문단 규칙에 넘긴다.
-// - 네 자리 번호만 본다: 98·99·100 같은 목록은 건드리지 않는다 (천 번 넘는 목록은 없다고 보고, 연도 줄이 이어져도 한 문단으로)
-// - 문단은 원래 규칙대로 이어지되, 연도가 아닌 다음 번호 줄("3. …") 앞에서 끊는다. 연도 줄이 뒤 목록 항목을 글로 삼키지 않게
-// - 목록 바로 뒤에 오면 표준의 다른 번호 줄처럼 그 목록을 끝낸다. 번호 목록의 다음 항목이 되어 번호가
-//   다시 매겨지면 연도가 사라지므로, 끝낸 자리에서 문단이 된다
+// 연도·날짜로 시작하는 줄은 CommonMark 상 번호 목록, 날짜면 계단식 중첩 목록이 된다 ("2026. 1. 1. 신정" → 2026 › 1 › 1).
+// 목록 규칙보다 먼저 도는 규칙이 그런 줄을 markdown-it 의 원래 문단 규칙에 넘긴다. 정해 둔 규칙 (tests/miniMarkdown.test.js 에 고정):
+// - 날짜 꼴 줄은 문단: 네 자리 번호("2026. …", "1592. …"), 번호 바로 뒤에 또 번호가 오는 줄("3. 1. 삼일절")
+// - 그래서 천 번을 넘는 번호 목록은 1000번부터 문단이 된다 (감수한다: 그런 목록보다 연도 줄이 훨씬 흔하다)
+// - 문단은 원래 규칙대로 이어지되, 같은 칸에 글이 있는 일반 번호 항목("3. 추석") 앞에서 끊는다.
+//   덜 들여 쓴 줄·빈 번호("3.")·네 칸 이상 들여 쓴 줄은 표준대로 이어지는 줄이다
+// - 목록 바로 뒤에 오면 그 목록을 끝내고 문단이 된다 (번호 목록의 다음 항목으로 다시 매겨지면 연도가 사라진다)
 // - 코드 블록 안은 펜스 규칙이 먼저 가져가므로 닿지 않는다
 // 원래 문단 규칙은 공개 API(getRules)로 가져온다. 기본 블록 규칙 사슬의 마지막이 문단 규칙이다 (아래 점검 참고)
 const 문단규칙 = md.block.ruler.getRules('').at(-1)
 // 목록 표시 뒤는 CommonMark 처럼 스페이스·탭·줄 끝만 (전각 공백 등은 표시로 치지 않는다)
-const 연도줄 = /^\d{4}[.)]([ \t]|$)/
-const 번호줄 = /^\d{1,9}[.)]([ \t]|$)/
+const 날짜줄 = /^(\d{4}[.)]([ \t]|$)|\d{1,2}[.)][ \t]+\d{1,2}[.)]([ \t]|$))/
+const 글있는번호줄 = /^\d{1,9}[.)][ \t]+\S/
 
 md.block.ruler.before('list', '연도문단', (state, 시작줄, 끝줄, silent) => {
   if (state.sCount[시작줄] - state.blkIndent >= 4) return false
   const 줄글 = (줄) => state.src.slice(state.bMarks[줄] + state.tShift[줄], state.eMarks[줄])
-  if (!연도줄.test(줄글(시작줄))) return false
+  if (!날짜줄.test(줄글(시작줄))) return false
   if (silent) return true // 목록이 이 줄에서 끝나야 하는지 묻는 자리 (alt 'list')
-  // 문단이 다음 번호 항목을 삼키지 않도록 그 앞까지만 넘긴다. 빈 줄이면 문단이 어차피 끝나므로 거기서 멈춘다.
-  // 들여쓰기는 지금 블록(목록 항목 안이면 그 내용 칸) 기준으로 본다
+  // 문단이 다음 번호 항목을 삼키지 않도록 그 앞까지만 넘긴다. 빈 줄이면 문단이 어차피 끝나므로 거기서 멈춘다
   let 문단끝 = 시작줄 + 1
   while (문단끝 < 끝줄 && !state.isEmpty(문단끝)) {
     const 다음 = 줄글(문단끝)
-    const 같은칸 = state.sCount[문단끝] - state.blkIndent < 4
-    if (같은칸 && 번호줄.test(다음) && !연도줄.test(다음)) break
+    const 칸 = state.sCount[문단끝] - state.blkIndent // 지금 블록(목록 항목 안이면 그 내용 칸) 기준
+    if (칸 >= 0 && 칸 < 4 && 글있는번호줄.test(다음) && !날짜줄.test(다음)) break
     문단끝++
   }
   return 문단규칙(state, 시작줄, 문단끝)
@@ -89,6 +89,8 @@ export function 마크다운HTML(텍스트) {
 /** 주소에서 풀어 보여 줄 글자: 왼쪽에서 오른쪽으로 쓰는 문자(한글·한자·가나·라틴·키릴·그리스)와 숫자 */
 // 보이지 않는 글자(한글 채움 문자 U+3164 등)는 문자 범위에 들어 있어도 뺀다.
 // (집합 빼기 v 플래그는 Safari 16 등 구형 브라우저가 몰라 모듈째 깨지므로 u 플래그 + 부정 전방탐색으로)
+/** 앞 글자에 붙는 결합 문자. 보이지 않는 것(변형 선택자 U+FE0F, 결합 자소 연결자 U+034F 등)은 뺀다 */
+const 결합문자 = /^(?!\p{Default_Ignorable_Code_Point})\p{M}$/u
 const 읽는글자 = /^(?!\p{Default_Ignorable_Code_Point})[\p{Script=Hangul}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{Nd}]$/u
 
 /**
@@ -97,7 +99,9 @@ const 읽는글자 = /^(?!\p{Default_Ignorable_Code_Point})[\p{Script=Hangul}\p{
  * 풀면 붙여 넣었을 때 주소가 끊기거나 뒤집혀 보인다
  */
 function 읽는주소(주소) {
-  return String(주소 ?? '').replace(/(?:%[0-9A-Fa-f]{2})+/g, (조각) => {
+  return String(주소 ?? '').replace(/(?:%[0-9A-Fa-f]{2})+/g, (조각, 위치, 전체) => {
+    // 결합 문자(분해형 "か + ゛", "e + ◌̣")는 바로 앞 글자가 우리가 푼 글자이거나, 인코딩 밖의 글자일 때만 함께 푼다
+    let 앞이글자 = /[\p{L}\p{N}]/u.test(전체[위치 - 1] ?? '')
     const 바이트들 = 조각.match(/%[0-9A-Fa-f]{2}/g)
     let 결과 = ''
     for (let i = 0; i < 바이트들.length;) {
@@ -112,7 +116,10 @@ function 읽는주소(주소) {
       if (길이 === 기대길이 && 길이 > 1) {
         try { 글자 = decodeURIComponent(묶음) } catch { /* 깨진 바이트는 그대로 */ }
       }
-      결과 += 글자 && 읽는글자.test(글자) ? 글자 : 묶음 // 결합 문자·보이지 않는 글자는 인코딩된 채로
+      const 글자로 = 글자 && 읽는글자.test(글자)
+      const 결합으로 = 글자 && 앞이글자 && 결합문자.test(글자)
+      결과 += 글자로 || 결합으로 ? 글자 : 묶음 // 보이지 않는 글자·홀로 남은 결합 문자는 인코딩된 채로
+      앞이글자 = Boolean(글자로 || (결합으로 && 앞이글자))
       i += 길이
     }
     return 결과
