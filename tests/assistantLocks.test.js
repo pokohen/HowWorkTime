@@ -343,9 +343,12 @@ describe('다른 창이 받는 중인 답', () => {
   it('창을 떠날(pagehide) 때 예약된 저장을 바로 쓴다', async () => {
     const { useAssistant } = await import('../src/assistant/composables/useAssistant')
     const a = useAssistant()
-    a.활성탭.value.제목 = '떠나기 전'
-    a.탭삭제(a.활성탭.value.id)
+    const 지운ID = a.활성탭.value.id
+    a.탭삭제(지운ID) // 저장을 예약하는 변경 (아직 쓰지 않았다)
+    localStorage.clear()
     window.dispatchEvent(new Event('pagehide'))
-    expect(localStorage.getItem(저장키)).not.toBeNull()
+    const 저장본 = JSON.parse(localStorage.getItem(저장키))
+    expect(저장본.탭목록.map((t) => t.id)).toContain(a.활성탭.value.id) // 이 창의 상태를 썼다
+    expect(저장본.삭제기록[지운ID]).toBeGreaterThan(0)
   })
 })
