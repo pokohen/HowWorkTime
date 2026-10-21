@@ -1,6 +1,6 @@
 <script setup>
 import WarnIcon from '../../shared/components/WarnIcon.vue'
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
@@ -12,12 +12,23 @@ const 입력 = ref('')
 const 보낼수있음 = computed(() => 키있음.value && !새판감지.value && !전송중.value && !활성탭다른창받는중.value && 입력.value.trim().length > 0)
 
 // 덮어쓰기는 저장된 새 버전 대화를 지우므로(이 창에 없는 대화도) 설정의 '모든 대화 삭제'처럼 한 번 더 확인한다.
-// 안내가 사라지거나 다른 새 버전 저장본이 오면 확인을 거둔다 (확인하지 않은 값을 덮지 않게)
+// 안내가 사라지거나 다른 새 버전 저장본이 오면, 또 10초 동안 확정하지 않으면 확인을 거둔다 (확인하지 않은 값·오래된 확인으로 덮지 않게)
 const 덮어쓰기확인중 = ref(false)
-watch([새판감지, 새판본번호], () => { 덮어쓰기확인중.value = false })
-function 덮어쓰기확정() {
+let 확인만료 = null
+function 덮어쓰기확인끝() {
   덮어쓰기확인중.value = false
-  이창으로덮어쓰기()
+  clearTimeout(확인만료)
+}
+function 덮어쓰기확인() {
+  덮어쓰기확인중.value = true
+  clearTimeout(확인만료)
+  확인만료 = setTimeout(() => { 덮어쓰기확인중.value = false }, 10_000)
+}
+watch([새판감지, 새판본번호], 덮어쓰기확인끝)
+onBeforeUnmount(() => clearTimeout(확인만료))
+function 덮어쓰기확정() {
+  덮어쓰기확인끝()
+  이창으로덮어쓰기() // 확인한 뒤 저장본이 바뀌었으면 덮지 않고 다시 안내한다 (새판본번호가 바뀜)
 }
 
 function 높이맞춤() {
@@ -117,9 +128,9 @@ defineExpose({ 포커스, 채우기 })
       <template v-if="덮어쓰기확인중">
         저장된 새 버전 대화는 지워져요.
         <button type="button" class="hint-action" @click="덮어쓰기확정">{{ 덮어쓸대화있음 ? '정말 덮어쓰기' : '정말 지우고 새로 시작' }}</button>
-        <button type="button" class="hint-action" @click="덮어쓰기확인중 = false">취소</button>
+        <button type="button" class="hint-action" @click="덮어쓰기확인끝">취소</button>
       </template>
-      <button v-else type="button" class="hint-action" @click="덮어쓰기확인중 = true">{{ 덮어쓸대화있음 ? '이 창의 대화로 덮어쓰기' : '저장된 대화를 지우고 이 창에서 새로 시작' }}</button>
+      <button v-else type="button" class="hint-action" @click="덮어쓰기확인">{{ 덮어쓸대화있음 ? '이 창의 대화로 덮어쓰기' : '저장된 대화를 지우고 이 창에서 새로 시작' }}</button>
     </p>
     <p v-else-if="저장실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>
     <p v-else-if="전체합치기실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />다른 창에서 저장한 대화를 합치지 못해 이 창의 내용으로 저장했어요. 다른 창에만 있던 대화는 빠졌을 수 있어요</p>

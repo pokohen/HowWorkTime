@@ -442,7 +442,13 @@ describe('다른 창이 받는 중인 답', () => {
     a.탭삭제(a.활성탭.value.id) // 저장을 부르는 변경
     await vi.advanceTimersByTimeAsync(1_000)
     expect(localStorage.getItem(저장키)).toBe(새판) // 덮지 않았다
-    a.이창으로덮어쓰기()
+    // 확인한 뒤 저장본이 다른 새 형식 값으로 바뀌었으면(이벤트가 아직 안 닿음) 덮지 않고 다시 안내한다
+    const 번호 = a.새판본번호.value
+    localStorage.setItem(저장키, '{"버전":3}')
+    expect(a.이창으로덮어쓰기()).toBe(false)
+    expect(a.새판본번호.value).toBe(번호 + 1)
+    expect(localStorage.getItem(저장키)).toBe('{"버전":3}')
+    expect(a.이창으로덮어쓰기()).toBe(true) // 다시 확인하면 덮는다
     expect(a.새판감지.value).toBe(false)
     expect(JSON.parse(localStorage.getItem(저장키)).버전).toBe(1)
   })
@@ -531,5 +537,24 @@ describe('설정 감시', () => {
     expect(s.현재키.value).toBe('')
     await nextTick()
     expect(localStorage.getItem('how-work-time:assistant-settings')).toBeNull() // 지운 값을 곧바로 다시 쓰지 않는다
+  })
+
+  it('다른 창이 설정을 지워도 이 창이 저장하지 못한 필드는 지키고 저장소에도 쓴다', async () => {
+    vi.resetModules()
+    const { useAssistantSettings } = await import('../src/assistant/composables/useAssistantSettings')
+    const s = useAssistantSettings()
+    const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') }) // 저장 실패
+    try {
+      s.저장된키.value = 'sk-새키'
+      await nextTick()
+      expect(s.설정저장실패.value).toBe(true)
+    } finally {
+      쓰기.mockRestore()
+    }
+    window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage }))
+    await nextTick()
+    expect(s.현재키.value).toBe('sk-새키')
+    expect(JSON.parse(localStorage.getItem('how-work-time:assistant-settings')).키.anthropic).toBe('sk-새키')
+    expect(s.설정저장실패.value).toBe(false)
   })
 })
