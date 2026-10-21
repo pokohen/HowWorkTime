@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { nextTick } from 'vue'
+import { 다른창저장감시 } from '../src/shared/utils/storage'
 
 const 저장키 = 'how-work-time:assistant'
 const 잠금 = (id) => `how-work-time:assistant-receiving:${id}`
@@ -475,5 +476,42 @@ describe('다른 창이 받는 중인 답', () => {
     받는중저장(Date.now(), { id: 'k', 역할: 'assistant', 내용: '답', 시각: Date.now() })
     window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: localStorage.getItem(저장키) }))
     expect(a.새판감지.value).toBe(false)
+  })
+
+  it('새 형식 막기 중 다른 까닭으로 합치기에 실패하면 막기를 푼다 (새 형식 값이 이제 없으므로)', async () => {
+    const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
+    vi.doMock('../src/assistant/utils/assistantStorage', () => ({
+      ...저장모듈,
+      대화합치기: () => { throw new Error('합치기 실패') },
+    }))
+    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+      const a = useAssistant()
+      window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: '{"버전":2}' }))
+      expect(a.새판감지.value).toBe(true)
+      받는중저장(Date.now())
+      window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: localStorage.getItem(저장키) }))
+      expect(a.새판감지.value).toBe(false)
+      expect(a.전체합치기실패.value).toBe(true)
+    } finally {
+      오류.mockRestore()
+      vi.doUnmock('../src/assistant/utils/assistantStorage')
+    }
+  })
+})
+
+describe('다른창저장감시', () => {
+  it('그 키의 변경과 localStorage 통째 비움을 알리고, sessionStorage 비움은 무시한다', () => {
+    const 받은 = []
+    const 해제 = 다른창저장감시('k', (값) => 받은.push(값))
+    localStorage.setItem('k', 'v')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'k', newValue: 'v', storageArea: localStorage }))
+    window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: sessionStorage }))
+    window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage })) // 지금 값을 다시 읽어 알린다
+    window.dispatchEvent(new StorageEvent('storage', { key: 'other', newValue: 'x', storageArea: localStorage }))
+    해제()
+    localStorage.removeItem('k')
+    expect(받은).toEqual(['v', 'v'])
   })
 })

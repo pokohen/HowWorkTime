@@ -1,6 +1,6 @@
 <script setup>
 import WarnIcon from '../../shared/components/WarnIcon.vue'
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
 import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
@@ -10,6 +10,26 @@ const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, �
 const 입력창 = ref(null)
 const 입력 = ref('')
 const 보낼수있음 = computed(() => 키있음.value && !새판감지.value && !전송중.value && !활성탭다른창받는중.value && 입력.value.trim().length > 0)
+
+// 빈 창의 덮어쓰기는 저장된 대화를 모두 지우므로 한 번 더 눌러 확인한다 (5초 안에)
+const 지우기확인중 = ref(false)
+let 지우기확인타이머 = null
+const 덮어쓰기문구 = computed(() => {
+  if (덮어쓸대화있음.value) return '이 창의 대화로 덮어쓰기'
+  return 지우기확인중.value ? '정말 지울까요? 한 번 더 누르면 지워요' : '저장된 대화를 지우고 이 창에서 새로 시작'
+})
+function 덮어쓰기누름() {
+  if (!덮어쓸대화있음.value && !지우기확인중.value) {
+    지우기확인중.value = true
+    clearTimeout(지우기확인타이머)
+    지우기확인타이머 = setTimeout(() => { 지우기확인중.value = false }, 5_000)
+    return
+  }
+  clearTimeout(지우기확인타이머)
+  지우기확인중.value = false
+  이창으로덮어쓰기()
+}
+onBeforeUnmount(() => clearTimeout(지우기확인타이머))
 
 function 높이맞춤() {
   const el = 입력창.value
@@ -105,7 +125,7 @@ defineExpose({ 포커스, 채우기 })
     </div>
     <p v-if="새판감지" class="composer-hint composer-hint--warn" role="status">
       <WarnIcon />플래너가 새 버전으로 저장한 대화가 있어 이 창에서는 저장하거나 보내지 않아요. 새로고침해 주세요.
-      <button type="button" class="hint-action" @click="이창으로덮어쓰기">{{ 덮어쓸대화있음 ? '이 창의 대화로 덮어쓰기' : '저장된 대화를 지우고 이 창에서 새로 시작' }}</button>
+      <button type="button" class="hint-action" @click="덮어쓰기누름">{{ 덮어쓰기문구 }}</button>
     </p>
     <p v-else-if="저장실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>
     <p v-else-if="전체합치기실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />다른 창에서 저장한 대화를 합치지 못해 이 창의 내용으로 저장했어요. 다른 창에만 있던 대화는 빠졌을 수 있어요</p>
