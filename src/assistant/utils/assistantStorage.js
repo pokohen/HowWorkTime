@@ -119,16 +119,33 @@ export function 복원(문자열, { 살아있는탭 = new Set() } = {}) {
 }
 
 /**
+ * 대화 수를 상한(탭최대)에 맞춘다. 만든 순서로 가장 오래된 것부터 버리되 지킬 대화(어느 창이든 받는 중)는 버리지 않고,
+ * 버린 대화는 삭제 기록에 남겨 창마다 같은 것을 버리게 한다. 탭목록·삭제기록을 그 자리에서 고친다.
+ * @param {Array} 탭목록 만든 순서로 정렬된 대화
+ * @param {Record<string, number>} 삭제기록
+ * @param {{ 지킬ID?: Set<string>, 상한?: number, 지금?: number }} [옵션]
+ */
+export function 상한맞추기(탭목록, 삭제기록, { 지킬ID = new Set(), 상한 = 탭최대, 지금 = Date.now() } = {}) {
+  while (탭목록.length > 상한) {
+    const 버릴 = 탭목록.findIndex((탭) => !지킬ID.has(탭.id))
+    if (버릴 === -1) break
+    삭제기록[탭목록[버릴].id] = Math.max(지금, 탭목록[버릴].수정시각 ?? 0)
+    탭목록.splice(버릴, 1)
+  }
+}
+
+/**
  * 두 창의 대화를 합친다. 대화(탭) id 별로 수정시각이 더 최근인 쪽을 쓰고, 지운 기록이 더 최근이면 버린다.
  * 내 쪽이 이기면 내 탭 객체를 그대로 돌려줘, 받는 중인 응답이 쥐고 있는 참조가 끊기지 않는다.
  * 통째로 바꿔치지 않으므로 한 창의 옛 목록이 다른 창의 새 대화를 지우지 않는다.
  * @param {{ 탭목록: Array, 삭제기록?: Record<string, number> }} 내것
  * @param {{ 탭목록: Array, 삭제기록?: Record<string, number> } | null} 남의것
  * 상한(탭최대)을 넘으면 오래된 대화부터 버리되 고정ID 는 지키고, 버린 대화는 삭제 기록에 남겨 창마다 같은 것을 버리게 한다.
- * @param {{ 고정ID?: string|null, 지금?: number }} [옵션] 고정ID: 이 창에서 지금 받는 중인 탭. 늘 내 것을 쓴다
+ * @param {{ 고정ID?: string|null, 살아있는탭?: Set<string>, 지금?: number }} [옵션]
+ *   고정ID: 이 창에서 지금 받는 중인 탭(늘 내 것을 쓴다). 살아있는탭: 어느 창이든 받는 중인 탭(상한에서 버리지 않는다)
  * @returns {{ 탭목록: Array, 삭제기록: Record<string, number> }}
  */
-export function 대화합치기(내것, 남의것, { 고정ID = null, 지금 = Date.now() } = {}) {
+export function 대화합치기(내것, 남의것, { 고정ID = null, 살아있는탭 = new Set(), 지금 = Date.now() } = {}) {
   if (!남의것) return { 탭목록: 내것.탭목록, 삭제기록: 삭제기록정리(내것.삭제기록, 지금) }
   const 삭제기록 = { ...(남의것.삭제기록 ?? {}) }
   for (const [id, 시각] of Object.entries(내것.삭제기록 ?? {})) 삭제기록[id] = Math.max(시각, 삭제기록[id] ?? 0)
@@ -145,12 +162,7 @@ export function 대화합치기(내것, 남의것, { 고정ID = null, 지금 = D
   const 탭목록 = [...결과.values()]
     .filter((탭) => 탭.id === 고정ID || !(삭제기록[탭.id] >= 수정(탭)))
     .sort((가, 나) => (가.생성시각 ?? 0) - (나.생성시각 ?? 0))
-  while (탭목록.length > 탭최대) {
-    const 버릴 = 탭목록.findIndex((탭) => 탭.id !== 고정ID)
-    if (버릴 === -1) break
-    삭제기록[탭목록[버릴].id] = Math.max(지금, 수정(탭목록[버릴]))
-    탭목록.splice(버릴, 1)
-  }
+  상한맞추기(탭목록, 삭제기록, { 지킬ID: new Set([...살아있는탭, ...(고정ID ? [고정ID] : [])]), 지금 })
   return { 탭목록, 삭제기록: 삭제기록정리(삭제기록, 지금) }
 }
 

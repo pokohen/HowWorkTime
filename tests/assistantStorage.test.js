@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   새탭, 제목추출, 직렬화, 복원, 메시지최대, 탭최대,
-  기본설정, 설정직렬화, 설정복원, 대화합치기, 설정합치기,
+  기본설정, 설정직렬화, 설정복원, 대화합치기, 설정합치기, 상한맞추기,
 } from '../src/assistant/utils/assistantStorage'
 import { 저장소읽기, 저장소쓰기 } from '../src/shared/utils/storage'
 
@@ -150,6 +150,15 @@ describe('여러 창 합치기', () => {
     expect(결과.탭목록.map((t) => t.id)).toContain('new')
     expect(결과.탭목록).toHaveLength(20)
     expect(결과.삭제기록.t1).toBe(200) // 고정이 아닌 가장 오래된 것을 버리고 기록
+  })
+
+  it('상한에서 다른 창이 받는 중인 대화도 버리지 않는다', () => {
+    const 목록 = Array.from({ length: 21 }, (_, i) => 탭(`t${i}`, i + 1))
+    const 기록 = {}
+    상한맞추기(목록, 기록, { 지킬ID: new Set(['t0']), 지금: 100 })
+    expect(목록.map((t) => t.id)).toContain('t0')
+    expect(목록).toHaveLength(20)
+    expect(Object.keys(기록)).toEqual(['t1'])
   })
 
   it('대화 id 별로 더 최근 쪽을 쓰고, 한 창의 옛 목록이 다른 창의 새 대화를 지우지 않는다', () => {
