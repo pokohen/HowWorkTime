@@ -6,27 +6,28 @@ import { useAssistant } from '../composables/useAssistant'
 
 // 입력창 + 보내기/중단. 전송 자체는 composable 이 하고, 부모는 '보냄'을 받아 스크롤만 맞춘다
 const emit = defineEmits(['보냄', '설정열기'])
-const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 일부합치기실패, 전체합치기실패, 새판감지, 지금저장본, 이창으로덮어쓰기, 덮어쓸대화있음 } = useAssistant()
+const { 키있음, 전송중, 활성탭응답중, 활성탭다른창받는중, 전송, 중단, 저장실패, 일부합치기실패, 전체합치기실패, 새판감지, 덮어쓰기확인시작, 덮어쓰기확인취소, 이창으로덮어쓰기, 덮어쓸대화있음 } = useAssistant()
 
 const 입력창 = ref(null)
 const 입력 = ref('')
 const 보낼수있음 = computed(() => 키있음.value && !새판감지.value && !전송중.value && !활성탭다른창받는중.value && 입력.value.trim().length > 0)
 
 // 덮어쓰기는 저장된 새 버전 대화를 지우므로(이 창에 없는 대화도) 설정의 '모든 대화 삭제'처럼 한 번 더 확인한다.
-// 확인할 때 본 저장본을 기억해, 확정할 때 그대로일 때만 덮는다. 10초 안에 확정하지 않거나 안내가 사라지면 확인을 거둔다
+// 확인한 값은 composable 이 기억하고 확정할 때 그대로일 때만 덮는다. 10초 안에 확정하지 않거나 안내가 사라지면 확인을 거둔다
 const 덮어쓰기확인 = 잠시표시상태(onBeforeUnmount, 10_000)
-let 확인한값 = null
 /** 확정하려는데 저장본이 다른 새 버전 값으로 바뀌어 덮지 않았다 (다시 확인을 받는다) */
 const 저장본바뀜 = ref(false)
-function 덮어쓰기확인시작() {
-  확인한값 = 지금저장본()
+function 덮어쓰기확인켜기() {
+  덮어쓰기확인시작()
   저장본바뀜.value = false
   덮어쓰기확인.켜기()
 }
+watch(덮어쓰기확인.값, (켜짐) => { if (!켜짐) 덮어쓰기확인취소() }) // 만료·취소: 기억한 값을 지운다
 watch(새판감지, (켜짐) => { if (!켜짐) { 덮어쓰기확인.끄기(); 저장본바뀜.value = false } })
 function 덮어쓰기확정() {
+  const 덮음 = 이창으로덮어쓰기()
   덮어쓰기확인.끄기()
-  if (!이창으로덮어쓰기(확인한값)) 저장본바뀜.value = true
+  if (!덮음) 저장본바뀜.value = true
 }
 
 function 높이맞춤() {
@@ -130,7 +131,7 @@ defineExpose({ 포커스, 채우기 })
       </template>
       <template v-else>
         <template v-if="저장본바뀜">그 사이 다른 새 버전 저장본으로 바뀌어 덮어쓰지 않았어요. 다시 확인해 주세요.</template>
-        <button type="button" class="hint-action" @click="덮어쓰기확인시작">{{ 덮어쓸대화있음 ? '이 창의 대화로 덮어쓰기' : '저장된 대화를 지우고 이 창에서 새로 시작' }}</button>
+        <button type="button" class="hint-action" @click="덮어쓰기확인켜기">{{ 덮어쓸대화있음 ? '이 창의 대화로 덮어쓰기' : '저장된 대화를 지우고 이 창에서 새로 시작' }}</button>
       </template>
     </p>
     <p v-else-if="저장실패" class="composer-hint composer-hint--warn" role="status"><WarnIcon />대화를 이 브라우저에 저장하지 못하고 있어요. 저장 공간이 가득 찼거나 브라우저가 저장을 막았어요 (대화 탭을 닫으면 공간이 생겨요)</p>

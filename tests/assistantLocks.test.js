@@ -443,13 +443,34 @@ describe('다른 창이 받는 중인 답', () => {
     await vi.advanceTimersByTimeAsync(1_000)
     expect(localStorage.getItem(저장키)).toBe(새판) // 덮지 않았다
     // 확인한 뒤 저장본이 다른 새 형식 값으로 바뀌었으면(이벤트가 아직 안 닿음) 덮지 않는다
-    const 확인한값 = a.지금저장본()
+    a.덮어쓰기확인시작()
     localStorage.setItem(저장키, '{"버전":3}')
-    expect(a.이창으로덮어쓰기(확인한값)).toBe(false)
+    expect(a.이창으로덮어쓰기()).toBe(false)
     expect(localStorage.getItem(저장키)).toBe('{"버전":3}')
-    expect(a.이창으로덮어쓰기(a.지금저장본())).toBe(true) // 다시 확인하면 덮는다
+    a.덮어쓰기확인시작() // 다시 확인하면(이번엔 바뀐 값) 덮는다
+    expect(a.이창으로덮어쓰기()).toBe(true)
     expect(a.새판감지.value).toBe(false)
     expect(JSON.parse(localStorage.getItem(저장키)).버전).toBe(1)
+  })
+
+  it('확인한 뒤 저장본이 읽을 수 있는 값으로 바뀌었으면 덮지 않고 합친 뒤 쓴다 (다른 창의 대화를 잃지 않는다)', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    localStorage.setItem(저장키, '{"버전":2}')
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: '{"버전":2}' }))
+    a.덮어쓰기확인시작()
+    받는중저장(Date.now(), { id: 'n', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() }) // 이벤트는 아직 안 닿음
+    expect(a.이창으로덮어쓰기()).toBe(true)
+    expect(a.새판감지.value).toBe(false)
+    expect(JSON.parse(localStorage.getItem(저장키)).탭목록.some((t) => t.id === 'x')).toBe(true) // 남의 대화를 합쳐 지켰다
+  })
+
+  it('확인하지 않았으면(확인한 값 없음) 새 형식 저장본을 덮지 않는다', async () => {
+    localStorage.setItem(저장키, '{"버전":2}')
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    expect(a.이창으로덮어쓰기()).toBe(false)
+    expect(localStorage.getItem(저장키)).toBe('{"버전":2}')
   })
 
   it('시작할 때 새 형식의 저장본이면 바로 안내하고 덮지 않는다', async () => {
@@ -538,7 +559,7 @@ describe('설정 감시', () => {
     expect(localStorage.getItem('how-work-time:assistant-settings')).toBeNull() // 지운 값을 곧바로 다시 쓰지 않는다
   })
 
-  it('다른 창이 설정을 지워도 이 창이 저장하지 못한 필드는 메모리에 지키되 저장소에 다시 쓰지 않는다 (저장 실패 안내 유지)', async () => {
+  it('다른 창이 설정을 지우면 이 창이 저장하지 못한 필드도 버리고 기본으로 (다음 수정 때 지운 키가 되살아나지 않게)', async () => {
     vi.resetModules()
     const { useAssistantSettings } = await import('../src/assistant/composables/useAssistantSettings')
     const s = useAssistantSettings()
@@ -553,8 +574,10 @@ describe('설정 감시', () => {
     localStorage.clear()
     window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage }))
     await nextTick()
-    expect(s.현재키.value).toBe('sk-새키')
-    expect(localStorage.getItem('how-work-time:assistant-settings')).toBeNull()
-    expect(s.설정저장실패.value).toBe(true)
+    expect(s.현재키.value).toBe('')
+    expect(s.설정저장실패.value).toBe(false)
+    s.모델.value = '다른-모델' // 다음 수정: 지운 키가 함께 저장되지 않는다
+    await nextTick()
+    expect(JSON.parse(localStorage.getItem('how-work-time:assistant-settings')).키.anthropic).toBe('')
   })
 })
