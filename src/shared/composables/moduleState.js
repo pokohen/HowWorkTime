@@ -19,13 +19,17 @@ export function 모듈상태(hot, 정의) {
   const 스코프 = effectScope(true)
   const 정리목록 = []
   const 상태 = 스코프.run(() => 정의((fn) => 정리목록.push(fn)))
-  const 정리 = () => {
+  let 정리됨 = false
+  const 정리 = () => { // HMR 과 테스트 정리가 겹쳐도 한 번만
+    if (정리됨) return
+    정리됨 = true
     살아있는상태정리().delete(정리)
     스코프.stop()
     정리목록.forEach((fn) => fn())
   }
   hot?.dispose(정리)
-  살아있는상태정리().add(정리)
+  // 목록은 테스트·개발(HMR)에서만 쓴다. 배포 판에는 남기지 않는다 (상태를 붙잡는 전역 목록이 생기지 않게)
+  if (hot || import.meta.env?.TEST) 살아있는상태정리().add(정리)
   return 상태
 }
 
@@ -34,7 +38,10 @@ export function 모듈상태(hot, 정의) {
  * 모듈 밖(globalThis)에 둔다 (이 모듈도 다시 불러와지므로 모듈 안의 목록으로는 옛 상태에 닿지 못한다)
  */
 const 살아있는상태정리 = () => (globalThis.__how_work_time_모듈상태정리 ??= new Set())
-/** 지금까지 만든 모듈 상태를 모두 정리한다. 테스트 전용 (앱에서는 HMR 이 모듈마다 정리한다) */
+/**
+ * 지금까지 만든 모듈 상태를 모두 정리한다. 테스트 전용 (앱에서는 HMR 이 모듈마다 정리한다).
+ * 이 작업자의 모든 상태를 멈추므로, 부르는 테스트 파일은 매 테스트마다 vi.resetModules 뒤 다시 불러와 써야 한다
+ */
 export function 모듈상태모두정리() {
   for (const 정리 of [...살아있는상태정리()]) 정리()
 }

@@ -529,5 +529,7 @@ describe('설정 감시', () => {
     localStorage.clear()
     window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage }))
     expect(s.현재키.value).toBe('')
+    await nextTick()
+    expect(localStorage.getItem('how-work-time:assistant-settings')).toBeNull() // 지운 값을 곧바로 다시 쓰지 않는다
   })
 })
