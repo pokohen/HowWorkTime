@@ -38,21 +38,20 @@ describe('쓰기재시도', () => {
     expect(다시쓰기).toHaveBeenCalledTimes(1)
   })
 
-  it('이 키 이벤트는 합치기를 먼저 부른 뒤 그 상태로 판단하고, 합치기가 예외를 내도 판단한다. 다른 키는 늘리기만 하면 하지 않는다', async () => {
+  it('이 키 이벤트는 합치기를 먼저 부른 뒤 그 상태로 판단하고(합치기가 false·예외면 하지 않음), 다른 키는 늘리기만 하면 하지 않는다', async () => {
     const 다시쓰기 = vi.fn()
     let 남음 = true
     const 순서 = []
     const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
     쓰기재시도(정리등록, {
       키,
-      합치기: () => { 순서.push('합치기'); 남음 = false; throw new Error('합치기 실패') },
+      합치기: () => { 순서.push('합치기'); 남음 = false },
       쓸것있음: () => { 순서.push('판단'); return 남음 },
       다시쓰기,
       떠날때다시쓰기: false,
     })
     이벤트({ key: 키, oldValue: 'xx', newValue: null })
     expect(순서).toEqual(['합치기', '판단'])
-    expect(오류).toHaveBeenCalled()
     오류.mockRestore()
     이벤트({ key: '다른', oldValue: 'x', newValue: 'xx' })
     await vi.advanceTimersByTimeAsync(10_000)
@@ -68,4 +67,29 @@ describe('쓰기재시도', () => {
     await vi.advanceTimersByTimeAsync(0)
     expect(다시쓰기).not.toHaveBeenCalled()
   })
+
+  it('합치기가 false 를 돌려주거나 예외를 내면 그 이벤트로는 다시 쓰지 않는다', async () => {
+    const 다시쓰기 = vi.fn()
+    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let 결과 = false
+    쓰기재시도(정리등록, { 키, 합치기: () => { if (결과 === 'throw') throw new Error('x'); return 결과 }, 쓸것있음: () => true, 다시쓰기, 떠날때다시쓰기: false })
+    이벤트({ key: 키, oldValue: 'xx', newValue: null })
+    결과 = 'throw'
+    이벤트({ key: 키, oldValue: 'xx', newValue: null })
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(다시쓰기).not.toHaveBeenCalled()
+    expect(오류).toHaveBeenCalled()
+    오류.mockRestore()
+  })
+
+  it('통째 비움 뒤 이 키가 다시 채워졌으면(늦게 닿음) 공간이 생긴 것으로 보지 않는다', async () => {
+    const 다시쓰기 = vi.fn()
+    const r = 쓰기재시도(정리등록, { 키, 합치기: () => {}, 쓸것있음: () => true, 다시쓰기, 떠날때다시쓰기: false })
+    r.실패함()
+    localStorage.setItem(키, '다시 채움')
+    이벤트({ key: null })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(다시쓰기).not.toHaveBeenCalled()
+  })
 })
+
