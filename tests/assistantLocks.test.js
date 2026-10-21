@@ -210,4 +210,53 @@ describe('다른 창이 받는 중인 답', () => {
     await vi.advanceTimersByTimeAsync(2 * 60_000)
     expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
   })
+
+  it('잠금으로 지켜보던 중 잠금없이 표시가 늦게 닿으면 수정시각으로 판단을 바꾼다', async () => {
+    const 잠금들 = 가짜잠금관리자()
+    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
+    받는중저장(Date.now())
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    await nextTick()
+    // 받는 창의 다음 저장에서야 표시가 닿는다 (저장 도착을 기다리는 사이)
+    받는중저장(Date.now() + 5, { id: 'a', 역할: 'assistant', 내용: '중간', 시각: Date.now(), 받는중: true, 잠금없이: true })
+    await vi.advanceTimersByTimeAsync(4_000)
+    const 마지막 = a.탭목록.value[0].메시지.at(-1)
+    expect(마지막.중단됨).toBeUndefined()
+    expect(마지막.다른창받는중).toBe(true)
+  })
+
+  it('잠금을 기다려 얻으면 저장본을 다시 읽고 그 위에 이어 쓴다 (다른 창의 질문·답을 지우지 않는다)', async () => {
+    const 잠금들 = 가짜잠금관리자()
+    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
+    vi.doMock('../src/assistant/ai/client', () => ({ 대화요청: async ({ 조각 }) => { 조각('내 답'); return {} } }))
+    const 시각 = Date.now()
+    localStorage.setItem(저장키, JSON.stringify({
+      버전: 1, 활성탭ID: 'x', 삭제기록: {},
+      탭목록: [{ id: 'x', 제목: 't', 생성시각: 시각, 수정시각: 시각, 메시지: [] }],
+    }))
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    let 놓기
+    잠금들.request(잠금('x'), () => new Promise((r) => { 놓기 = r }))
+    await Promise.resolve()
+    const 끝 = a.전송('내 질문')
+    await vi.advanceTimersByTimeAsync(100)
+    // 다른 창: 이 창에 '받는 중' 저장이 닿기 전에 짧은 답을 끝내고 저장한 뒤 놓는다
+    받는중저장(시각 + 50, { id: 'b', 역할: 'assistant', 내용: '남의 답', 시각: 시각 + 50 })
+    놓기()
+    expect(await 끝).toBe(true)
+    expect(a.활성탭.value.메시지.map((m) => m.내용)).toEqual(['q', '남의 답', '내 질문', '내 답'])
+    vi.doUnmock('../src/assistant/ai/client')
+  })
+
+  it('예전 생존 신호 키는 오래된 것만 지운다 (옛 판 창이 아직 쓰는 신호는 남긴다)', async () => {
+    localStorage.setItem('how-work-time:assistant-live:old', String(Date.now() - 10 * 60_000))
+    localStorage.setItem('how-work-time:assistant-live:fresh', String(Date.now()))
+    localStorage.setItem('how-work-time:assistant-live', 'x')
+    await import('../src/assistant/composables/useAssistant').then((m) => m.useAssistant())
+    expect(localStorage.getItem('how-work-time:assistant-live:old')).toBeNull()
+    expect(localStorage.getItem('how-work-time:assistant-live')).toBeNull()
+    expect(localStorage.getItem('how-work-time:assistant-live:fresh')).not.toBeNull()
+  })
 })
