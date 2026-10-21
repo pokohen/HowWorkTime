@@ -533,6 +533,7 @@ describe('다른 창이 받는 중인 답', () => {
     await vi.advanceTimersByTimeAsync(1_000)
     expect(a.저장실패.value).toBe(true)
     쓰기.mockRestore()
+    await vi.advanceTimersByTimeAsync(5_000) // 실패 뒤 이벤트 재시도 간격
     받는중저장(Date.now(), { id: 'k', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() }) // 다른 창이 대화를 줄여 공간을 비우고 씀
     window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: null, newValue: localStorage.getItem(저장키), storageArea: localStorage })) // 늘림: 그래도 그 창이 썼으니 공간이 있다
     await vi.advanceTimersByTimeAsync(1_000)
@@ -566,6 +567,7 @@ describe('다른 창이 받는 중인 답', () => {
     a.탭삭제(지운ID)
     await vi.advanceTimersByTimeAsync(1_000)
     쓰기.mockRestore()
+    await vi.advanceTimersByTimeAsync(5_000) // 실패 뒤 이벤트 재시도 간격
     window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', oldValue: 'x', newValue: 'xx', storageArea: localStorage }))
     await vi.advanceTimersByTimeAsync(1_000)
     expect(localStorage.getItem(저장키)).toBeNull() // 늘리기만 했다: 다시 쓰지 않는다
@@ -583,6 +585,7 @@ describe('다른 창이 받는 중인 답', () => {
     await vi.advanceTimersByTimeAsync(1_000)
     expect(a.저장실패.value).toBe(true)
     쓰기.mockRestore()
+    await vi.advanceTimersByTimeAsync(5_000) // 실패 뒤 이벤트 재시도 간격
     window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage })) // 다른 창이 통째로 비움
     await vi.advanceTimersByTimeAsync(1_000)
     expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
@@ -595,6 +598,37 @@ describe('다른 창이 받는 중인 답', () => {
     쓰기.mockRestore()
     window.dispatchEvent(new Event('pagehide'))
     expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[또지운ID]).toBeGreaterThan(0)
+  })
+
+  it('막혀 있던 창도 떠날 때 저장소를 다시 읽어, 놓친 이벤트로 막기가 이미 풀렸으면 남은 변경을 쓴다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    localStorage.setItem(저장키, '{"버전":2}')
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: '{"버전":2}' }))
+    const 지운ID = a.활성탭.value.id
+    a.탭삭제(지운ID)
+    await vi.advanceTimersByTimeAsync(1_000) // 막혀 있어 쓰지 못함
+    localStorage.removeItem(저장키) // 다른 창이 지웠지만 이벤트를 놓침
+    window.dispatchEvent(new Event('pagehide'))
+    expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
+  })
+
+  it('쓰기에 실패한 뒤 다른 창의 잦은 저장 이벤트로는 간격을 두고 다시 써 본다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    try {
+      a.탭삭제(a.활성탭.value.id)
+      await vi.advanceTimersByTimeAsync(1_000)
+      const 처음 = 쓰기.mock.calls.length
+      for (let i = 0; i < 5; i++) { // 다른 창이 답을 받으며 400ms 마다 씀
+        window.dispatchEvent(new StorageEvent('storage', { key: 'how-work-time:다른키', oldValue: 'xx', newValue: 'x', storageArea: localStorage }))
+        await vi.advanceTimersByTimeAsync(400)
+      }
+      expect(쓰기.mock.calls.length - 처음).toBeLessThanOrEqual(1) // 5초 간격 안에서는 많아야 한 번
+    } finally {
+      쓰기.mockRestore()
+    }
   })
 
   it('확인하지 않았으면(확인한 값 없음) 새 형식 저장본을 덮지 않는다', async () => {
