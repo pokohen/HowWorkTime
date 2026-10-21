@@ -483,7 +483,7 @@ describe('다른 창이 받는 중인 답', () => {
     }
     expect(a.저장실패.value).toBe(true)
     expect(a.새판감지.value).toBe(true)
-    expect(a.덮어쓰기실패.value).toBe(true)
+    expect(a.덮어쓰기실패.value).toBe('공간')
     a.탭삭제(a.활성탭.value.id) // 공간이 생긴 뒤의 보통 저장
     await vi.advanceTimersByTimeAsync(1_000)
     expect(localStorage.getItem(저장키)).toBe('{"버전":2}')
@@ -518,12 +518,28 @@ describe('다른 창이 받는 중인 답', () => {
       a.덮어쓰기확인시작()
       a.이창으로덮어쓰기()
       expect(a.새판감지.value).toBe(true)
-      expect(a.덮어쓰기실패.value).toBe(true)
+      expect(a.덮어쓰기실패.value).toBe('오류')
       expect(localStorage.getItem(저장키)).toBe('{"버전":2}')
     } finally {
       오류.mockRestore()
       vi.doUnmock('../src/assistant/utils/assistantStorage')
     }
+  })
+
+  it('막히지 않았어도 저장에 실패해 있었으면 다른 창의 저장을 합칠 때 다시 해 본다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    const 지운ID = a.활성탭.value.id
+    const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    a.탭삭제(지운ID)
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(a.저장실패.value).toBe(true)
+    쓰기.mockRestore()
+    받는중저장(Date.now(), { id: 'k', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() }) // 다른 창이 공간을 비우고 씀
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: localStorage.getItem(저장키) }))
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(a.저장실패.value).toBe(false)
+    expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
   })
 
   it('확인하지 않았으면(확인한 값 없음) 새 형식 저장본을 덮지 않는다', async () => {
