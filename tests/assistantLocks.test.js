@@ -301,6 +301,28 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
+  it('판단이 거듭 실패하면 제 간격마다 세고, 간단한 판단까지 거듭 실패해야 중단됨으로 둔다', async () => {
+    const 잠금들 = 가짜잠금관리자()
+    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
+    받는중저장(Date.now())
+    const 합치기 = await 합치기실패모킹()
+    try {
+      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+      const a = useAssistant()
+      합치기.실패 = true
+      받는중저장(Date.now() + 5) // 저장본이 바뀌어 판단할 때마다 합쳐 보다 실패한다 (이벤트 없이)
+      await nextTick()
+      const 실패기록 = () => 합치기.오류.mock.calls.filter(([글]) => 글 === '[플래너] 다른 창 답 확인 실패').length
+      await vi.advanceTimersByTimeAsync(100_000)
+      expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBeUndefined() // 간격(30초)마다 한 번씩만 셌다
+      expect(실패기록()).toBeLessThanOrEqual(5)
+      await vi.advanceTimersByTimeAsync(200_000)
+      expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true) // 간단한 판단마저 거듭 실패해 중단됨
+    } finally {
+      합치기.정리()
+    }
+  })
+
   it('잠금 없이 받는 중이라는 표시는 저장본을 거쳐 남고, 잠금을 쓰는 창도 수정시각으로 판단한다', async () => {
     const 잠금들 = 가짜잠금관리자()
     vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
