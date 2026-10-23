@@ -267,7 +267,15 @@ describe('다른 창이 받는 중인 답', () => {
   })
 
   it('잠금 기다림이 정리 말고 다른 까닭으로 실패하면 한 번 기록하고 간격 뒤 잠금으로 다시 지켜본다 (시각으로 중단됨으로 몰지 않는다)', async () => {
-    const 고장난잠금 = { request: (이름, 옵션, cb) => (옵션?.ifAvailable ? Promise.resolve().then(() => (cb ?? 옵션)(null)) : Promise.reject(new Error('문서 비활성'))) }
+    let 고장 = true
+    let 기다림요청 = 0
+    const 고장난잠금 = {
+      request: (이름, 옵션, cb) => {
+        if (옵션?.ifAvailable) return Promise.resolve().then(() => (cb ?? 옵션)(null))
+        기다림요청++
+        return 고장 ? Promise.reject(new Error('문서 비활성')) : Promise.resolve().then(() => cb())
+      },
+    }
     vi.stubGlobal('navigator', { ...navigator, locks: 고장난잠금, onLine: true })
     받는중저장(Date.now())
     const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -276,10 +284,16 @@ describe('다른 창이 받는 중인 답', () => {
       const a = useAssistant()
       await nextTick()
       await vi.advanceTimersByTimeAsync(1_000)
-      expect(a.탭목록.value[0].메시지.at(-1).다른창받는중).toBe(true) // 아직 시각으로 유효하다
+      expect(a.탭목록.value[0].메시지.at(-1).다른창받는중).toBe(true) // 잠금으로 판단할 메시지: 판단하지 못했으니 받는 중으로 둔다
+      const 처음요청 = 기다림요청
       await vi.advanceTimersByTimeAsync(5 * 60_000) // 잠금을 쥔 창은 수정시각을 갱신하지 않는다: 시간이 지나도 받는 중으로 둔다
       expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBeUndefined()
+      expect(기다림요청 - 처음요청).toBeGreaterThanOrEqual(5) // 간격마다 잠금으로 다시 지켜봤다
       expect(오류.mock.calls.filter(([글]) => String(글).includes('잠금 기다림 실패'))).toHaveLength(1) // 거듭 실패해도 기록은 한 번
+      // 잠금이 되살아나면 다음 간격에 잠금이 풀린 것을 보고 판단한다 (받던 창은 끝남 → 중단됨)
+      고장 = false
+      await vi.advanceTimersByTimeAsync(40_000)
+      expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
     } finally {
       오류.mockRestore()
     }
