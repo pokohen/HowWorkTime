@@ -16,7 +16,7 @@ function 받는중저장(수정시각, 마지막 = { id: 'a', 역할: 'assistant
 
 /**
  * 대화합치기를 감싸 실패를 켜고 끌 수 있게 한다 (콘솔 오류는 숨긴다). 모듈을 불러오기 전에 부르고, 끝나면 정리()
- * @returns {Promise<{ 실패: boolean, 시도: number, 정리: () => void }>}
+ * @returns {Promise<{ 실패: boolean, 시도: number, 오류: import('vitest').MockInstance, 정리: () => void }>}
  */
 async function 합치기실패모킹() {
   const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
@@ -24,6 +24,7 @@ async function 합치기실패모킹() {
   const 상태 = {
     실패: false,
     시도: 0,
+    오류, // 숨긴 console.error (기록을 확인할 때)
     정리() {
       오류.mockRestore()
       vi.doUnmock('../src/assistant/utils/assistantStorage')
@@ -344,12 +345,8 @@ describe('다른 창이 받는 중인 답', () => {
     const 잠금들 = 가짜잠금관리자()
     vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
     vi.doMock('../src/assistant/ai/client', () => ({ 대화요청: async ({ 조각 }) => { 조각('답'); return {} } }))
-    const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
-    vi.doMock('../src/assistant/utils/assistantStorage', () => ({
-      ...저장모듈,
-      대화합치기: () => { throw new Error('합치기 실패') },
-    }))
-    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const 합치기 = await 합치기실패모킹()
+    합치기.실패 = true
     try {
       const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
@@ -359,11 +356,10 @@ describe('다른 창이 받는 중인 답', () => {
       expect(a.활성탭.value.메시지.at(-1).내용).toBe('답')
       expect(await 잠금들.request(잠금(탭ID), { ifAvailable: true }, (l) => Boolean(l))).toBe(true) // 잠금을 놓았다
       expect(JSON.parse(localStorage.getItem(저장키)).탭목록.some((t) => t.id === 탭ID)).toBe(true) // 저장했다
-      expect(오류).toHaveBeenCalledWith('[플래너] 다른 창의 저장본을 합치지 못함', expect.any(Error)) // 실패는 기록·안내한다
+      expect(합치기.오류).toHaveBeenCalledWith('[플래너] 다른 창의 저장본을 합치지 못함', expect.any(Error)) // 실패는 기록·안내한다
       expect(a.전체합치기실패.value).toBe(true)
     } finally {
-      오류.mockRestore()
-      vi.doUnmock('../src/assistant/utils/assistantStorage')
+      합치기.정리()
       vi.doUnmock('../src/assistant/ai/client')
     }
   })
@@ -799,11 +795,18 @@ describe('다른 창이 받는 중인 답', () => {
       합치기.실패 = true
       받는중저장(Date.now() + 5, { id: 'a3', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() })
       const 남의값 = localStorage.getItem(저장키)
-      const 오류 = vi.mocked(console.error)
-      오류.mockClear()
-      for (let i = 0; i < 3; i++) window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 남의값, storageArea: localStorage }))
-      expect(오류.mock.calls.filter(([글]) => 글 === '[플래너] 다른 창의 저장본을 합치지 못함')).toHaveLength(1)
+      합치기.오류.mockClear()
+      const 알림 = () => window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 남의값, storageArea: localStorage }))
+      알림()
+      // 안내 시간 안에서 거듭 와도 안내를 다시 켜지 않는다 (켜면 시간이 처음부터 다시 간다)
+      for (let i = 0; i < 3; i++) {
+        await vi.advanceTimersByTimeAsync(3_000)
+        알림()
+      }
+      expect(합치기.오류.mock.calls.filter(([글]) => 글 === '[플래너] 다른 창의 저장본을 합치지 못함')).toHaveLength(1)
       expect(a.전체합치기실패.value).toBe(true)
+      await vi.advanceTimersByTimeAsync(3_500) // 첫 안내에서 12.5초
+      expect(a.전체합치기실패.value).toBe(false)
     } finally {
       합치기.정리()
     }
@@ -889,12 +892,8 @@ describe('다른 창이 받는 중인 답', () => {
   })
 
   it('새 형식 막기 중 다른 까닭으로 합치기에 실패하면 막기를 푼다 (새 형식 값이 이제 없으므로)', async () => {
-    const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
-    vi.doMock('../src/assistant/utils/assistantStorage', () => ({
-      ...저장모듈,
-      대화합치기: () => { throw new Error('합치기 실패') },
-    }))
-    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const 합치기 = await 합치기실패모킹()
+    합치기.실패 = true
     try {
       const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
@@ -906,8 +905,7 @@ describe('다른 창이 받는 중인 답', () => {
       expect(a.새판감지.value).toBe(false)
       expect(a.전체합치기실패.value).toBe(true)
     } finally {
-      오류.mockRestore()
-      vi.doUnmock('../src/assistant/utils/assistantStorage')
+      합치기.정리()
     }
   })
 })
