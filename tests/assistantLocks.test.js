@@ -315,7 +315,7 @@ describe('다른 창이 받는 중인 답', () => {
       const 실패기록 = () => 합치기.오류.mock.calls.filter(([글]) => 글 === '[플래너] 다른 창 답 확인 실패').length
       await vi.advanceTimersByTimeAsync(100_000)
       expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBeUndefined() // 간격(30초)마다 한 번씩만 셌다
-      expect(실패기록()).toBeLessThanOrEqual(5)
+      expect(실패기록()).toBeLessThanOrEqual(4) // 0·30·60·90초
       await vi.advanceTimersByTimeAsync(200_000)
       expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true) // 간단한 판단마저 거듭 실패해 중단됨
     } finally {
