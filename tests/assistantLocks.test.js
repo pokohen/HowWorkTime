@@ -713,9 +713,10 @@ describe('다른 창이 받는 중인 답', () => {
   it('재시도 타이머가 돌 때 이벤트가 아직 닿지 않은 합치지 못한 값이 저장소에 있으면 그 위에 쓰지 않는다', async () => {
     const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
     let 실패 = false
+    let 합치기시도 = 0
     vi.doMock('../src/assistant/utils/assistantStorage', () => ({
       ...저장모듈,
-      대화합치기: (...인자) => { if (실패) throw new Error('합치기 실패'); return 저장모듈.대화합치기(...인자) },
+      대화합치기: (...인자) => { 합치기시도++; if (실패) throw new Error('합치기 실패'); return 저장모듈.대화합치기(...인자) },
     }))
     const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
@@ -725,19 +726,44 @@ describe('다른 창이 받는 중인 답', () => {
       a.탭삭제(a.활성탭.value.id)
       await vi.advanceTimersByTimeAsync(1_000)
       쓰기.mockRestore()
-      // 다른 창이 이 키를 늘림 (합칠 수 있는 값) → 간격 뒤 재시도 예약
-      받는중저장(Date.now() + 1, { id: 'u', 역할: 'assistant', 내용: '합칠 수 있는 것', 시각: Date.now() })
+      // 다른 창이 이 키를 늘림 (합칠 수 있는 값, 받는 중 답 없음) → 간격 뒤 재시도 예약
+      받는중저장(Date.now() + 1, { id: 'a2', 역할: 'assistant', 내용: '합칠 수 있는 것', 시각: Date.now() })
       const 늘린값 = localStorage.getItem(저장키)
       window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: 'x', newValue: 늘린값, storageArea: localStorage }))
       실패 = true
-      받는중저장(Date.now() + 5, { id: 'u', 역할: 'assistant', 내용: '합칠 수 없는 남의 것', 시각: Date.now() }) // 이벤트는 아직
+      받는중저장(Date.now() + 5, { id: 'a3', 역할: 'assistant', 내용: '합칠 수 없는 남의 것', 시각: Date.now() }) // 이벤트는 아직
       const 남의값 = localStorage.getItem(저장키)
-      const 읽기 = vi.spyOn(localStorage, 'getItem')
+      합치기시도 = 0
       await vi.advanceTimersByTimeAsync(10_000)
-      expect(읽기.mock.calls.some(([키]) => 키 === 저장키)).toBe(true) // 재시도가 돌아 저장소를 읽었다
-      읽기.mockRestore()
+      expect(합치기시도).toBeGreaterThan(0) // 재시도가 돌아 막 읽은 값을 합쳐 보았다
       expect(localStorage.getItem(저장키)).toBe(남의값) // 그래도 덮지 않았다
-      expect(a.저장실패.value).toBe(false) // 공간 때문이 아니므로 가득 찼다는 안내는 거둔다
+      expect(a.저장실패.value).toBe(true) // 아직 쓰지 못했다는 안내는 남긴다
+    } finally {
+      오류.mockRestore()
+      vi.doUnmock('../src/assistant/utils/assistantStorage')
+    }
+  })
+
+  it('한 번 합치지 못한 값도 이 창의 상태가 바뀌면 저장 전에 다시 합쳐 본다 (같은 값이라고 건너뛰지 않는다)', async () => {
+    const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
+    let 실패 = false
+    vi.doMock('../src/assistant/utils/assistantStorage', () => ({
+      ...저장모듈,
+      대화합치기: (...인자) => { if (실패) throw new Error('합치기 실패'); return 저장모듈.대화합치기(...인자) },
+    }))
+    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+      const a = useAssistant()
+      실패 = true
+      받는중저장(Date.now() + 5, { id: 'a3', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() })
+      const 남의값 = localStorage.getItem(저장키)
+      window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 남의값, storageArea: localStorage }))
+      실패 = false // 이 창의 상태가 바뀌어 이제는 합칠 수 있다
+      a.새탭추가()
+      a.탭삭제(a.활성탭.value.id)
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(JSON.parse(localStorage.getItem(저장키)).탭목록.some((탭) => 탭.id === 'x')).toBe(true) // 남의 대화를 지우지 않았다
     } finally {
       오류.mockRestore()
       vi.doUnmock('../src/assistant/utils/assistantStorage')
