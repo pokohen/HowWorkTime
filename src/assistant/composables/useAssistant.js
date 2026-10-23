@@ -62,15 +62,19 @@ const 판단재시도횟수 = 3
 
 /**
  * 이 대화의 '받는 중' 잠금을 얻는다. 기다림이 0 이면 바로 얻을 수 있을 때만, 아니면 그 시간까지 기다려 본다.
+ * 중단 신호가 오면(모듈 정리 등) 기다림을 그만둔다 (null)
  * @returns {Promise<{ 놓기: () => void, 잠금없음: boolean } | null>}
  *   다른 창이 쥐고 있으면 null. Web Locks 가 없거나 요청이 실패하면 잠금 없이 진행한다(잠금없음 true)
  */
-async function 받는잠금얻기(탭ID, 기다림 = 0) {
+async function 받는잠금얻기(탭ID, 기다림 = 0, 중단신호 = null) {
   if (!잠금지원()) return { 놓기: () => {}, 잠금없음: true }
+  if (중단신호?.aborted) return null
   let 놓기 = () => {}
   const 끝 = new Promise((풀림) => { 놓기 = 풀림 })
   const 시간초과 = 기다림 > 0 ? new AbortController() : null
-  const 타이머 = 시간초과 ? setTimeout(() => 시간초과.abort(), 기다림) : null
+  const 그만 = () => 시간초과.abort()
+  const 타이머 = 시간초과 ? setTimeout(그만, 기다림) : null
+  if (시간초과) 중단신호?.addEventListener('abort', 그만, { once: true })
   try {
     const 얻음 = await new Promise((결과, 실패) => {
       navigator.locks.request(잠금이름(탭ID), 시간초과 ? { signal: 시간초과.signal } : { ifAvailable: true }, (잠금) => {
@@ -84,6 +88,7 @@ async function 받는잠금얻기(탭ID, 기다림 = 0) {
     return { 놓기: () => {}, 잠금없음: true } // 잠금을 쓸 수 없는 경우(문서 비활성 등). 받는 일은 막지 않는다
   } finally {
     clearTimeout(타이머)
+    중단신호?.removeEventListener('abort', 그만)
   }
 }
 
@@ -100,6 +105,10 @@ const 알림표시시간 = 12_000
 const 새판저장본 = new Error('새 형식의 저장본')
 
 const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
+  // 모듈이 다시 평가되면(HMR) 이 클로저는 버려진다. 그 뒤에 끝나는 비동기 작업이 옛 상태를 저장하거나 알리지 않게 막는다.
+  // 버려짐은 이 신호 하나로 정한다: 잠금 기다림·나중에 타이머·기다림도 이것으로 거둔다. 맨 앞에 두어 어디서 읽어도 준비돼 있다
+  const 폐기 = new AbortController()
+  const 폐기됨 = () => 폐기.signal.aborted
   const { 컨텍스트수집 } = usePlannerContext()
   const 설정상태 = useAssistantSettings()
   const { 제공자, 모델, 현재키 } = 설정상태
@@ -482,11 +491,15 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     정리등록(() => window.removeEventListener('pagehide', 떠날때저장))
     // 다른 창이 이 키를 쓰면(통째 비움 포함) 쓰기재시도가 받아 대화 단위로 합친다 (위 쓰기다시 참고)
   }
-  // 정리 순서: 먼저 진행 중 요청을 끊고 폐기 표시를 한 뒤, 예약된 저장을 바로 쓴다 (끊긴 요청의 finally 가 옛 상태를 다시 저장하지 않게)
+  // 정리 순서: 예약된 저장을 바로 쓴 뒤 폐기 표시를 하고 진행 중 요청을 끊는다 (저장은 폐기 전이어야 쓴다. 끊긴 요청의 finally 는
+  // 폐기를 보고 옛 상태를 다시 저장하지 않는다). 저장이 실패해도 폐기·끊기는 꼭 한다
   정리등록(() => {
-    즉시저장() // abort 의 finally 는 다음 마이크로태스크라 여기선 아직 전송중이다 → 받은 글까지 저장된다
-    폐기.abort() // 잠금 기다림·나중에 타이머도 함께 거둔다
-    중단컨트롤러?.abort()
+    try {
+      즉시저장() // abort 의 finally 는 다음 마이크로태스크라 여기선 아직 전송중이다 → 받은 글까지 저장된다
+    } finally {
+      폐기.abort() // 잠금 기다림·나중에 타이머·기다림도 함께 거둔다
+      중단컨트롤러?.abort()
+    }
   })
 
   // 쓰기재시도는 그것이 읽는 상태가 모두 만들어진 뒤 만든다 (설정 중 이벤트가 와도 초기화 전 값을 읽지 않게).
@@ -538,10 +551,6 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   // ── 전송 ──────────────────────────────────────────────────
   const 전송중 = ref(false)
   let 중단컨트롤러 = null
-  // 모듈이 다시 평가되면(HMR) 이 클로저는 버려진다. 그 뒤에 끝나는 비동기 작업이 옛 상태를 저장하거나 알리지 않게 막는다.
-  // 버려짐은 이 신호 하나로 정한다: 잠금 기다림·나중에 타이머도 이것으로 거둔다 (둘이 어긋날 수 없게)
-  const 폐기 = new AbortController()
-  const 폐기됨 = () => 폐기.signal.aborted
   /** 지금 응답을 받고 있는 탭. 탭을 지울 때 어느 요청을 끊을지, 중단 버튼을 어느 탭에 보일지의 기준 */
   const 응답중탭ID = ref(null)
   /** 보고 있는 탭이 응답을 받는 중인지 (중단 버튼은 이 탭에만) */
@@ -610,7 +619,12 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
     }
     // 잠금을 얻자마자 놓고(빈 콜백), 판단은 잠금 밖에서 한다. 받던 창이 곧 다시 보내도 기다리지 않게
     navigator.locks.request(잠금이름(탭.id), { signal: 폐기.signal }, () => {})
-      .then(() => 끊김처리(탭.id, m.id, { 잠금풀림: true }), () => 지켜보는중.delete(지켜볼키(탭.id, m.id))) // 실패는 정리(HMR)로 그만둔 경우
+      .then(() => 끊김처리(탭.id, m.id, { 잠금풀림: true }), (예외) => {
+        지켜보는중.delete(지켜볼키(탭.id, m.id))
+        if (폐기됨()) return // 정리(HMR)로 그만뒀다
+        console.error('[플래너] 다른 창 답의 잠금 기다림 실패', 예외) // 문서 비활성 등: 간격 뒤 다시 지켜본다
+        나중에(다른창받는답지켜보기, 판단재시도간격)
+      })
   }
   const 판단실패 = new Map() // 지켜볼키 → 연이은 실패 횟수 (판단이 한 번이라도 끝나면 지운다)
   정리등록(() => 판단실패.clear())
@@ -720,7 +734,8 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
   }
   /** 잠금이 풀린 뒤: 받던 창의 최종 저장이 이 창에 닿을 시간을 준 뒤 저장본을 다시 읽는다. 그 사이 정리(HMR)됐으면 false */
   async function 저장도착뒤다시읽기() {
-    await new Promise((r) => setTimeout(r, 저장도착대기))
+    // 나중에로 기다린다: 정리되면 타이머를 거두므로 옛 클로저를 붙잡지 않는다 (그때 이 기다림은 끝나지 않고 함께 버려진다)
+    await new Promise((r) => { 나중에(r, 저장도착대기) })
     if (폐기됨()) return false
     다시읽기()
     return true
@@ -759,7 +774,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
    * 이 대화의 '받는 중' 잠금을 얻는다. 다른 창이 쥐고 있으면(그 창이 이 대화를 받는 중) null. 대화는 바꾸지 않는다
    */
   async function 보낼준비(탭ID) {
-    const 잠금 = (await 받는잠금얻기(탭ID)) ?? (await 받는잠금얻기(탭ID, 잠금대기))
+    const 잠금 = (await 받는잠금얻기(탭ID)) ?? (await 받는잠금얻기(탭ID, 잠금대기, 폐기.signal))
     // 저장본을 다시 읽는다: 못 얻었으면 그 창의 '받는 중'을 보여 주고, 얻었으면 방금 끝난 다른 창의 질문·답 위에 이어 쓴다.
     // 그 저장이 아직 닿지 않았어도 대화를 메시지 단위로 합치므로(메시지합치기) 나중에 닿을 때 사라지지 않는다
     다른창것과합치기(저장소읽기(어시스턴트저장키))
