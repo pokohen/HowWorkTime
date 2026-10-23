@@ -804,16 +804,16 @@ describe('다른 창이 받는 중인 답', () => {
         const 알림 = () => window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 값, storageArea: localStorage }))
         알림()
         expect(a.전체합치기실패.value).toBe(true)
-        let 초 = 0
-        for (; 초 < 600 && a.전체합치기실패.value; 초++) {
-          await vi.advanceTimersByTimeAsync(1_000)
-          if (거듭) 알림()
+        let ms = 0
+        for (; ms < 600_000 && a.전체합치기실패.value; ms += 100) { // 0.1초 단위로 (일찍·늦게 꺼짐을 가린다)
+          await vi.advanceTimersByTimeAsync(100)
+          if (거듭 && ms % 1_000 === 0) 알림()
         }
         expect(a.전체합치기실패.value).toBe(false)
-        return 초
+        return ms
       }
       const 한번 = await 안내켜진초('남의 답 1', false) // 기준: 한 번 알렸을 때의 안내 시간
-      expect(한번).toBeGreaterThan(5) // 안내는 곧바로 꺼지지 않고 몇 초는 머문다 (읽을 수 있게)
+      expect(한번).toBeGreaterThan(5_000) // 안내는 곧바로 꺼지지 않고 몇 초는 머문다 (정확한 시간은 잠시표시상태 테스트)
       합치기.오류.mockClear()
       // 1초마다 같은 값이 거듭 와도 안내를 다시 켜지 않으므로 꼭 같은 시간에 꺼진다 (일찍 거두지도 늘리지도 않는다)
       expect(await 안내켜진초('남의 답 2', true)).toBe(한번)
