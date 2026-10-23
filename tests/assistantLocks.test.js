@@ -266,7 +266,7 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
-  it('잠금 기다림이 정리 말고 다른 까닭으로 실패하면 한 번 기록하고 시각으로 판단한다 (영영 받는 중으로 남지 않는다)', async () => {
+  it('잠금 기다림이 정리 말고 다른 까닭으로 실패하면 한 번 기록하고 간격 뒤 잠금으로 다시 지켜본다 (시각으로 중단됨으로 몰지 않는다)', async () => {
     const 고장난잠금 = { request: (이름, 옵션, cb) => (옵션?.ifAvailable ? Promise.resolve().then(() => (cb ?? 옵션)(null)) : Promise.reject(new Error('문서 비활성'))) }
     vi.stubGlobal('navigator', { ...navigator, locks: 고장난잠금, onLine: true })
     받는중저장(Date.now())
@@ -277,9 +277,9 @@ describe('다른 창이 받는 중인 답', () => {
       await nextTick()
       await vi.advanceTimersByTimeAsync(1_000)
       expect(a.탭목록.value[0].메시지.at(-1).다른창받는중).toBe(true) // 아직 시각으로 유효하다
-      await vi.advanceTimersByTimeAsync(2 * 60_000 + 5_000)
-      expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
-      expect(오류.mock.calls.filter(([글]) => String(글).includes('잠금 기다림 실패'))).toHaveLength(1)
+      await vi.advanceTimersByTimeAsync(5 * 60_000) // 잠금을 쥔 창은 수정시각을 갱신하지 않는다: 시간이 지나도 받는 중으로 둔다
+      expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBeUndefined()
+      expect(오류.mock.calls.filter(([글]) => String(글).includes('잠금 기다림 실패'))).toHaveLength(1) // 거듭 실패해도 기록은 한 번
     } finally {
       오류.mockRestore()
     }
