@@ -15,7 +15,8 @@ function 받는중저장(수정시각, 마지막 = { id: 'a', 역할: 'assistant
 }
 
 /**
- * 대화합치기를 감싸 실패를 켜고 끌 수 있게 한다 (콘솔 오류는 숨긴다). 모듈을 불러오기 전에 부르고, 끝나면 정리()
+ * 대화합치기를 감싸 실패를 켜고 끌 수 있게 한다 (콘솔 오류는 숨긴다). 모듈을 불러오기 전에 부르고, 끝나면 정리().
+ * 바꾸는 일(콘솔 감시·모킹)은 불러오기가 끝난 뒤에 해, 이것이 실패하면 남기는 것이 없다. 부른 바로 다음 줄에서 try 를 연다
  * @returns {Promise<{ 실패: boolean, 시도: number, 오류: import('vitest').MockInstance, 정리: () => void }>}
  */
 async function 합치기실패모킹() {
@@ -346,8 +347,8 @@ describe('다른 창이 받는 중인 답', () => {
     vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
     vi.doMock('../src/assistant/ai/client', () => ({ 대화요청: async ({ 조각 }) => { 조각('답'); return {} } }))
     const 합치기 = await 합치기실패모킹()
-    합치기.실패 = true
     try {
+      합치기.실패 = true
       const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
       받는중저장(Date.now() + 1, { id: 'z', 역할: 'assistant', 내용: '남의 것', 시각: Date.now() })
@@ -790,7 +791,7 @@ describe('다른 창이 받는 중인 답', () => {
   it('같은 합치지 못한 값으로 거듭 실패해도 기록·안내는 한 번만', async () => {
     const 합치기 = await 합치기실패모킹()
     try {
-      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+      const { useAssistant, 알림표시시간 } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
       합치기.실패 = true
       받는중저장(Date.now() + 5, { id: 'a3', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() })
@@ -799,13 +800,14 @@ describe('다른 창이 받는 중인 답', () => {
       const 알림 = () => window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 남의값, storageArea: localStorage }))
       알림()
       // 안내 시간 안에서 거듭 와도 안내를 다시 켜지 않는다 (켜면 시간이 처음부터 다시 간다)
+      const 간격 = 알림표시시간 / 4
       for (let i = 0; i < 3; i++) {
-        await vi.advanceTimersByTimeAsync(3_000)
+        await vi.advanceTimersByTimeAsync(간격)
         알림()
       }
       expect(합치기.오류.mock.calls.filter(([글]) => 글 === '[플래너] 다른 창의 저장본을 합치지 못함')).toHaveLength(1)
       expect(a.전체합치기실패.value).toBe(true)
-      await vi.advanceTimersByTimeAsync(3_500) // 첫 안내에서 12.5초
+      await vi.advanceTimersByTimeAsync(간격 + 500) // 첫 안내에서 안내 시간을 막 넘김 (마지막 알림에서는 아직 안 됨)
       expect(a.전체합치기실패.value).toBe(false)
     } finally {
       합치기.정리()
@@ -893,8 +895,8 @@ describe('다른 창이 받는 중인 답', () => {
 
   it('새 형식 막기 중 다른 까닭으로 합치기에 실패하면 막기를 푼다 (새 형식 값이 이제 없으므로)', async () => {
     const 합치기 = await 합치기실패모킹()
-    합치기.실패 = true
     try {
+      합치기.실패 = true
       const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
       localStorage.setItem(저장키, '{"버전":2}')
