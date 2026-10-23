@@ -725,14 +725,19 @@ describe('다른 창이 받는 중인 답', () => {
       a.탭삭제(a.활성탭.value.id)
       await vi.advanceTimersByTimeAsync(1_000)
       쓰기.mockRestore()
-      // 다른 창이 이 키를 늘림 → 간격 뒤 재시도 예약
+      // 다른 창이 이 키를 늘림 (합칠 수 있는 값) → 간격 뒤 재시도 예약
+      받는중저장(Date.now() + 1, { id: 'u', 역할: 'assistant', 내용: '합칠 수 있는 것', 시각: Date.now() })
       const 늘린값 = localStorage.getItem(저장키)
-      window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: null, newValue: 늘린값, storageArea: localStorage }))
+      window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: 'x', newValue: 늘린값, storageArea: localStorage }))
       실패 = true
       받는중저장(Date.now() + 5, { id: 'u', 역할: 'assistant', 내용: '합칠 수 없는 남의 것', 시각: Date.now() }) // 이벤트는 아직
       const 남의값 = localStorage.getItem(저장키)
+      const 읽기 = vi.spyOn(localStorage, 'getItem')
       await vi.advanceTimersByTimeAsync(10_000)
-      expect(localStorage.getItem(저장키)).toBe(남의값)
+      expect(읽기.mock.calls.some(([키]) => 키 === 저장키)).toBe(true) // 재시도가 돌아 저장소를 읽었다
+      읽기.mockRestore()
+      expect(localStorage.getItem(저장키)).toBe(남의값) // 그래도 덮지 않았다
+      expect(a.저장실패.value).toBe(false) // 공간 때문이 아니므로 가득 찼다는 안내는 거둔다
     } finally {
       오류.mockRestore()
       vi.doUnmock('../src/assistant/utils/assistantStorage')
