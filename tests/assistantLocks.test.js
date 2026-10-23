@@ -648,7 +648,7 @@ describe('다른 창이 받는 중인 답', () => {
     expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
   })
 
-  it('(정한 정책) 쓰지 못한 변경이 있으면 합치지 못한 다른 창의 저장도 공간이 생긴 이벤트에 이 창의 상태로 덮는다 (보통 저장과 같은 규칙)', async () => {
+  it('(정한 정책) 합치지 못한 다른 창의 저장은 공간이 생긴 이벤트로 덮지 않고, 플래너를 닫는 등 사용자의 다음 일 때 보통 저장이 쓴다', async () => {
     const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
     let 실패 = false
     vi.doMock('../src/assistant/utils/assistantStorage', () => ({
@@ -668,6 +668,11 @@ describe('다른 창이 받는 중인 답', () => {
       받는중저장(Date.now() + 5, { id: 'u', 역할: 'assistant', 내용: '합칠 수 없는 남의 것', 시각: Date.now() })
       const 남의값 = localStorage.getItem(저장키)
       window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: 'x'.repeat(10_000), newValue: 남의값, storageArea: localStorage }))
+      await vi.advanceTimersByTimeAsync(10_000) // 간격이 지나도
+      expect(localStorage.getItem(저장키)).toBe(남의값) // 재시도는 그 위에 쓰지 않는다
+      a.열기()
+      await vi.advanceTimersByTimeAsync(0)
+      a.닫기() // 사용자가 플래너를 닫으면 보통 저장(즉시저장)이 쓴다
       await vi.advanceTimersByTimeAsync(1_000)
       expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
     } finally {
