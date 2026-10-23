@@ -613,9 +613,13 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
       try {
         const 남음 = 다른창이받는답(탭ID, 메시지ID)
         if (남음) return 지켜보기(남음.탭, 남음.m)
-      } catch (예외) { console.error('[플래너] 다른 창 답 다시 지켜보기 실패', 예외) }
+        // 다른 길로 끝났다: 횟수·잠금 실패 기록을 놓는다 (쥔 동안은 훑기가 횟수를 놓지 않았다)
+        판단실패.delete(키)
+        잠금실패기록.delete(탭ID)
+      } catch (예외) {
+        console.error('[플래너] 다른 창 답 다시 지켜보기 실패', 예외) // 횟수는 남긴다 (다음 훑기에서 이어 센다)
+      }
       지켜보는중.delete(키)
-      판단실패.delete(키) // 다른 길로 끝났다 (쥔 동안은 훑기가 횟수를 놓지 않았다)
     }, 판단재시도간격)
   }
   /**
@@ -674,8 +678,7 @@ const 상태 = 모듈상태(import.meta.hot, (정리등록) => {
    * @returns {Promise<'빔'|'쥠'|null>}
    */
   async function 잠금상태(탭ID) {
-    if (!잠금지원()) return null
-    try {
+    try { // 잠금이 없으면 request 가 던져 null 이 된다
       return await navigator.locks.request(잠금이름(탭ID), { ifAvailable: true }, (잠금) => (잠금 ? '빔' : '쥠'))
     } catch { return null }
   }
