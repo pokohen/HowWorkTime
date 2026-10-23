@@ -21,13 +21,12 @@ function 받는중저장(수정시각, 마지막 = { id: 'a', 역할: 'assistant
  */
 async function 합치기실패모킹() {
   const 저장모듈 = await import('../src/assistant/utils/assistantStorage')
-  const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
   const 상태 = {
     실패: false,
     시도: 0,
-    오류, // 숨긴 console.error (기록을 확인할 때)
+    오류: null, // 숨긴 console.error (기록을 확인할 때)
     정리() {
-      오류.mockRestore()
+      상태.오류.mockRestore()
       vi.doUnmock('../src/assistant/utils/assistantStorage')
     },
   }
@@ -39,6 +38,7 @@ async function 합치기실패모킹() {
       return 저장모듈.대화합치기(...인자)
     },
   }))
+  상태.오류 = vi.spyOn(console, 'error').mockImplementation(() => {}) // 마지막에 (앞에서 실패하면 남기는 것이 없게)
   return 상태
 }
 
@@ -791,7 +791,7 @@ describe('다른 창이 받는 중인 답', () => {
   it('같은 합치지 못한 값으로 거듭 실패해도 기록·안내는 한 번만', async () => {
     const 합치기 = await 합치기실패모킹()
     try {
-      const { useAssistant, 알림표시시간 } = await import('../src/assistant/composables/useAssistant')
+      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
       합치기.실패 = true
       받는중저장(Date.now() + 5, { id: 'a3', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() })
@@ -799,19 +799,33 @@ describe('다른 창이 받는 중인 답', () => {
       합치기.오류.mockClear()
       const 알림 = () => window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 남의값, storageArea: localStorage }))
       알림()
-      // 안내 시간 안에서 거듭 와도 안내를 다시 켜지 않는다 (켜면 시간이 처음부터 다시 간다)
-      const 간격 = 알림표시시간 / 4
-      for (let i = 0; i < 3; i++) {
-        await vi.advanceTimersByTimeAsync(간격)
+      expect(a.전체합치기실패.value).toBe(true)
+      // 1초마다 거듭 와도 안내를 다시 켜지 않으므로 안내는 제 시간에 저절로 꺼진다 (다시 켜면 시간이 처음부터 다시 가 꺼지지 않는다)
+      for (let 초 = 0; 초 < 600 && a.전체합치기실패.value; 초++) {
+        await vi.advanceTimersByTimeAsync(1_000)
         알림()
       }
-      expect(합치기.오류.mock.calls.filter(([글]) => 글 === '[플래너] 다른 창의 저장본을 합치지 못함')).toHaveLength(1)
-      expect(a.전체합치기실패.value).toBe(true)
-      await vi.advanceTimersByTimeAsync(간격 + 500) // 첫 안내에서 안내 시간을 막 넘김 (마지막 알림에서는 아직 안 됨)
       expect(a.전체합치기실패.value).toBe(false)
+      expect(합치기.오류.mock.calls.filter(([글]) => 글 === '[플래너] 다른 창의 저장본을 합치지 못함')).toHaveLength(1)
     } finally {
       합치기.정리()
     }
+  })
+
+  it('재시도가 돌 때 이벤트가 아직 닿지 않은 새 형식 값이 저장소에 있으면 막기만 켜고 덮지 않는다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    const 쓰기 = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('가득 참') })
+    a.탭삭제(a.활성탭.value.id)
+    await vi.advanceTimersByTimeAsync(1_000)
+    쓰기.mockRestore()
+    localStorage.setItem('다른키', 'x')
+    localStorage.setItem(저장키, '{"버전":2}') // 이벤트는 아직
+    window.dispatchEvent(new StorageEvent('storage', { key: '다른키', oldValue: 'x'.repeat(5_000), newValue: 'x', storageArea: localStorage }))
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(localStorage.getItem(저장키)).toBe('{"버전":2}')
+    expect(a.새판감지.value).toBe(true)
+    localStorage.removeItem('다른키')
   })
 
   it('합치지 못한 값이 합칠 수 있는 값으로 바뀌면 재시도가 다시 돈다', async () => {
