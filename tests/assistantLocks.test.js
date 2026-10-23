@@ -26,8 +26,8 @@ async function 합치기실패모킹() {
     시도: 0,
     오류: null, // 숨긴 console.error (기록을 확인할 때)
     정리() {
-      상태.오류.mockRestore()
-      vi.doUnmock('../src/assistant/utils/assistantStorage')
+      vi.doUnmock('../src/assistant/utils/assistantStorage') // 먼저 (콘솔 복원이 실패해도 모킹이 새지 않게)
+      상태.오류?.mockRestore()
     },
   }
   vi.doMock('../src/assistant/utils/assistantStorage', () => ({
@@ -810,7 +810,7 @@ describe('다른 창이 받는 중인 답', () => {
         알림()
       }
       expect(a.전체합치기실패.value).toBe(false)
-      expect(켜진초).toBeGreaterThan(5) // 거듭 온 알림이 안내를 일찍 거두지도 않았다 (안내 시간은 수 초 이상)
+      expect(켜진초).toBeGreaterThanOrEqual(11) // 거듭 온 알림이 안내를 일찍 거두지도 않았다 (안내 시간 12초)
       expect(합치기.오류.mock.calls.filter(([글]) => 글 === '[플래너] 다른 창의 저장본을 합치지 못함')).toHaveLength(1)
     } finally {
       합치기.정리()
@@ -833,8 +833,23 @@ describe('다른 창이 받는 중인 답', () => {
     // 남은 변경은 버리지 않았다: 새 형식 값이 사라져 막기가 풀리면 쓴다
     localStorage.removeItem(저장키)
     window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: '{"버전":2}', newValue: null, storageArea: localStorage }))
+    expect(a.새판감지.value).toBe(false)
     await vi.advanceTimersByTimeAsync(1_000)
     expect(Object.keys(JSON.parse(localStorage.getItem(저장키)).삭제기록)).toHaveLength(1)
+  })
+
+  it('기억한 새 형식 값과 막기가 어긋나 있어도(HMR 등) 보통 저장은 그 값을 덮지 않는다', async () => {
+    const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+    const a = useAssistant()
+    const 새판 = '{"버전":2}'
+    localStorage.setItem(저장키, 새판)
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 새판, storageArea: localStorage }))
+    expect(a.새판감지.value).toBe(true)
+    a.새판감지.value = false // 어긋남을 흉내 낸다 (마지막새판본은 그대로)
+    a.탭삭제(a.활성탭.value.id)
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(localStorage.getItem(저장키)).toBe(새판)
+    expect(a.새판감지.value).toBe(true) // 바로잡혔다
   })
 
   it('합치지 못한 값이 합칠 수 있는 값으로 바뀌면 재시도가 다시 돈다', async () => {
