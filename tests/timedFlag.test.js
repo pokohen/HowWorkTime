@@ -26,7 +26,22 @@ describe('잠시표시상태', () => {
     vi.advanceTimersByTime(800)
     expect(표시.값.value).toBe(true)
     정리.forEach((fn) => fn())
+    정리 = []
     vi.advanceTimersByTime(10_000)
     expect(표시.값.value).toBe(true) // 정리 뒤에는 타이머가 돌지 않는다
+  })
+
+  it('끄기는 켜져 있을 때만 꺼질때를 부르고 타이머를 거둔다', () => {
+    const 꺼질때 = vi.fn()
+    const 표시 = 잠시표시상태(정리등록, 1_000, { 꺼질때 })
+    표시.끄기() // 꺼져 있음: 부르지 않는다
+    expect(꺼질때).not.toHaveBeenCalled()
+    표시.켜기()
+    표시.끄기()
+    expect(표시.값.value).toBe(false)
+    expect(꺼질때).toHaveBeenCalledTimes(1)
+    표시.끄기()
+    vi.advanceTimersByTime(5_000) // 거둔 타이머가 다시 부르지 않는다
+    expect(꺼질때).toHaveBeenCalledTimes(1)
   })
 })

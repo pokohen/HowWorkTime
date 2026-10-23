@@ -232,6 +232,37 @@ describe('다른 창이 받는 중인 답', () => {
     vi.doUnmock('../src/assistant/ai/client')
   })
 
+  it('새 형식 막기 중에는 받던 창의 잠금이 풀려도 판단하지 않고(기록·중단됨 없음), 풀리면 다시 판단한다', async () => {
+    const 잠금들 = 가짜잠금관리자()
+    vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
+    let 놓기
+    잠금들.request(잠금('x'), () => new Promise((r) => { 놓기 = r }))
+    await Promise.resolve()
+    받는중저장(Date.now())
+    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+      const a = useAssistant()
+      await nextTick()
+      const 받던값 = localStorage.getItem(저장키)
+      localStorage.setItem(저장키, '{"버전":2}')
+      window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: '{"버전":2}', storageArea: localStorage }))
+      expect(a.새판감지.value).toBe(true)
+      놓기() // 받던 창이 최종 저장 없이 죽음 (판단은 저장본을 다시 읽다 새 형식을 만남)
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBeUndefined()
+      expect(오류).not.toHaveBeenCalled()
+      // 저장본이 다시 읽을 수 있는 값이 되면 막기가 풀리고 다시 판단한다 (잠금이 비었으므로 중단됨)
+      localStorage.setItem(저장키, 받던값)
+      window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 받던값, storageArea: localStorage }))
+      expect(a.새판감지.value).toBe(false)
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
+    } finally {
+      오류.mockRestore()
+    }
+  })
+
   it('잠금 없이 받는 중이라는 표시는 저장본을 거쳐 남고, 잠금을 쓰는 창도 수정시각으로 판단한다', async () => {
     const 잠금들 = 가짜잠금관리자()
     vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
@@ -797,7 +828,7 @@ describe('다른 창이 받는 중인 답', () => {
       const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
       합치기.실패 = true
-      /** 남의 값을 쓰고 알린 뒤, 안내가 꺼질 때까지 1초마다 (거듭이면 같은 값을 다시 알리며) 센다 */
+      /** 남의 값을 쓰고 알린 뒤, 안내가 꺼질 때까지 0.1초 단위로 센다(ms). 거듭이면 1초마다 같은 값을 다시 알린다 */
       async function 안내켜진초(내용, 거듭) {
         받는중저장(Date.now() + 5, { id: 'a3', 역할: 'assistant', 내용, 시각: Date.now() })
         const 값 = localStorage.getItem(저장키)
@@ -805,7 +836,7 @@ describe('다른 창이 받는 중인 답', () => {
         알림()
         expect(a.전체합치기실패.value).toBe(true)
         let ms = 0
-        for (; ms < 600_000 && a.전체합치기실패.value; ms += 100) { // 0.1초 단위로 (일찍·늦게 꺼짐을 가린다)
+        for (; ms < 30_000 && a.전체합치기실패.value; ms += 100) { // 0.1초 단위로 (일찍·늦게 꺼짐을 가린다)
           await vi.advanceTimersByTimeAsync(100)
           if (거듭 && ms % 1_000 === 0) 알림()
         }
