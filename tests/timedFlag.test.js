@@ -40,8 +40,8 @@ describe('잠시표시상태', () => {
     표시.끄기()
     expect(표시.값.value).toBe(false)
     expect(꺼질때).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0) // 끄면 타이머를 거둔다
     표시.끄기()
-    vi.advanceTimersByTime(5_000) // 거둔 타이머가 다시 부르지 않는다
     expect(꺼질때).toHaveBeenCalledTimes(1)
   })
 })

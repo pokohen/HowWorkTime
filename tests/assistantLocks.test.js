@@ -248,8 +248,11 @@ describe('다른 창이 받는 중인 답', () => {
       localStorage.setItem(저장키, '{"버전":2}')
       window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: '{"버전":2}', storageArea: localStorage }))
       expect(a.새판감지.value).toBe(true)
+      const 읽기 = vi.spyOn(localStorage, 'getItem')
       놓기() // 받던 창이 최종 저장 없이 죽음 (판단은 저장본을 다시 읽다 새 형식을 만남)
       await vi.advanceTimersByTimeAsync(60_000)
+      expect(읽기.mock.calls.some(([키]) => 키 === 저장키)).toBe(true) // 판단이 돌아 저장본을 다시 읽었다
+      읽기.mockRestore()
       expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBeUndefined()
       expect(오류).not.toHaveBeenCalled()
       // 저장본이 다시 읽을 수 있는 값이 되면 막기가 풀리고 다시 판단한다 (잠금이 비었으므로 중단됨)
