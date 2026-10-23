@@ -38,7 +38,12 @@ async function 합치기실패모킹() {
       return 저장모듈.대화합치기(...인자)
     },
   }))
-  상태.오류 = vi.spyOn(console, 'error').mockImplementation(() => {}) // 마지막에 (앞에서 실패하면 남기는 것이 없게)
+  try {
+    상태.오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+  } catch (예외) {
+    vi.doUnmock('../src/assistant/utils/assistantStorage') // 실패하면 남기는 것이 없게
+    throw 예외
+  }
   return 상태
 }
 
@@ -714,7 +719,6 @@ describe('다른 창이 받는 중인 답', () => {
       await vi.advanceTimersByTimeAsync(500)
       expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0)
     } finally {
-      localStorage.removeItem('다른키')
       합치기.정리()
     }
   })
@@ -783,7 +787,6 @@ describe('다른 창이 받는 중인 답', () => {
       await vi.advanceTimersByTimeAsync(1_000)
       expect(JSON.parse(localStorage.getItem(저장키)).삭제기록[지운ID]).toBeGreaterThan(0) // 예약된 저장은 그대로 써졌다
     } finally {
-      localStorage.removeItem('다른키')
       합치기.정리()
     }
   })
@@ -801,11 +804,13 @@ describe('다른 창이 받는 중인 답', () => {
       알림()
       expect(a.전체합치기실패.value).toBe(true)
       // 1초마다 거듭 와도 안내를 다시 켜지 않으므로 안내는 제 시간에 저절로 꺼진다 (다시 켜면 시간이 처음부터 다시 가 꺼지지 않는다)
-      for (let 초 = 0; 초 < 600 && a.전체합치기실패.value; 초++) {
+      let 켜진초 = 0
+      for (; 켜진초 < 600 && a.전체합치기실패.value; 켜진초++) {
         await vi.advanceTimersByTimeAsync(1_000)
         알림()
       }
       expect(a.전체합치기실패.value).toBe(false)
+      expect(켜진초).toBeGreaterThan(5) // 거듭 온 알림이 안내를 일찍 거두지도 않았다 (안내 시간은 수 초 이상)
       expect(합치기.오류.mock.calls.filter(([글]) => 글 === '[플래너] 다른 창의 저장본을 합치지 못함')).toHaveLength(1)
     } finally {
       합치기.정리()
@@ -825,7 +830,11 @@ describe('다른 창이 받는 중인 답', () => {
     await vi.advanceTimersByTimeAsync(10_000)
     expect(localStorage.getItem(저장키)).toBe('{"버전":2}')
     expect(a.새판감지.value).toBe(true)
-    localStorage.removeItem('다른키')
+    // 남은 변경은 버리지 않았다: 새 형식 값이 사라져 막기가 풀리면 쓴다
+    localStorage.removeItem(저장키)
+    window.dispatchEvent(new StorageEvent('storage', { key: 저장키, oldValue: '{"버전":2}', newValue: null, storageArea: localStorage }))
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(Object.keys(JSON.parse(localStorage.getItem(저장키)).삭제기록)).toHaveLength(1)
   })
 
   it('합치지 못한 값이 합칠 수 있는 값으로 바뀌면 재시도가 다시 돈다', async () => {
