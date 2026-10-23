@@ -25,7 +25,10 @@ export function 모듈상태(hot, 정의) {
     정리됨 = true
     살아있는상태정리().delete(정리)
     스코프.stop()
-    정리목록.forEach((fn) => fn())
+    // 하나가 실패해도 나머지는 꼭 정리한다 (남은 리스너·타이머가 옛 상태로 새 상태 위에 쓰지 않게)
+    for (const fn of 정리목록) {
+      try { fn() } catch (예외) { console.error('[모듈상태] 정리 중 예외', 예외) }
+    }
   }
   hot?.dispose(정리)
   // 목록은 테스트·개발(HMR)에서만 쓴다. 배포 판에는 남기지 않는다 (상태를 붙잡는 전역 목록이 생기지 않게)

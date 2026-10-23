@@ -266,6 +266,25 @@ describe('다른 창이 받는 중인 답', () => {
     }
   })
 
+  it('잠금 기다림이 정리 말고 다른 까닭으로 실패하면 한 번 기록하고 시각으로 판단한다 (영영 받는 중으로 남지 않는다)', async () => {
+    const 고장난잠금 = { request: (이름, 옵션, cb) => (옵션?.ifAvailable ? Promise.resolve().then(() => (cb ?? 옵션)(null)) : Promise.reject(new Error('문서 비활성'))) }
+    vi.stubGlobal('navigator', { ...navigator, locks: 고장난잠금, onLine: true })
+    받는중저장(Date.now())
+    const 오류 = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const { useAssistant } = await import('../src/assistant/composables/useAssistant')
+      const a = useAssistant()
+      await nextTick()
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(a.탭목록.value[0].메시지.at(-1).다른창받는중).toBe(true) // 아직 시각으로 유효하다
+      await vi.advanceTimersByTimeAsync(2 * 60_000 + 5_000)
+      expect(a.탭목록.value[0].메시지.at(-1).중단됨).toBe(true)
+      expect(오류.mock.calls.filter(([글]) => String(글).includes('잠금 기다림 실패'))).toHaveLength(1)
+    } finally {
+      오류.mockRestore()
+    }
+  })
+
   it('잠금 없이 받는 중이라는 표시는 저장본을 거쳐 남고, 잠금을 쓰는 창도 수정시각으로 판단한다', async () => {
     const 잠금들 = 가짜잠금관리자()
     vi.stubGlobal('navigator', { ...navigator, locks: 잠금들, onLine: true })
