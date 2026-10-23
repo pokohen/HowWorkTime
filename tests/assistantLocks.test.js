@@ -797,20 +797,25 @@ describe('다른 창이 받는 중인 답', () => {
       const { useAssistant } = await import('../src/assistant/composables/useAssistant')
       const a = useAssistant()
       합치기.실패 = true
-      받는중저장(Date.now() + 5, { id: 'a3', 역할: 'assistant', 내용: '남의 답', 시각: Date.now() })
-      const 남의값 = localStorage.getItem(저장키)
-      합치기.오류.mockClear()
-      const 알림 = () => window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 남의값, storageArea: localStorage }))
-      알림()
-      expect(a.전체합치기실패.value).toBe(true)
-      // 1초마다 거듭 와도 안내를 다시 켜지 않으므로 안내는 제 시간에 저절로 꺼진다 (다시 켜면 시간이 처음부터 다시 가 꺼지지 않는다)
-      let 켜진초 = 0
-      for (; 켜진초 < 600 && a.전체합치기실패.value; 켜진초++) {
-        await vi.advanceTimersByTimeAsync(1_000)
+      /** 남의 값을 쓰고 알린 뒤, 안내가 꺼질 때까지 1초마다 (거듭이면 같은 값을 다시 알리며) 센다 */
+      async function 안내켜진초(내용, 거듭) {
+        받는중저장(Date.now() + 5, { id: 'a3', 역할: 'assistant', 내용, 시각: Date.now() })
+        const 값 = localStorage.getItem(저장키)
+        const 알림 = () => window.dispatchEvent(new StorageEvent('storage', { key: 저장키, newValue: 값, storageArea: localStorage }))
         알림()
+        expect(a.전체합치기실패.value).toBe(true)
+        let 초 = 0
+        for (; 초 < 600 && a.전체합치기실패.value; 초++) {
+          await vi.advanceTimersByTimeAsync(1_000)
+          if (거듭) 알림()
+        }
+        expect(a.전체합치기실패.value).toBe(false)
+        return 초
       }
-      expect(a.전체합치기실패.value).toBe(false)
-      expect(켜진초).toBe(12) // 첫 알림에서 꼭 안내 시간(12초)만큼: 거듭 온 알림이 일찍 거두지도 늘리지도 않았다
+      const 한번 = await 안내켜진초('남의 답 1', false) // 기준: 한 번 알렸을 때의 안내 시간
+      합치기.오류.mockClear()
+      // 1초마다 같은 값이 거듭 와도 안내를 다시 켜지 않으므로 꼭 같은 시간에 꺼진다 (일찍 거두지도 늘리지도 않는다)
+      expect(await 안내켜진초('남의 답 2', true)).toBe(한번)
       expect(합치기.오류.mock.calls.filter(([글]) => 글 === '[플래너] 다른 창의 저장본을 합치지 못함')).toHaveLength(1)
     } finally {
       합치기.정리()
